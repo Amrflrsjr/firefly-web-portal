@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+:root {
+  --color-firefly-primary: #ffcb62;
+  --color-firefly-secondary: #f9b53f;
+  --color-firefly-accent: #f4d158;
+  --color-firefly-bg: #ffffff;
+}
