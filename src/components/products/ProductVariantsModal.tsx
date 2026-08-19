@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Product, ProductVariant } from "../../types/product";
-import { X, Plus, Pencil } from "lucide-react";
+import { X, Plus, Pencil, Trash2 } from "lucide-react";
 
 interface ProductVariantsModalProps {
   product: Product;
@@ -10,6 +10,7 @@ interface ProductVariantsModalProps {
   onClose: () => void;
   onEditProduct: () => void;
   onAddVariant: (productId: number, variant: ProductVariant) => void;
+  onDeleteProduct: (productId: number) => void | Promise<void>;
 }
 
 export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
@@ -19,6 +20,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
   onClose,
   onEditProduct,
   onAddVariant,
+  onDeleteProduct,
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newVariant, setNewVariant] = useState<ProductVariant>({
@@ -71,6 +73,12 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
               className="inline-flex items-center gap-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
             >
               <Pencil className="w-3.5 h-3.5" /> Edit Details
+            </button>
+            <button
+              onClick={() => onDeleteProduct(product.productId)}
+              className="inline-flex items-center gap-1 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete Product
             </button>
             <button
               onClick={onClose}

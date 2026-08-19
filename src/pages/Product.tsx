@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../api/axios";
 import type {
@@ -13,17 +14,23 @@ import { ProductTable } from "../components/products/ProductTable";
 import { ProductVariantsModal } from "../components/products/ProductVariantsModal";
 import { CreateProductModal } from "../components/products/CreateProductModal";
 import { EditProductModal } from "../components/products/EditProductModal";
+import { ConfirmModal } from "../components/common/ConfirmModal";
 
 export const Products: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Modals visibility
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Confirm modal state for deletion
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -79,6 +86,13 @@ export const Products: React.FC = () => {
     };
   }, []);
 
+  // Auto-open modal if there's an exact ID match
+  const exactMatchProduct = searchQuery
+    ? products.find((p) => p.productId.toString() === searchQuery)
+    : null;
+
+  const activeProduct = selectedProduct || exactMatchProduct;
+
   // Handlers
   const handleCreateProduct = async (dto: CreateProductDto) => {
     setSaving(true);
@@ -107,11 +121,11 @@ export const Products: React.FC = () => {
     description: string;
     isActive: boolean;
   }) => {
-    if (!selectedProduct) return;
+    if (!activeProduct) return;
     setSaving(true);
     setFormError("");
     try {
-      await api.put(`/products/${selectedProduct.productId}`, data);
+      await api.put(`/products/${activeProduct.productId}`, data);
       toast.success("Product details updated!");
       setIsEditOpen(false);
       setSelectedProduct(null);
@@ -162,8 +176,44 @@ export const Products: React.FC = () => {
     }
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val) {
+      setSearchParams({ search: val }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  };
+
+  // Triggers the confirmation modal open
+  const handleDeleteProduct = (productId: number) => {
+    setProductToDelete(productId);
+  };
+
+  // Executes actual delete request on confirmation
+  const executeDeleteProduct = async () => {
+    if (!productToDelete) return;
+    setSaving(true);
+    try {
+      await api.delete(`/products/${productToDelete}`);
+      toast.success("Product deleted successfully!");
+      setSelectedProduct(null);
+      setProductToDelete(null);
+      await loadProducts();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Failed to delete product");
+      } else {
+        toast.error("Failed to delete product");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const filteredProducts = products.filter(
     (p) =>
+      p.productId.toString() === searchQuery ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.variants.some((v) =>
@@ -173,14 +223,14 @@ export const Products: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Products & Catalog
           </h1>
-          <p className="text-sm text-slate-500">
-            Manage items, variants, SKUs, and pricing
+          <p className="text-sm text-slate-500 mt-0.5">
+            Manage items, variants, SKUs, and unit pricing
           </p>
         </div>
         <button
@@ -188,43 +238,44 @@ export const Products: React.FC = () => {
             setFormError("");
             setIsCreateOpen(true);
           }}
-          className="inline-flex items-center gap-2 bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm cursor-pointer"
+          className="inline-flex items-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 font-bold px-4 py-2.5 rounded-2xl shadow-xs transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Add Product
         </button>
       </div>
 
+      {/* API Error Alert */}
       {apiError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
+        <div className="bg-rose-50 border border-rose-200/80 text-rose-700 p-4 rounded-2xl flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
             onClick={loadProducts}
-            className="text-xs font-bold bg-red-100 px-3 py-1.5 rounded-lg cursor-pointer"
+            className="text-xs font-bold bg-white hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-1.5 rounded-xl transition-colors cursor-pointer shadow-2xs"
           >
             Retry
           </button>
         </div>
       )}
 
-      {/* Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      {/* Search Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search by product name, description, or SKU..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-800"
+            onChange={handleSearchChange}
+            className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all shadow-2xs"
           />
         </div>
       </div>
 
-      {/* Product Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Product Table Container */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         <ProductTable
           loading={loading}
           products={filteredProducts}
@@ -233,19 +284,35 @@ export const Products: React.FC = () => {
       </div>
 
       {/* View/Add Variants Modal */}
-      {selectedProduct && !isEditOpen && (
+      {activeProduct && !isEditOpen && (
         <ProductVariantsModal
-          product={selectedProduct}
+          product={activeProduct}
           saving={saving}
           error={formError}
-          onClose={() => setSelectedProduct(null)}
+          onClose={() => {
+            setSelectedProduct(null);
+            if (searchQuery) setSearchParams({}, { replace: true });
+          }}
           onEditProduct={() => {
             setFormError("");
             setIsEditOpen(true);
           }}
           onAddVariant={handleAddVariant}
+          onDeleteProduct={handleDeleteProduct}
         />
       )}
+
+      {/* Confirmation Modal for Deletion */}
+      <ConfirmModal
+        isOpen={productToDelete !== null}
+        title="Delete Product"
+        message="Are you sure you want to delete this product and its associated variants? This action will soft-delete the items from active operations."
+        confirmText="Yes, Delete"
+        isDanger={true}
+        loading={saving}
+        onConfirm={executeDeleteProduct}
+        onClose={() => setProductToDelete(null)}
+      />
 
       {/* Create Product Modal */}
       {isCreateOpen && (
@@ -258,9 +325,9 @@ export const Products: React.FC = () => {
       )}
 
       {/* Edit Product Modal */}
-      {isEditOpen && selectedProduct && (
+      {isEditOpen && activeProduct && (
         <EditProductModal
-          product={selectedProduct}
+          product={activeProduct}
           saving={saving}
           error={formError}
           onClose={() => setIsEditOpen(false)}

@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Users, Package, FileText, Receipt, LogOut } from "lucide-react";
+import { GlobalSearch } from "../components/search/GlobalSearch"; // Import the new search component
 
 export const Layout: React.FC = () => {
   const { username, logout } = useAuth();
@@ -22,10 +23,10 @@ export const Layout: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between p-4 shadow-sm">
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between p-4 shadow-sm z-10">
         <div>
           <div className="px-3 py-4 mb-6 border-b border-slate-100 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-firefly-primary flex items-center justify-center text-slate-900 font-black text-lg shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-[#FFCB62] flex items-center justify-center text-slate-900 font-black text-lg shadow-sm">
               F
             </div>
             <div>
@@ -46,7 +47,7 @@ export const Layout: React.FC = () => {
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                       isActive
-                        ? "bg-firefly-accent/30 text-slate-900 border-l-4 border-firefly-secondary"
+                        ? "bg-[#FFCB62]/30 text-slate-900 border-l-4 border-[#F9B53F]"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`
                   }
@@ -79,9 +80,22 @@ export const Layout: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Top Header with Global Search */}
+        <header className="bg-white border-b border-slate-200 h-16 px-8 flex items-center justify-between shrink-0">
+          <div className="flex-1 flex items-center">
+            <GlobalSearch />
+          </div>
+          <div className="flex items-center gap-4">
+            {/* You can add notifications or user profile avatars here later */}
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 p-8 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };

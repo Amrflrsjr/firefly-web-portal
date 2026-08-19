@@ -30,8 +30,8 @@ export interface QuotationItemResponseDto {
 export interface QuotationResponseDto {
   quotationId: number;
   quotationNumber: string;
-  customerId: number;
-  customerName: string;
+  companyId: number;
+  companyName: string;
   contactNameSnapshot: string;
   contactEmailSnapshot: string;
   totalAmount: number;

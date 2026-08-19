@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../api/axios";
 import type {
@@ -15,18 +16,25 @@ import { CreateCustomerModal } from "../components/customers/CreateCustomerModal
 import { EditCustomerModal } from "../components/customers/EditCustomerModal";
 import { AddContactModal } from "../components/customers/AddContactModal";
 import { EditContactModal } from "../components/customers/EditContactModal";
+import { ConfirmModal } from "../components/common/ConfirmModal";
 
 export const Customers: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Modals visibility
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isEditContactOpen, setIsEditContactOpen] = useState(false);
+
+  // Confirm modal states
+  const [customerToDelete, setCustomerToDelete] = useState<number | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<number | null>(null);
 
   // Selection
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
@@ -89,7 +97,16 @@ export const Customers: React.FC = () => {
     };
   }, []);
 
-  // Handlers
+  const exactMatchCustomer = searchQuery
+    ? customers.find(
+        (c) =>
+          c.customerId.toString() === searchQuery ||
+          c.companyName.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : null;
+
+  const activeCustomer = selectedCustomer || exactMatchCustomer;
+
   const handleCreateCustomer = async (dto: CreateCustomerDto) => {
     setSaving(true);
     setFormError("");
@@ -195,18 +212,17 @@ export const Customers: React.FC = () => {
     }
   };
 
-  const handleDeleteContact = async (contactId?: number) => {
-    if (!selectedCustomer || !contactId) return;
-    if (!window.confirm("Are you sure you want to delete this contact?"))
-      return;
-
+  const executeDeleteContact = async () => {
+    if (!selectedCustomer || !contactToDelete) return;
+    setSaving(true);
     try {
       await api.delete(
-        `/customers/${selectedCustomer.customerId}/contacts/${contactId}`,
+        `/customers/${selectedCustomer.customerId}/contacts/${contactToDelete}`,
       );
       toast.success("Contact deleted successfully!");
       await loadCustomers();
       setSelectedCustomer(null);
+      setContactToDelete(null);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const msg = err.response?.data?.message || "Failed to delete contact";
@@ -214,11 +230,43 @@ export const Customers: React.FC = () => {
       } else {
         toast.error("Failed to delete contact");
       }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const executeDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+    setSaving(true);
+    try {
+      await api.delete(`/customers/${customerToDelete}`);
+      toast.success("Customer deleted successfully!");
+      setSelectedCustomer(null);
+      setCustomerToDelete(null);
+      await loadCustomers();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Failed to delete customer");
+      } else {
+        toast.error("Failed to delete customer");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val) {
+      setSearchParams({ search: val }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
     }
   };
 
   const filteredCustomers = customers.filter(
     (c) =>
+      c.customerId.toString() === searchQuery ||
       c.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.tin && c.tin.includes(searchQuery)),
   );
@@ -265,7 +313,7 @@ export const Customers: React.FC = () => {
             type="text"
             placeholder="Search by company, TIN..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={handleSearchChange}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-800"
           />
         </div>
@@ -279,13 +327,16 @@ export const Customers: React.FC = () => {
         />
       </div>
 
-      {selectedCustomer &&
+      {activeCustomer &&
         !isEditOpen &&
         !isAddContactOpen &&
         !isEditContactOpen && (
           <CustomerDetailsModal
-            customer={selectedCustomer}
-            onClose={() => setSelectedCustomer(null)}
+            customer={activeCustomer}
+            onClose={() => {
+              setSelectedCustomer(null);
+              if (searchQuery) setSearchParams({}, { replace: true });
+            }}
             onEditCustomer={() => {
               setFormError("");
               setIsEditOpen(true);
@@ -299,9 +350,35 @@ export const Customers: React.FC = () => {
               setFormError("");
               setIsEditContactOpen(true);
             }}
-            onDeleteContact={handleDeleteContact}
+            onDeleteContact={(contactId) =>
+              setContactToDelete(contactId ?? null)
+            }
+            onDeleteCustomer={(customerId) => setCustomerToDelete(customerId)}
           />
         )}
+
+      {/* Confirmation Modals */}
+      <ConfirmModal
+        isOpen={customerToDelete !== null}
+        title="Delete Customer"
+        message="Are you sure you want to delete this customer? This will soft-delete the record and associated active contacts."
+        confirmText="Yes, Delete"
+        isDanger={true}
+        loading={saving}
+        onConfirm={executeDeleteCustomer}
+        onClose={() => setCustomerToDelete(null)}
+      />
+
+      <ConfirmModal
+        isOpen={contactToDelete !== null}
+        title="Delete Contact"
+        message="Are you sure you want to delete this contact?"
+        confirmText="Yes, Delete"
+        isDanger={true}
+        loading={saving}
+        onConfirm={executeDeleteContact}
+        onClose={() => setContactToDelete(null)}
+      />
 
       {isCreateOpen && (
         <CreateCustomerModal

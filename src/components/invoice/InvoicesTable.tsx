@@ -1,47 +1,48 @@
 import React from "react";
-import type { QuotationResponseDto } from "../../types/quotation";
-import { FileText, Eye } from "lucide-react";
+import { Eye, Receipt } from "lucide-react";
+import type { InvoiceResponseDto } from "../../types/invoice";
 
-interface QuotationTableProps {
+interface InvoicesTableProps {
   loading: boolean;
-  quotations: QuotationResponseDto[];
-  onView: (quotation: QuotationResponseDto) => void;
-  onViewPdf: (quotationId: number, quotationNumber: string) => void;
+  invoices: InvoiceResponseDto[];
+  onViewDetails: (inv: InvoiceResponseDto) => void;
+  onViewPdf: (invoiceId: number, invoiceNumber: string) => void;
 }
 
-export const QuotationTable: React.FC<QuotationTableProps> = ({
+export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   loading,
-  quotations,
-  onView,
+  invoices,
+  onViewDetails,
   onViewPdf,
 }) => {
   if (loading) {
     return (
       <div className="p-8 text-center text-slate-500 text-sm">
-        Loading quotations...
+        Loading invoices...
       </div>
     );
   }
 
-  if (quotations.length === 0) {
+  if (invoices.length === 0) {
     return (
       <div className="p-8 text-center text-slate-500 text-sm">
-        No quotations found. Click <b>"+ Create Quotation"</b> above to generate
-        one.
+        No invoices found. Convert an existing quotation to generate an invoice.
       </div>
     );
   }
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
-      case "approved":
+      case "paid":
         return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "sent":
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      case "declined":
-        return "bg-red-50 text-red-700 border-red-200";
-      default:
+      case "partiallypaid":
+      case "partially paid":
         return "bg-amber-50 text-amber-700 border-amber-200";
+      case "cancelled":
+        return "bg-slate-50 text-slate-700 border-slate-200";
+      case "unpaid":
+      default:
+        return "bg-red-50 text-red-700 border-red-200";
     }
   };
 
@@ -49,63 +50,63 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     <table className="w-full text-left border-collapse">
       <thead>
         <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-500 tracking-wider">
-          <th className="p-4">Quotation #</th>
+          <th className="p-4">Invoice #</th>
           <th className="p-4">Customer</th>
-          <th className="p-4">Contact</th>
-          <th className="p-4">Date Created</th>
+          <th className="p-4">Issue Date</th>
           <th className="p-4">Status</th>
+          <th className="p-4 text-right">Balance Due</th>
           <th className="p-4 text-right">Total Amount</th>
           <th className="p-4 text-center">Preview</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100 text-sm">
-        {quotations.map((q) => (
+        {invoices.map((inv) => (
           <tr
-            key={q.quotationId}
-            onClick={() => onView(q)}
+            key={inv.invoiceId}
+            onClick={() => onViewDetails(inv)}
             className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
           >
             <td className="p-4 font-bold text-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[#FFCB62]/20 text-[#F9B53F] font-bold flex items-center justify-center text-xs group-hover:bg-[#FFCB62]/40 transition-colors">
-                  <FileText className="w-4 h-4" />
+                  <Receipt className="w-4 h-4" />
                 </div>
                 <span className="font-mono text-xs text-slate-900">
-                  {q.quotationNumber}
+                  {inv.invoiceNumber}
                 </span>
               </div>
             </td>
-            <td className="p-4 font-semibold text-slate-800">
-              {q.companyName || "N/A"}
-            </td>
             <td className="p-4">
-              <div className="font-medium text-slate-800">
-                {q.contactNameSnapshot || "N/A"}
+              <div className="font-semibold text-slate-800">
+                {inv.companyName}
               </div>
               <div className="text-xs text-slate-400">
-                {q.contactEmailSnapshot}
+                Quote #{inv.quotationNumber}
               </div>
             </td>
             <td className="p-4 text-xs text-slate-600 font-mono">
-              {new Date(q.createdAt).toLocaleDateString()}
+              {new Date(inv.issueDate || inv.createdAt).toLocaleDateString()}
             </td>
             <td className="p-4">
               <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-full border capitalize ${getStatusBadge(
-                  q.status,
+                className={`text-xs font-bold px-2.5 py-1 rounded-full border ${getStatusBadge(
+                  inv.status,
                 )}`}
               >
-                {q.status}
+                {inv.status === "PartiallyPaid" ? "Partially Paid" : inv.status}
               </span>
             </td>
+            <td className="p-4 text-right font-bold text-red-600 font-mono text-xs">
+              PHP {(inv.balanceDue ?? 0).toFixed(2)}
+            </td>
             <td className="p-4 text-right font-bold text-slate-800 font-mono text-xs">
-              PHP {q.totalAmount.toFixed(2)}
+              PHP {(inv.totalAmount ?? 0).toFixed(2)}
             </td>
             <td className="p-4 text-center">
               <button
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onViewPdf(q.quotationId, q.quotationNumber);
+                  e.stopPropagation(); // Prevents row's onViewDetails from firing
+                  onViewPdf(inv.invoiceId, inv.invoiceNumber);
                 }}
                 title="Preview PDF"
                 className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
