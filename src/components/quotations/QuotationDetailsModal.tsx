@@ -1,47 +1,16 @@
 import React from "react";
 import type { QuotationResponseDto } from "../../types/quotation";
-import { quotationApi } from "../../api/quotations";
-import {
-  X,
-  Pencil,
-  Download,
-  Mail,
-  Trash2,
-  Eye,
-  FileText,
-  Calendar,
-  User,
-  Building2,
-} from "lucide-react";
+import { X, FileText, Calendar, User, Building2 } from "lucide-react";
 
 interface QuotationDetailsModalProps {
   quotation: QuotationResponseDto;
   onClose: () => void;
-  onEditStatus: () => void;
-  onDeleteQuotation: (quotationId: number) => void;
-  onOpenEmail: () => void;
-  onPreviewPdf: (quotationId: number, quotationNumber: string) => void;
 }
 
 export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
   quotation,
   onClose,
-  onEditStatus,
-  onDeleteQuotation,
-  onOpenEmail,
-  onPreviewPdf,
 }) => {
-  const handlePdfDownload = async () => {
-    try {
-      await quotationApi.downloadPdf(
-        quotation.quotationId,
-        quotation.quotationNumber,
-      );
-    } catch {
-      alert("Failed to download PDF document.");
-    }
-  };
-
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case "approved":
@@ -66,7 +35,7 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-brrom-[#FFCB62]/30 to-[#F4D158]/30 flex items-center justify-center text-slate-800 shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 flex items-center justify-center text-slate-800 shadow-xs">
               <FileText className="w-5 h-5 text-[#F9B53F]" />
             </div>
             <div>
@@ -98,47 +67,6 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
 
         {/* Scrollable Modal Content */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-[#FCFDFF]">
-          {/* Action Toolbar */}
-          <div className="flex flex-wrap items-center gap-2 p-2 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-2xs">
-            <button
-              onClick={onEditStatus}
-              className="flex-1 min-w-22.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition-all cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5 text-slate-400" /> Status
-            </button>
-
-            <button
-              onClick={() =>
-                onPreviewPdf(quotation.quotationId, quotation.quotationNumber)
-              }
-              className="flex-1 min-w-22.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition-all cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5 text-blue-500" /> Preview
-            </button>
-
-            <button
-              onClick={handlePdfDownload}
-              className="flex-1 min-w-22.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition-all cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-500" /> PDF
-            </button>
-
-            <button
-              onClick={onOpenEmail}
-              className="flex-1 min-w-22.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 px-3.5 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
-            >
-              <Mail className="w-3.5 h-3.5" /> Email
-            </button>
-
-            <button
-              onClick={() => onDeleteQuotation(quotation.quotationId)}
-              className="inline-flex items-center justify-center text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 px-3.5 py-2 rounded-xl border border-rose-100 transition-all cursor-pointer"
-              title="Cancel Quotation"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           {/* Info Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white p-4 rounded-2xl border border-slate-200/70 shadow-2xs space-y-1">
@@ -194,7 +122,11 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                   {quotation.items?.map((item, idx) => {
                     const qty = item.quantity ?? 1;
                     const price = item.unitPrice ?? 0;
-                    const total = item.lineTotal ?? qty * price;
+                    const total = item.totalAmount ?? qty * price;
+                    const variantText =
+                      item.color && item.size
+                        ? `${item.color} / ${item.size}`
+                        : "N/A";
 
                     return (
                       <tr
@@ -210,13 +142,13 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                             )}
                             <span className="font-semibold text-slate-800">
                               {item.productName ||
-                                item.variantDescription ||
+                                item.description ||
                                 "Custom Item"}
                             </span>
                           </div>
                         </td>
                         <td className="p-3.5 text-slate-500 font-medium">
-                          {item.variantDescription || "N/A"}
+                          {variantText}
                         </td>
                         <td className="p-3.5 text-center font-medium text-slate-700">
                           {qty}
@@ -254,16 +186,6 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
               </span>
             </div>
           </div>
-        </div>
-
-        {/* Footer Close Bar */}
-        <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-end">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs"
-          >
-            Close Window
-          </button>
         </div>
       </div>
     </div>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import api from "../../api/axios";
 import axios from "axios";
-import { X, Mail, FileText, Loader2 } from "lucide-react";
+import { X, Mail, FileText, Loader2, Trash2, Plus } from "lucide-react";
 import type {
   InvoiceResponseDto,
   EmailPreviewDto,
   SendEmailRequestDto,
 } from "../../types/invoice";
+import toast from "react-hot-toast";
 
 interface Props {
   invoice: InvoiceResponseDto | null;
@@ -23,7 +24,7 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  const [preview, setPreview] = useState<EmailPreviewDto | null>(null);
+  const [, setPreview] = useState<EmailPreviewDto | null>(null);
   const [emailData, setEmailData] = useState<SendEmailRequestDto>({
     recipientEmails: [""],
     subject: "",
@@ -65,7 +66,6 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
     if (invoice) {
       fetchPreview();
     }
-    // Removed the else block that was causing the synchronous setState warning
 
     return () => {
       isMounted = false;
@@ -80,7 +80,6 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
     setError("");
 
     try {
-      // Filter out empty email fields
       const payload: SendEmailRequestDto = {
         ...emailData,
         recipientEmails: emailData.recipientEmails.filter(
@@ -89,6 +88,7 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
       };
 
       await api.post(`/invoices/${invoice.invoiceId}/send-email`, payload);
+      toast.success("Invoice email sent successfully!");
       onSuccess();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -118,66 +118,93 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
     });
   };
 
+  const removeEmailField = (index: number) => {
+    const newEmails = emailData.recipientEmails.filter((_, i) => i !== index);
+    setEmailData({
+      ...emailData,
+      recipientEmails: newEmails.length > 0 ? newEmails : [""],
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-slate-700" />
-            <h2 className="text-lg font-bold text-slate-800">
-              Send Invoice via Email
-            </h2>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] font-bold flex items-center justify-center text-xs shadow-2xs">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Send Invoice via Email
+              </h2>
+              <p className="text-xs text-slate-500 font-mono">
+                {invoice.invoiceNumber}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg">
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm p-3.5 rounded-xl font-medium">
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="py-12 flex flex-col items-center justify-center text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin mb-2" />
-            <p className="text-sm">Generating preview...</p>
+          <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
+            <Loader2 className="w-7 h-7 animate-spin text-[#F9B53F]" />
+            <p className="text-xs font-semibold">Generating email preview...</p>
           </div>
         ) : (
           <form onSubmit={handleSend} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                To: (Recipients)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                  Recipients (To) *
+                </label>
+                <button
+                  type="button"
+                  onClick={addEmailField}
+                  className="text-xs font-bold text-[#d99723] hover:text-[#b37a18] inline-flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Recipient
+                </button>
+              </div>
               <div className="space-y-2">
                 {emailData.recipientEmails.map((email, idx) => (
-                  <input
-                    key={idx}
-                    type="email"
-                    required={idx === 0} // Only first is required
-                    value={email}
-                    onChange={(e) => handleEmailChange(idx, e.target.value)}
-                    placeholder="customer@example.com"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F]"
-                  />
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="email"
+                      required={idx === 0}
+                      value={email}
+                      onChange={(e) => handleEmailChange(idx, e.target.value)}
+                      placeholder="customer@example.com"
+                      className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all"
+                    />
+                    {emailData.recipientEmails.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeEmailField(idx)}
+                        className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={addEmailField}
-                className="mt-1 text-xs text-blue-600 font-semibold hover:underline"
-              >
-                + Add another recipient
-              </button>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                Subject
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Subject *
               </label>
               <input
                 type="text"
@@ -186,52 +213,52 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
                 onChange={(e) =>
                   setEmailData({ ...emailData, subject: e.target.value })
                 }
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                Message Body
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                Message Body *
               </label>
               <textarea
                 required
-                rows={5}
+                rows={4}
                 value={emailData.body}
                 onChange={(e) =>
                   setEmailData({ ...emailData, body: e.target.value })
                 }
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all"
               />
             </div>
 
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center gap-3">
-              <div className="p-2 bg-white rounded shadow-sm border border-slate-200">
-                <FileText className="w-5 h-5 text-red-500" />
+            {/* Attachment Preview Box */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 flex items-center gap-3 shadow-2xs">
+              <div className="w-10 h-10 rounded-xl bg-white shadow-2xs border border-slate-200/80 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-rose-500" />
               </div>
-              <div>
-                <p className="text-sm font-bold text-slate-700">
-                  {preview?.attachmentFileName ||
-                    `Invoice_${invoice.invoiceNumber}.pdf`}
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold text-slate-800 truncate">
+                  Invoice_{invoice.invoiceNumber}.pdf
                 </p>
-                <p className="text-xs text-slate-500">
-                  Auto-generated PDF attachment
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Auto-generated PDF attachment included
                 </p>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={sending}
-                className="px-5 py-2 text-sm font-bold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-lg shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                className="px-5 py-2.5 text-sm font-bold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {sending ? (
                   <>

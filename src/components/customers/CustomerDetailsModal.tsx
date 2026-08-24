@@ -13,9 +13,8 @@ import {
 
 interface CustomerDetailsModalProps {
   customer: Customer;
+  isAdmin?: boolean;
   onClose: () => void;
-  onEditCustomer: () => void;
-  onDeleteCustomer: (customerId: number) => void;
   onAddContact: () => void;
   onEditContact: (contact: CustomerContact) => void;
   onDeleteContact: (contactId?: number) => void;
@@ -23,9 +22,8 @@ interface CustomerDetailsModalProps {
 
 export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
   customer,
+  isAdmin = false,
   onClose,
-  onEditCustomer,
-  onDeleteCustomer,
   onAddContact,
   onEditContact,
   onDeleteContact,
@@ -61,23 +59,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
         {/* Modal Scrollable Body */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1 bg-[#FCFDFF]">
-          {/* Action Toolbar */}
-          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-2xs">
-            <button
-              onClick={onEditCustomer}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition-all cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5 text-slate-400" /> Edit Company
-            </button>
-            <button
-              onClick={() => onDeleteCustomer(customer.customerId)}
-              className="inline-flex items-center justify-center text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 transition-all cursor-pointer"
-              title="Delete Company"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           {/* Info Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="bg-white p-4 rounded-2xl border border-slate-200/70 shadow-2xs space-y-1">
@@ -158,13 +139,14 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      {contact.contactId && (
+                      {isAdmin && (
                         <button
+                          type="button"
                           onClick={() => onDeleteContact(contact.contactId)}
                           title="Delete Contact"
-                          className="text-rose-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 cursor-pointer transition-colors"
+                          className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -173,16 +155,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
               )}
             </div>
           </div>
-        </div>
-
-        {/* Footer Close Bar */}
-        <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-end">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs"
-          >
-            Close Window
-          </button>
         </div>
       </div>
     </div>

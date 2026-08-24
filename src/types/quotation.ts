@@ -18,13 +18,15 @@ export interface CreateQuotationDto {
 
 export interface QuotationItemResponseDto {
   quotationItemId: number;
-  productVariantId: number;
-  sku: string;
-  productName: string;
-  variantDescription: string;
+  productVariantId?: number | null;
+  description: string;
   quantity: number;
   unitPrice: number;
-  lineTotal: number;
+  totalAmount: number;
+  productName?: string | null;
+  sku?: string | null;
+  color?: string | null;
+  size?: string | null;
 }
 
 export interface QuotationResponseDto {

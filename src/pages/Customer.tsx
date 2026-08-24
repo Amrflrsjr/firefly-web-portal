@@ -13,7 +13,6 @@ import axios from "axios";
 import { CustomerTable } from "../components/customers/CustomerTable";
 import { CustomerDetailsModal } from "../components/customers/CustomerDetailsModal";
 import { CreateCustomerModal } from "../components/customers/CreateCustomerModal";
-import { EditCustomerModal } from "../components/customers/EditCustomerModal";
 import { AddContactModal } from "../components/customers/AddContactModal";
 import { EditContactModal } from "../components/customers/EditContactModal";
 import { ConfirmModal } from "../components/common/ConfirmModal";
@@ -21,6 +20,8 @@ import { ConfirmModal } from "../components/common/ConfirmModal";
 export const Customers: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
+  const sortBy = searchParams.get("sortBy") || "companyname";
+  const ascending = searchParams.get("ascending") !== "false";
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +29,6 @@ export const Customers: React.FC = () => {
 
   // Modals visibility
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isEditContactOpen, setIsEditContactOpen] = useState(false);
 
@@ -46,9 +46,44 @@ export const Customers: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const loadCustomers = async () => {
+  const getUserRole = (): boolean => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
     try {
-      const response = await api.get<Customer[]>("/customers");
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join(""),
+      );
+      const parsed = JSON.parse(jsonPayload);
+      const roles =
+        parsed[
+          "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        ] || parsed["role"];
+      if (Array.isArray(roles)) {
+        return roles.includes("Admin");
+      }
+      return roles === "Admin";
+    } catch {
+      return false;
+    }
+  };
+
+  const isAdmin = getUserRole();
+
+  const loadCustomers = async (
+    query = "",
+    sort = "companyname",
+    asc = true,
+  ) => {
+    try {
+      setLoading(true);
+      const response = await api.get<Customer[]>("/customers", {
+        params: { search: query, sortBy: sort, ascending: asc },
+      });
       setCustomers(response.data);
       setApiError(null);
     } catch (err: unknown) {
@@ -65,47 +100,11 @@ export const Customers: React.FC = () => {
   };
 
   useEffect(() => {
-    let isSubscribed = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadCustomers(searchQuery, sortBy, ascending);
+  }, [searchQuery, sortBy, ascending]);
 
-    const fetchData = async () => {
-      try {
-        const response = await api.get<Customer[]>("/customers");
-        if (isSubscribed) {
-          setCustomers(response.data);
-          setApiError(null);
-        }
-      } catch (err: unknown) {
-        if (isSubscribed && axios.isAxiosError(err)) {
-          const msg =
-            err.response?.data?.message ||
-            err.message ||
-            "Failed to fetch data";
-          setApiError(msg);
-          toast.error(msg);
-        }
-      } finally {
-        if (isSubscribed) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      isSubscribed = false;
-    };
-  }, []);
-
-  const exactMatchCustomer = searchQuery
-    ? customers.find(
-        (c) =>
-          c.customerId.toString() === searchQuery ||
-          c.companyName.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : null;
-
-  const activeCustomer = selectedCustomer || exactMatchCustomer;
+  const activeCustomer = selectedCustomer;
 
   const handleCreateCustomer = async (dto: CreateCustomerDto) => {
     setSaving(true);
@@ -114,7 +113,7 @@ export const Customers: React.FC = () => {
       await api.post("/customers", dto);
       toast.success("Customer created successfully!");
       setIsCreateOpen(false);
-      await loadCustomers();
+      await loadCustomers(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const msg =
@@ -129,28 +128,27 @@ export const Customers: React.FC = () => {
     }
   };
 
-  const handleEditCustomer = async (data: {
-    companyName: string;
-    companyAddress: string;
-    tin: string;
-    notes: string;
-  }) => {
-    if (!selectedCustomer) return;
+  const handleEditCustomer = async (
+    customerToUpdate: Customer,
+    data: {
+      companyName: string;
+      companyAddress: string;
+      tin: string;
+      notes: string;
+    },
+  ) => {
     setSaving(true);
     setFormError("");
     try {
-      await api.put(`/customers/${selectedCustomer.customerId}`, data);
+      await api.put(`/customers/${customerToUpdate.customerId}`, data);
       toast.success("Customer updated successfully!");
-      setIsEditOpen(false);
-      setSelectedCustomer(null);
-      await loadCustomers();
+      await loadCustomers(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const msg =
           typeof err.response?.data === "string"
             ? err.response.data
             : err.response?.data?.message || "Failed to update customer";
-        setFormError(msg);
         toast.error(msg);
       }
     } finally {
@@ -170,7 +168,7 @@ export const Customers: React.FC = () => {
       toast.success("Contact added successfully!");
       setIsAddContactOpen(false);
       setSelectedCustomer(null);
-      await loadCustomers();
+      await loadCustomers(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const msg =
@@ -197,7 +195,7 @@ export const Customers: React.FC = () => {
       toast.success("Contact updated successfully!");
       setIsEditContactOpen(false);
       setSelectedContact(null);
-      await loadCustomers();
+      await loadCustomers(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const msg =
@@ -220,7 +218,7 @@ export const Customers: React.FC = () => {
         `/customers/${selectedCustomer.customerId}/contacts/${contactToDelete}`,
       );
       toast.success("Contact deleted successfully!");
-      await loadCustomers();
+      await loadCustomers(searchQuery, sortBy, ascending);
       setSelectedCustomer(null);
       setContactToDelete(null);
     } catch (err: unknown) {
@@ -243,7 +241,7 @@ export const Customers: React.FC = () => {
       toast.success("Customer deleted successfully!");
       setSelectedCustomer(null);
       setCustomerToDelete(null);
-      await loadCustomers();
+      await loadCustomers(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(err.response?.data?.message || "Failed to delete customer");
@@ -257,25 +255,30 @@ export const Customers: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val) {
-      setSearchParams({ search: val }, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
+    const params: Record<string, string> = {};
+    if (val) params.search = val;
+    if (sortBy) params.sortBy = sortBy;
+    if (!ascending) params.ascending = "false";
+    setSearchParams(params, { replace: true });
   };
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      c.customerId.toString() === searchQuery ||
-      c.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.tin && c.tin.includes(searchQuery)),
-  );
+  const handleSortChange = (field: string) => {
+    const newAscending = sortBy === field ? !ascending : true;
+    const params: Record<string, string> = {
+      sortBy: field,
+      ascending: String(newAscending),
+    };
+    if (searchQuery) params.search = searchQuery;
+    setSearchParams(params, { replace: true });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Customers</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            Customers
+          </h1>
           <p className="text-sm text-slate-500">
             Manage client companies and primary contacts
           </p>
@@ -298,7 +301,7 @@ export const Customers: React.FC = () => {
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
-            onClick={loadCustomers}
+            onClick={() => loadCustomers(searchQuery, sortBy, ascending)}
             className="text-xs font-bold bg-red-100 px-3 py-1.5 rounded-lg cursor-pointer"
           >
             Retry
@@ -322,42 +325,37 @@ export const Customers: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <CustomerTable
           loading={loading}
-          customers={filteredCustomers}
+          customers={customers}
+          isAdmin={isAdmin}
+          sortBy={sortBy}
+          ascending={ascending}
+          onSort={handleSortChange}
           onView={(cust) => setSelectedCustomer(cust)}
+          onEditCustomer={handleEditCustomer}
+          onDeleteCustomer={(customerId) => setCustomerToDelete(customerId)}
         />
       </div>
 
-      {activeCustomer &&
-        !isEditOpen &&
-        !isAddContactOpen &&
-        !isEditContactOpen && (
-          <CustomerDetailsModal
-            customer={activeCustomer}
-            onClose={() => {
-              setSelectedCustomer(null);
-              if (searchQuery) setSearchParams({}, { replace: true });
-            }}
-            onEditCustomer={() => {
-              setFormError("");
-              setIsEditOpen(true);
-            }}
-            onAddContact={() => {
-              setFormError("");
-              setIsAddContactOpen(true);
-            }}
-            onEditContact={(contact) => {
-              setSelectedContact(contact);
-              setFormError("");
-              setIsEditContactOpen(true);
-            }}
-            onDeleteContact={(contactId) =>
-              setContactToDelete(contactId ?? null)
-            }
-            onDeleteCustomer={(customerId) => setCustomerToDelete(customerId)}
-          />
-        )}
+      {activeCustomer && !isAddContactOpen && !isEditContactOpen && (
+        <CustomerDetailsModal
+          customer={activeCustomer}
+          isAdmin={isAdmin}
+          onClose={() => {
+            setSelectedCustomer(null);
+          }}
+          onAddContact={() => {
+            setFormError("");
+            setIsAddContactOpen(true);
+          }}
+          onEditContact={(contact) => {
+            setSelectedContact(contact);
+            setFormError("");
+            setIsEditContactOpen(true);
+          }}
+          onDeleteContact={(contactId) => setContactToDelete(contactId ?? null)}
+        />
+      )}
 
-      {/* Confirmation Modals */}
       <ConfirmModal
         isOpen={customerToDelete !== null}
         title="Delete Customer"
@@ -386,16 +384,6 @@ export const Customers: React.FC = () => {
           error={formError}
           onClose={() => setIsCreateOpen(false)}
           onSubmit={handleCreateCustomer}
-        />
-      )}
-
-      {isEditOpen && selectedCustomer && (
-        <EditCustomerModal
-          customer={selectedCustomer}
-          saving={saving}
-          error={formError}
-          onClose={() => setIsEditOpen(false)}
-          onSubmit={handleEditCustomer}
         />
       )}
 

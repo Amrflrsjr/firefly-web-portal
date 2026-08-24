@@ -27,48 +27,68 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+        {/* Top Accent Gradient Bar */}
+        <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158]" />
+
+        {/* Modal Header */}
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-3">
             <div
-              className={`p-2 rounded-xl ${isDanger ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-2xs ${
+                isDanger
+                  ? "bg-rose-50 text-rose-600 border border-rose-100"
+                  : "bg-amber-50 text-amber-700 border border-amber-100"
+              }`}
             >
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                System Confirmation
+              </p>
+              <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                {title}
+              </h2>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="text-slate-400 hover:text-slate-600 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Message */}
-        <p className="text-sm text-slate-600 leading-relaxed">{message}</p>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Modal Scrollable/Content Body */}
+        <div className="p-6 bg-[#FCFDFF]">
+          <p className="text-sm font-medium text-slate-600 leading-relaxed">
+            {message}
+          </p>
+        </div>
+
+        {/* Modal Footer Actions */}
+        <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs"
           >
             {cancelText}
           </button>
+
           <button
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer text-white shadow-sm flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs disabled:opacity-50 ${
               isDanger
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900"
+                ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200"
+                : "bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900"
             }`}
           >
             {loading ? "Processing..." : confirmText}

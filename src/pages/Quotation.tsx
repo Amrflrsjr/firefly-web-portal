@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
-import { quotationApi } from "../api/quotations";
 import type {
   QuotationResponseDto,
   CreateQuotationDto,
@@ -14,7 +13,6 @@ import toast from "react-hot-toast";
 import { QuotationTable } from "../components/quotations/QuotationTable";
 import { QuotationDetailsModal } from "../components/quotations/QuotationDetailsModal";
 import { CreateQuotationModal } from "../components/quotations/CreateQuotationModal";
-import { EditQuotationStatusModal } from "../components/quotations/EditQuotationStatusModal";
 import { EmailQuotationModal } from "../components/quotations/EmailQuotationModal";
 import { AddContactModal } from "../components/customers/AddContactModal";
 import { ConfirmModal } from "../components/common/ConfirmModal";
@@ -23,6 +21,8 @@ import { PdfPreviewModal } from "../components/common/PdfPreviewModal";
 export const Quotations: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
+  const sortBy = searchParams.get("sortBy") || "createdat";
+  const ascending = searchParams.get("ascending") !== "false";
 
   const [quotations, setQuotations] = useState<QuotationResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,6 @@ export const Quotations: React.FC = () => {
   const [selectedQuotation, setSelectedQuotation] =
     useState<QuotationResponseDto | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
 
   // PDF Preview states
@@ -54,39 +53,37 @@ export const Quotations: React.FC = () => {
   const [formError, setFormError] = useState("");
   const [contactRefreshCounter, setContactRefreshCounter] = useState(0);
 
-  useEffect(() => {
-    let isSubscribed = true;
-
-    const fetchData = async () => {
-      try {
-        const data = await quotationApi.getAll();
-        if (isSubscribed) {
-          setQuotations(data);
-          setApiError(null);
-        }
-      } catch (err: unknown) {
-        if (isSubscribed && axios.isAxiosError(err)) {
-          setApiError(
-            err.response?.data?.message ||
-              err.message ||
-              "Failed to fetch quotations",
-          );
-        }
-      } finally {
-        if (isSubscribed) {
-          setLoading(false);
-        }
+  const loadQuotations = async (
+    query = "",
+    sort = "createdat",
+    asc = false,
+  ) => {
+    try {
+      setLoading(true);
+      const response = await api.get<QuotationResponseDto[]>("/quotations", {
+        params: { search: query, sortBy: sort, ascending: asc },
+      });
+      setQuotations(response.data);
+      setApiError(null);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setApiError(
+          err.response?.data?.message ||
+            err.message ||
+            "Failed to fetch quotations",
+        );
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchData();
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadQuotations(searchQuery, sortBy, ascending);
+  }, [searchQuery, sortBy, ascending]);
 
-    return () => {
-      isSubscribed = false;
-    };
-  }, []);
-
-  // Auto-open modal if there's an exact quotation number match (derived safely)
+  // Auto-open modal if there's an exact quotation number match
   const exactMatchQuotation = searchQuery
     ? quotations.find(
         (q) => q.quotationNumber.toLowerCase() === searchQuery.toLowerCase(),
@@ -94,22 +91,6 @@ export const Quotations: React.FC = () => {
     : null;
 
   const activeQuotation = (selectedQuotation || exactMatchQuotation) ?? null;
-
-  const reloadQuotations = async () => {
-    try {
-      const data = await quotationApi.getAll();
-      setQuotations(data);
-      setApiError(null);
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setApiError(
-          err.response?.data?.message ||
-            err.message ||
-            "Failed to reload quotations",
-        );
-      }
-    }
-  };
 
   const extractErrorMessage = (err: unknown): string => {
     if (axios.isAxiosError(err) && err.response?.data) {
@@ -128,9 +109,31 @@ export const Quotations: React.FC = () => {
     setSaving(true);
     setFormError("");
     try {
-      await quotationApi.create(dto);
+      await api.post("/quotations", dto);
+      toast.success("Quotation created successfully!");
       setIsCreateOpen(false);
-      await reloadQuotations();
+      await loadQuotations(searchQuery, sortBy, ascending);
+    } catch (err: unknown) {
+      setFormError(extractErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateAndSendQuotation = async (dto: CreateQuotationDto) => {
+    setSaving(true);
+    setFormError("");
+    try {
+      const response = await api.post<QuotationResponseDto>("/quotations", dto);
+      toast.success("Quotation created successfully!");
+      setIsCreateOpen(false);
+      await loadQuotations(searchQuery, sortBy, ascending);
+
+      // Immediately select the newly created quotation and open the email modal
+      if (response.data) {
+        setSelectedQuotation(response.data);
+        setIsEmailOpen(true);
+      }
     } catch (err: unknown) {
       setFormError(extractErrorMessage(err));
     } finally {
@@ -139,19 +142,16 @@ export const Quotations: React.FC = () => {
   };
 
   const handleUpdateStatus = async (quotationId: number, status: string) => {
-    setSaving(true);
-    setFormError("");
     try {
-      await quotationApi.updateStatus(quotationId, status);
-      setIsStatusOpen(false);
-      setSelectedQuotation(null);
-      await reloadQuotations();
+      await api.patch(`/quotations/${quotationId}/status`, { status });
+      toast.success("Quotation status updated successfully!");
+      await loadQuotations(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setFormError(err.response?.data || "Failed to update quotation status");
+        toast.error(err.response?.data || "Failed to update quotation status");
+      } else {
+        toast.error("Failed to update quotation status");
       }
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -178,19 +178,27 @@ export const Quotations: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val) {
-      setSearchParams({ search: val }, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
+    const params: Record<string, string> = {};
+    if (val) params.search = val;
+    if (sortBy) params.sortBy = sortBy;
+    if (!ascending) params.ascending = "false";
+    setSearchParams(params, { replace: true });
   };
 
-  // Triggers confirmation modal open
+  const handleSortChange = (field: string) => {
+    const newAscending = sortBy === field ? !ascending : true;
+    const params: Record<string, string> = {
+      sortBy: field,
+      ascending: String(newAscending),
+    };
+    if (searchQuery) params.search = searchQuery;
+    setSearchParams(params, { replace: true });
+  };
+
   const handleDeleteQuotation = (quotationId: number) => {
     setQuotationToDelete(quotationId);
   };
 
-  // Executes actual cancellation request on confirmation
   const executeDeleteQuotation = async () => {
     if (!quotationToDelete) return;
     setSaving(true);
@@ -199,7 +207,7 @@ export const Quotations: React.FC = () => {
       toast.success("Quotation cancelled successfully!");
       setSelectedQuotation(null);
       setQuotationToDelete(null);
-      await reloadQuotations();
+      await loadQuotations(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(
@@ -241,18 +249,13 @@ export const Quotations: React.FC = () => {
     setPreviewPdfUrl(null);
   };
 
-  const filteredQuotations = quotations.filter(
-    (q) =>
-      q.quotationNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.contactNameSnapshot?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Quotations</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            Quotations
+          </h1>
           <p className="text-sm text-slate-500">
             Manage client proposals and estimates
           </p>
@@ -275,7 +278,7 @@ export const Quotations: React.FC = () => {
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
-            onClick={reloadQuotations}
+            onClick={() => loadQuotations(searchQuery, sortBy, ascending)}
             className="text-xs font-bold bg-red-100 px-3 py-1.5 rounded-lg"
           >
             Retry
@@ -299,30 +302,31 @@ export const Quotations: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <QuotationTable
           loading={loading}
-          quotations={filteredQuotations}
+          quotations={quotations}
+          sortBy={sortBy}
+          ascending={ascending}
+          onSort={handleSortChange}
           onView={(q) => setSelectedQuotation(q)}
           onViewPdf={handlePreviewPdf}
+          onOpenEmail={(q) => {
+            setSelectedQuotation(q);
+            setIsEmailOpen(true);
+          }}
+          onUpdateStatus={handleUpdateStatus}
+          onDeleteQuotation={handleDeleteQuotation}
         />
       </div>
 
-      {activeQuotation && !isStatusOpen && !isEmailOpen && (
+      {activeQuotation && !isEmailOpen && (
         <QuotationDetailsModal
           quotation={activeQuotation}
           onClose={() => {
             setSelectedQuotation(null);
             if (searchQuery) setSearchParams({}, { replace: true });
           }}
-          onEditStatus={() => {
-            setFormError("");
-            setIsStatusOpen(true);
-          }}
-          onOpenEmail={() => setIsEmailOpen(true)}
-          onDeleteQuotation={handleDeleteQuotation}
-          onPreviewPdf={handlePreviewPdf}
         />
       )}
 
-      {/* PDF Preview Modal */}
       <PdfPreviewModal
         isOpen={previewPdfUrl !== null}
         pdfUrl={previewPdfUrl}
@@ -331,7 +335,6 @@ export const Quotations: React.FC = () => {
         onClose={handleClosePreview}
       />
 
-      {/* Confirmation Modal for Quotation Cancellation */}
       <ConfirmModal
         isOpen={quotationToDelete !== null}
         title="Cancel Quotation"
@@ -349,21 +352,12 @@ export const Quotations: React.FC = () => {
           error={formError}
           onClose={() => setIsCreateOpen(false)}
           onSubmit={handleCreateQuotation}
+          onSubmitAndSend={handleCreateAndSendQuotation}
           refreshTrigger={contactRefreshCounter}
           onTriggerAddContact={(customer) => {
             setSelectedCustomerForContact(customer);
             setIsAddContactOpen(true);
           }}
-        />
-      )}
-
-      {isStatusOpen && activeQuotation && (
-        <EditQuotationStatusModal
-          quotation={activeQuotation}
-          saving={saving}
-          error={formError}
-          onClose={() => setIsStatusOpen(false)}
-          onSubmit={handleUpdateStatus}
         />
       )}
 
@@ -373,7 +367,7 @@ export const Quotations: React.FC = () => {
           onClose={() => setIsEmailOpen(false)}
           onSuccess={() => {
             setIsEmailOpen(false);
-            reloadQuotations();
+            loadQuotations(searchQuery, sortBy, ascending);
           }}
         />
       )}

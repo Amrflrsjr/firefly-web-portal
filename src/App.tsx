@@ -1,4 +1,3 @@
-// src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
@@ -9,6 +8,8 @@ import { Customers } from "./pages/Customer";
 import { Products } from "./pages/Product";
 import { Quotations } from "./pages/Quotation";
 import { Invoices } from "./pages/Invoices";
+import { Trash } from "./pages/Trash";
+import { Dashboard } from "./pages/Dashboard";
 
 export function App() {
   return (
@@ -44,10 +45,12 @@ export function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/customers" replace />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/products" element={<Products />} />
               <Route path="/quotations" element={<Quotations />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/customers" element={<Customers />} />
               <Route path="/invoices" element={<Invoices />} />
+              <Route path="/trash" element={<Trash />} />
+              <Route path="/dashboard" element={<Dashboard />} />
             </Route>
           </Route>
         </Routes>

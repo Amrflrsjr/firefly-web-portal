@@ -1,21 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
-import { Search, FileText, Receipt, User, Loader2 } from "lucide-react";
+import {
+  Search,
+  FileText,
+  Receipt,
+  User,
+  Loader2,
+  FolderSearch,
+  LayoutDashboard,
+} from "lucide-react";
 import type {
   GlobalSearchResponseDto,
   SearchItemDto,
 } from "../../types/search";
 
-// 1. Properly type the props for the extracted component
 interface ResultSectionProps {
   title: string;
   items?: SearchItemDto[];
-  icon: React.ElementType; // Fixes the "any" error
+  icon: React.ElementType;
   onSelect: (url: string) => void;
 }
 
-// 2. Extract the component OUTSIDE of GlobalSearch
 const ResultSection: React.FC<ResultSectionProps> = ({
   title,
   items,
@@ -50,10 +56,49 @@ const ResultSection: React.FC<ResultSectionProps> = ({
   );
 };
 
-// 3. The main component
+// Define searchable static application pages with numeric IDs
+const STATIC_PAGES: SearchItemDto[] = [
+  {
+    id: 1,
+    type: "page",
+    title: "Dashboard",
+    subtitle: "Overview and analytics",
+    url: "/",
+  },
+  {
+    id: 2,
+    type: "page",
+    title: "Customers Directory",
+    subtitle: "Manage client companies and contacts",
+    url: "/customers",
+  },
+  {
+    id: 3,
+    type: "page",
+    title: "Quotations",
+    subtitle: "Manage client proposals and estimates",
+    url: "/quotations",
+  },
+  {
+    id: 4,
+    type: "page",
+    title: "Products & Catalog",
+    subtitle: "Manage items, variants, and stock",
+    url: "/products",
+  },
+  {
+    id: 5,
+    type: "page",
+    title: "Invoices & Payments",
+    subtitle: "Billing statements and payment records",
+    url: "/invoices",
+  },
+];
+
 export const GlobalSearch: React.FC = () => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GlobalSearchResponseDto | null>(null);
+  const [filteredPages, setFilteredPages] = useState<SearchItemDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -76,9 +121,19 @@ export const GlobalSearch: React.FC = () => {
     const fetchSearch = async () => {
       if (!query.trim()) {
         setResults(null);
+        setFilteredPages([]);
         setIsOpen(false);
         return;
       }
+
+      // Filter static navigation pages locally
+      const lowerQuery = query.toLowerCase();
+      const matchedPages = STATIC_PAGES.filter(
+        (p) =>
+          p.title.toLowerCase().includes(lowerQuery) ||
+          p.subtitle.toLowerCase().includes(lowerQuery),
+      );
+      setFilteredPages(matchedPages);
 
       setLoading(true);
       try {
@@ -104,11 +159,20 @@ export const GlobalSearch: React.FC = () => {
     navigate(url);
   };
 
-  const hasResults =
+  const hasApiResults =
     results &&
     (results.customers.length > 0 ||
       results.invoices.length > 0 ||
       results.quotations.length > 0);
+
+  const hasResults = filteredPages.length > 0 || hasApiResults;
+
+  const isEmptyResult =
+    results &&
+    filteredPages.length === 0 &&
+    results.customers.length === 0 &&
+    results.invoices.length === 0 &&
+    results.quotations.length === 0;
 
   return (
     <div ref={wrapperRef} className="relative w-full max-w-md z-50">
@@ -120,7 +184,7 @@ export const GlobalSearch: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
-            if (hasResults) setIsOpen(true);
+            if (hasResults || isEmptyResult) setIsOpen(true);
           }}
           className="w-full bg-slate-100 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#F9B53F]"
         />
@@ -129,27 +193,50 @@ export const GlobalSearch: React.FC = () => {
         )}
       </div>
 
-      {isOpen && hasResults && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden max-h-96 overflow-y-auto">
-          {/* Pass the handleSelect function down as a prop */}
-          <ResultSection
-            title="Customers"
-            items={results.customers}
-            icon={User}
-            onSelect={handleSelect}
-          />
-          <ResultSection
-            title="Invoices"
-            items={results.invoices}
-            icon={Receipt}
-            onSelect={handleSelect}
-          />
-          <ResultSection
-            title="Quotations"
-            items={results.quotations}
-            icon={FileText}
-            onSelect={handleSelect}
-          />
+      {isOpen && query.trim() !== "" && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden max-h-96 overflow-y-auto divide-y divide-slate-100">
+          {hasResults ? (
+            <>
+              <ResultSection
+                title="Navigation Pages"
+                items={filteredPages}
+                icon={LayoutDashboard}
+                onSelect={handleSelect}
+              />
+              {results && (
+                <>
+                  <ResultSection
+                    title="Customers"
+                    items={results.customers}
+                    icon={User}
+                    onSelect={handleSelect}
+                  />
+                  <ResultSection
+                    title="Invoices"
+                    items={results.invoices}
+                    icon={Receipt}
+                    onSelect={handleSelect}
+                  />
+                  <ResultSection
+                    title="Quotations"
+                    items={results.quotations}
+                    icon={FileText}
+                    onSelect={handleSelect}
+                  />
+                </>
+              )}
+            </>
+          ) : !loading && isEmptyResult ? (
+            <div className="py-8 px-4 text-center flex flex-col items-center justify-center text-slate-400">
+              <FolderSearch className="w-8 h-8 mb-2 stroke-1 text-slate-300" />
+              <p className="text-sm font-bold text-slate-700">
+                No results found
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                We couldn't find anything matching "{query}"
+              </p>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

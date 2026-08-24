@@ -18,6 +18,8 @@ import { PdfPreviewModal } from "../components/common/PdfPreviewModal";
 export const Invoices: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
+  const sortBy = searchParams.get("sortBy") || "createdat";
+  const ascending = searchParams.get("ascending") !== "false";
 
   const [invoices, setInvoices] = useState<InvoiceResponseDto[]>([]);
   const [quotations, setQuotations] = useState<QuotationResponseDto[]>([]);
@@ -37,15 +39,16 @@ export const Invoices: React.FC = () => {
   const [previewTitle, setPreviewTitle] = useState("");
   const [previewFilename, setPreviewFilename] = useState("");
 
-  // Confirm modal state for cancellation
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const loadData = async () => {
+  const loadData = async (query = "", sort = "createdat", asc = false) => {
     try {
       setLoading(true);
       const [invRes, quoteRes] = await Promise.all([
-        api.get<InvoiceResponseDto[]>("/invoices"),
+        api.get<InvoiceResponseDto[]>("/invoices", {
+          params: { search: query, sortBy: sort, ascending: asc },
+        }),
         api.get<QuotationResponseDto[]>("/quotations"),
       ]);
       setInvoices(invRes.data);
@@ -68,12 +71,10 @@ export const Invoices: React.FC = () => {
   };
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      loadData();
-    });
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData(searchQuery, sortBy, ascending);
+  }, [searchQuery, sortBy, ascending]);
 
-  // Auto-open modal if there's an exact query parameter match (derived safely without effects)
   const exactMatchInvoice = searchQuery
     ? invoices.find(
         (i) => i.invoiceNumber.toLowerCase() === searchQuery.toLowerCase(),
@@ -82,19 +83,23 @@ export const Invoices: React.FC = () => {
 
   const activeInvoice = (selectedInvoice || exactMatchInvoice) ?? null;
 
-  const filteredInvoices = invoices.filter(
-    (i) =>
-      i.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      i.companyName?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val) {
-      setSearchParams({ search: val }, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
+    const params: Record<string, string> = {};
+    if (val) params.search = val;
+    if (sortBy) params.sortBy = sortBy;
+    if (!ascending) params.ascending = "false";
+    setSearchParams(params, { replace: true });
+  };
+
+  const handleSortChange = (field: string) => {
+    const newAscending = sortBy === field ? !ascending : true;
+    const params: Record<string, string> = {
+      sortBy: field,
+      ascending: String(newAscending),
+    };
+    if (searchQuery) params.search = searchQuery;
+    setSearchParams(params, { replace: true });
   };
 
   const handleDownloadPdf = async (
@@ -120,12 +125,24 @@ export const Invoices: React.FC = () => {
     }
   };
 
-  // Triggers confirmation modal open
+  const handleUpdateStatus = async (invoiceId: number, status: string) => {
+    try {
+      await api.put(`/invoices/${invoiceId}/status`, { status });
+      toast.success("Invoice status updated successfully!");
+      await loadData(searchQuery, sortBy, ascending);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data || "Failed to update invoice status");
+      } else {
+        toast.error("Failed to update invoice status");
+      }
+    }
+  };
+
   const handleDeleteInvoice = (invoiceId: number) => {
     setInvoiceToDelete(invoiceId);
   };
 
-  // Executes actual invoice cancellation on confirmation
   const executeDeleteInvoice = async () => {
     if (!invoiceToDelete) return;
     setSaving(true);
@@ -134,7 +151,7 @@ export const Invoices: React.FC = () => {
       toast.success("Invoice cancelled successfully!");
       setSelectedInvoice(null);
       setInvoiceToDelete(null);
-      loadData();
+      loadData(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(err.response?.data?.message || "Failed to cancel invoice");
@@ -175,7 +192,7 @@ export const Invoices: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Invoices & Payments
           </h1>
           <p className="text-sm text-slate-500">
@@ -197,7 +214,7 @@ export const Invoices: React.FC = () => {
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
-            onClick={loadData}
+            onClick={() => loadData(searchQuery, sortBy, ascending)}
             className="text-xs font-bold bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
           >
             Retry
@@ -220,10 +237,17 @@ export const Invoices: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <InvoicesTable
-          invoices={filteredInvoices}
+          invoices={invoices}
           loading={loading}
+          sortBy={sortBy}
+          ascending={ascending}
+          onSort={handleSortChange}
           onViewDetails={setSelectedInvoice}
           onViewPdf={handlePreviewPdf}
+          onOpenEmail={setEmailInvoice}
+          onUpdateStatus={handleUpdateStatus}
+          onDeleteInvoice={handleDeleteInvoice}
+          onRecordPayment={setPaymentInvoice}
         />
       </div>
 
@@ -233,7 +257,7 @@ export const Invoices: React.FC = () => {
         quotations={quotations}
         onSuccess={() => {
           setIsConvertOpen(false);
-          loadData();
+          loadData(searchQuery, sortBy, ascending);
         }}
       />
 
@@ -243,7 +267,7 @@ export const Invoices: React.FC = () => {
           onClose={() => setPaymentInvoice(null)}
           onSuccess={() => {
             setPaymentInvoice(null);
-            loadData();
+            loadData(searchQuery, sortBy, ascending);
           }}
         />
       )}
@@ -255,7 +279,7 @@ export const Invoices: React.FC = () => {
           if (searchQuery) setSearchParams({}, { replace: true });
         }}
         onDownloadPdf={handleDownloadPdf}
-        onPreviewPdf={handlePreviewPdf} // Changed from handleDownloadPdf to handlePreviewPdf
+        onPreviewPdf={handlePreviewPdf}
         onOpenEmail={setEmailInvoice}
         onOpenPayment={setPaymentInvoice}
         onDeleteInvoice={handleDeleteInvoice}
@@ -269,7 +293,6 @@ export const Invoices: React.FC = () => {
         onClose={handleClosePreview}
       />
 
-      {/* Confirmation Modal for Invoice Cancellation */}
       <ConfirmModal
         isOpen={invoiceToDelete !== null}
         title="Cancel Invoice"
@@ -286,7 +309,7 @@ export const Invoices: React.FC = () => {
         onClose={() => setEmailInvoice(null)}
         onSuccess={() => {
           setEmailInvoice(null);
-          loadData();
+          loadData(searchQuery, sortBy, ascending);
         }}
       />
     </div>
