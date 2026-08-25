@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Edit,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -29,6 +30,7 @@ interface QuotationTableProps {
   onOpenEmail: (quotation: QuotationResponseDto) => void;
   onUpdateStatus: (quotationId: number, newStatus: string) => void;
   onDeleteQuotation: (quotationId: number) => void;
+  onEdit: (quotation: QuotationResponseDto) => void;
 }
 
 export const QuotationTable: React.FC<QuotationTableProps> = ({
@@ -42,6 +44,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   onOpenEmail,
   onUpdateStatus,
   onDeleteQuotation,
+  onEdit,
 }) => {
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("Draft");
@@ -315,6 +318,24 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                       >
                         <Mail className="w-4 h-4" />
                       </button>
+
+                      {/* Check if status allows editing */}
+                      {q.status === "Created" || q.status === "Draft" ? (
+                        <button
+                          onClick={() => onEdit(q)}
+                          className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-colors cursor-pointer"
+                          title="Edit Quotation"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <span
+                          className="inline-block p-2 text-slate-300 cursor-not-allowed"
+                          title="Only quotations in Created or Draft status can be edited."
+                        >
+                          <Edit className="w-4 h-4 opacity-40" />
+                        </span>
+                      )}
 
                       <button
                         onClick={() => onDeleteQuotation(q.quotationId)}

@@ -12,6 +12,7 @@ export interface CreateQuotationDto {
   contactEmailSnapshot: string;
   noteToCustomer?: string | null;
   vatType: string | null;
+  status?: string;
   items: QuotationItemDto[];
   validUntil: string;
 }

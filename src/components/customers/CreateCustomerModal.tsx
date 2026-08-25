@@ -1,19 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import type { CreateCustomerDto, CustomerContact } from "../../types/customer";
-import {
-  X,
-  Building2,
-  FileText,
-  MapPin,
-  Users,
-  Plus,
-  Trash2,
-  User,
-  Briefcase,
-  Mail,
-  Phone,
-} from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 
 interface CreateCustomerModalProps {
   saving: boolean;
@@ -59,7 +47,6 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
     const updated = [...(formData.contacts ?? [])];
 
     if (field === "isPrimary" && value === true) {
-      // Ensure only one contact is primary by setting all others to false
       updated.forEach((contact, i) => {
         contact.isPrimary = i === index;
       });
@@ -117,261 +104,245 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Top Accent Gradient Bar */}
-        <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
-
-        {/* Modal Header (Fixed with proper top-right close alignment) */}
-        <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-[1fr_auto] items-center gap-4 bg-white shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 flex items-center justify-center text-slate-800 shadow-2xs shrink-0">
-              <Building2 className="w-5 h-5 text-[#F9B53F]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Directory Management
-              </p>
-              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight truncate">
-                Add New Customer
-              </h2>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+          <div>
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">
+              Add New Customer
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Fill in company parameters and associated contact persons
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            aria-label="Close modal"
+            className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/80 transition-colors cursor-pointer shadow-2xs"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-[#FCFDFF]">
-          <form
-            id="create-customer-form"
-            onSubmit={handleSubmit}
-            className="space-y-6"
-          >
-            {/* Company Details Section */}
-            <div className="space-y-4">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Company Information
-              </p>
+        {/* Scrollable Form Body */}
+        <form
+          id="create-customer-form"
+          onSubmit={handleSubmit}
+          className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50"
+        >
+          {/* Top Fields Grid (Company Information) */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+              Company Information
+            </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="flex items-center gap-1.5 text-xs font-bold uppercase text-slate-500 mb-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-[#F9B53F]" /> Company
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.companyName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, companyName: e.target.value })
-                    }
-                    placeholder="e.g. Sample Corporation"
-                    className="w-full bg-white border border-slate-200/80 rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/25 transition-all shadow-2xs"
-                  />
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  Company Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.companyName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, companyName: e.target.value })
+                  }
+                  placeholder="e.g. Sample Corporation"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                />
+              </div>
 
-                <div>
-                  <label className="flex items-center gap-1.5 text-xs font-bold uppercase text-slate-500 mb-1.5">
-                    <FileText className="w-3.5 h-3.5 text-[#F9B53F]" /> Tax ID
-                    (TIN)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tin}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tin: e.target.value })
-                    }
-                    placeholder="000-000-000-000"
-                    className="w-full bg-white border border-slate-200/80 rounded-2xl px-4 py-2.5 text-sm font-mono font-medium text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/25 transition-all shadow-2xs"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  Tax ID (TIN)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tin}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tin: e.target.value })
+                  }
+                  placeholder="000-000-000-000"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-mono font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                />
+              </div>
 
-                <div>
-                  <label className="flex items-center gap-1.5 text-xs font-bold uppercase text-slate-500 mb-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#F9B53F]" /> Business
-                    Address
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.companyAddress}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        companyAddress: e.target.value,
-                      })
-                    }
-                    placeholder="Street, City, Province"
-                    className="w-full bg-white border border-slate-200/80 rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/25 transition-all shadow-2xs"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  Business Address
+                </label>
+                <input
+                  type="text"
+                  value={formData.companyAddress}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      companyAddress: e.target.value,
+                    })
+                  }
+                  placeholder="Street, City, Province"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                />
               </div>
             </div>
+          </div>
 
-            {/* Contact Persons Section */}
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Contact Persons
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={addContactField}
-                  className="inline-flex items-center gap-1 text-xs font-bold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
+          {/* Contact Persons Section */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                Contact Persons
+              </h3>
+              <button
+                type="button"
+                onClick={addContactField}
+                className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Contact
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {formData.contacts?.map((contact, index) => (
+                <div
+                  key={index}
+                  className="bg-white border border-slate-200/80 p-4 rounded-2xl space-y-3 relative group shadow-2xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Contact
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {formData.contacts?.map((contact, index) => (
-                  <div
-                    key={index}
-                    className="p-4 bg-white rounded-2xl border border-slate-200/70 shadow-2xs space-y-3 relative group"
-                  >
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center">
-                          {index + 1}
-                        </span>
-                        <span className="text-xs font-bold text-slate-700">
-                          Contact Person Details
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60">
-                          <input
-                            type="checkbox"
-                            checked={contact.isPrimary}
-                            onChange={(e) =>
-                              handleContactChange(
-                                index,
-                                "isPrimary",
-                                e.target.checked,
-                              )
-                            }
-                            className="w-3.5 h-3.5 rounded border-slate-300 text-[#F9B53F] focus:ring-[#F9B53F] cursor-pointer"
-                          />
-                          Primary
-                        </label>
-
-                        {(formData.contacts?.length ?? 0) > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeContactField(index)}
-                            className="p-1.5 text-rose-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Remove Contact"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-bold text-xs flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-700">
+                        Contact Person Details
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase mb-1">
-                          <User className="w-3 h-3 text-[#F9B53F]" /> Name *
-                        </label>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200/80">
                         <input
-                          type="text"
-                          required
-                          value={contact.name}
-                          onChange={(e) =>
-                            handleContactChange(index, "name", e.target.value)
-                          }
-                          placeholder="Full name"
-                          className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase mb-1">
-                          <Briefcase className="w-3 h-3 text-[#F9B53F]" />{" "}
-                          Position
-                        </label>
-                        <input
-                          type="text"
-                          value={contact.position}
+                          type="checkbox"
+                          checked={contact.isPrimary}
                           onChange={(e) =>
                             handleContactChange(
                               index,
-                              "position",
-                              e.target.value,
+                              "isPrimary",
+                              e.target.checked,
                             )
                           }
-                          placeholder="e.g. Director"
-                          className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-[#F9B53F] focus:ring-[#F9B53F] cursor-pointer"
                         />
-                      </div>
+                        Primary
+                      </label>
 
-                      <div>
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase mb-1">
-                          <Mail className="w-3 h-3 text-[#F9B53F]" /> Email
-                        </label>
-                        <input
-                          type="email"
-                          value={contact.email}
-                          onChange={(e) =>
-                            handleContactChange(index, "email", e.target.value)
-                          }
-                          placeholder="email@company.com"
-                          className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase mb-1">
-                          <Phone className="w-3 h-3 text-[#F9B53F]" /> Phone
-                        </label>
-                        <input
-                          type="text"
-                          value={contact.phone}
-                          onChange={(e) =>
-                            handleContactChange(index, "phone", e.target.value)
-                          }
-                          placeholder="+63 900 000 0000"
-                          className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
+                      {(formData.contacts?.length ?? 0) > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeContactField(index)}
+                          className="p-2 text-rose-500 hover:text-rose-700 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer border border-rose-200/60"
+                          title="Remove Contact"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </form>
-        </div>
 
-        {/* Footer Actions Bar (Fixed at bottom outside scroll area) */}
-        <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-slate-100 bg-white shrink-0 shadow-sm">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs"
-          >
-            Cancel
-          </button>
-          <button
-            form="create-customer-form"
-            type="submit"
-            disabled={saving}
-            className="px-5 py-2.5 text-xs font-bold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Customer"}
-          </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={contact.name}
+                        onChange={(e) =>
+                          handleContactChange(index, "name", e.target.value)
+                        }
+                        placeholder="Full name"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Position
+                      </label>
+                      <input
+                        type="text"
+                        value={contact.position}
+                        onChange={(e) =>
+                          handleContactChange(index, "position", e.target.value)
+                        }
+                        placeholder="e.g. Director"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={contact.email}
+                        onChange={(e) =>
+                          handleContactChange(index, "email", e.target.value)
+                        }
+                        placeholder="email@company.com"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Phone
+                      </label>
+                      <input
+                        type="text"
+                        value={contact.phone}
+                        onChange={(e) =>
+                          handleContactChange(index, "phone", e.target.value)
+                        }
+                        placeholder="+63 900 000 0000"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </form>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white shrink-0 shadow-sm">
+          <div className="text-xs font-mono text-slate-500">
+            Ensure all required fields are filled
+          </div>
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+
+            <button
+              form="create-customer-form"
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2.5 text-xs font-bold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Customer"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

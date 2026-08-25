@@ -7,7 +7,7 @@ import type {
   CreateCustomerDto,
   CustomerContact,
 } from "../types/customer";
-import { Plus, Search, AlertCircle } from "lucide-react";
+import { Plus, Search, AlertCircle, RefreshCw } from "lucide-react";
 import axios from "axios";
 
 import { CustomerTable } from "../components/customers/CustomerTable";
@@ -55,7 +55,10 @@ export const Customers: React.FC = () => {
       const jsonPayload = decodeURIComponent(
         atob(base64)
           .split("")
-          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .map(
+            (c: string) =>
+              "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2),
+          )
           .join(""),
       );
       const parsed = JSON.parse(jsonPayload);
@@ -274,13 +277,14 @@ export const Customers: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Customers
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Customers Directory
           </h1>
-          <p className="text-sm text-slate-500">
-            Manage client companies and primary contacts
+          <p className="text-sm text-slate-500 mt-0.5">
+            Manage client companies and primary contacts seamlessly
           </p>
         </div>
         <button
@@ -288,41 +292,47 @@ export const Customers: React.FC = () => {
             setFormError("");
             setIsCreateOpen(true);
           }}
-          className="inline-flex items-center gap-2 bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 font-extrabold px-5 py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/10 cursor-pointer active:scale-95"
         >
-          <Plus className="w-4 h-4" /> Add Customer
+          <Plus className="w-4 h-4 stroke-3" /> Add Customer
         </button>
       </div>
 
       {apiError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
             onClick={() => loadCustomers(searchQuery, sortBy, ascending)}
-            className="text-xs font-bold bg-red-100 px-3 py-1.5 rounded-lg cursor-pointer"
+            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors inline-flex items-center gap-1.5"
           >
-            Retry
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
           </button>
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by company, TIN..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-800"
-          />
+      {/* Professional UI/UX Filter & Search Toolbar */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 space-y-4">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-2 flex-1 max-w-lg">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by company name, TIN..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className="w-full bg-slate-50/80 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all shadow-2xs"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Main Customers Table Container */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 overflow-hidden">
         <CustomerTable
           loading={loading}
           customers={customers}
@@ -336,6 +346,7 @@ export const Customers: React.FC = () => {
         />
       </div>
 
+      {/* Modals & Dialogs */}
       {activeCustomer && !isAddContactOpen && !isEditContactOpen && (
         <CustomerDetailsModal
           customer={activeCustomer}

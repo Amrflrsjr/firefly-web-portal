@@ -59,16 +59,18 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
 
   if (loading) {
     return (
-      <div className="p-16 text-center text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-2">
+      <div className="p-16 text-center text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-3">
         <div className="w-6 h-6 border-2 border-[#F9B53F] border-t-transparent rounded-full animate-spin" />
-        <span>Loading customers directory...</span>
+        <span className="font-semibold text-slate-600">
+          Loading customers directory...
+        </span>
       </div>
     );
   }
 
   if (customers.length === 0) {
     return (
-      <div className="p-16 text-center text-slate-400 text-sm font-medium">
+      <div className="p-16 text-center text-slate-400 text-sm font-medium bg-white rounded-3xl border border-slate-200/80 shadow-2xs">
         No customers found. Click <b className="text-slate-800">"+"</b> above to
         create one.
       </div>
@@ -114,21 +116,21 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
   // Helper to render active sort icon
   const renderSortIcon = (field: string) => {
     if (sortBy !== field) {
-      return <ArrowUpDown className="w-3 h-3 text-slate-400" />;
+      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />;
     }
     return ascending ? (
-      <ArrowUp className="w-3 h-3 text-[#F9B53F]" />
+      <ArrowUp className="w-3.5 h-3.5 text-[#F9B53F]" />
     ) : (
-      <ArrowDown className="w-3 h-3 text-[#F9B53F]" />
+      <ArrowDown className="w-3.5 h-3.5 text-[#F9B53F]" />
     );
   };
 
   return (
-    <div>
+    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">
+            <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black uppercase text-slate-400 tracking-wider">
               <th
                 onClick={() => onSort("companyname")}
                 className="py-4 px-6 cursor-pointer hover:text-slate-700 transition-colors"
@@ -181,14 +183,14 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                           })
                         }
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F]"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F]"
                       />
                     ) : (
                       <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/25 to-[#F4D158]/25 text-[#d99723] font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform shrink-0">
-                          <Building2 className="w-4 h-4" />
+                        <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/25 to-[#F4D158]/25 text-[#d99723] font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform shrink-0 border border-amber-200/50">
+                          <Building2 className="w-4 h-4 text-[#F9B53F]" />
                         </div>
-                        <span className="font-bold text-slate-900 group-hover:text-amber-950 transition-colors">
+                        <span className="font-extrabold text-slate-900 group-hover:text-amber-950 transition-colors">
                           {customer.companyName}
                         </span>
                       </div>
@@ -204,7 +206,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                           setEditForm({ ...editForm, tin: e.target.value })
                         }
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#F9B53F]"
                         placeholder="TIN"
                       />
                     ) : (
@@ -215,9 +217,9 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                   <td className="py-4 px-6">
                     {primaryContact ? (
                       <div>
-                        <div className="font-bold text-slate-800 flex items-center gap-2">
+                        <div className="font-extrabold text-slate-800 flex items-center gap-2">
                           <span>{primaryContact.name}</span>
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-100/60 text-amber-800 tracking-wide uppercase">
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-800 tracking-wide uppercase">
                             Primary
                           </span>
                         </div>
@@ -226,7 +228,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <span className="text-slate-400 text-xs italic">
+                      <span className="text-slate-400 text-xs italic font-normal">
                         No Contact
                       </span>
                     )}
@@ -244,7 +246,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                           })
                         }
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#F9B53F]"
                         placeholder="Address"
                       />
                     ) : (
@@ -261,8 +263,8 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                           <button
                             type="button"
                             onClick={(e) => handleSaveEdit(e, customer)}
-                            title="Save"
-                            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
+                            title="Save Changes"
+                            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer border border-emerald-200/60 shadow-2xs"
                           >
                             <Check className="w-3.5 h-3.5" />
                           </button>
@@ -270,7 +272,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                             type="button"
                             onClick={handleCancelEdit}
                             title="Cancel"
-                            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer border border-slate-200/60 shadow-2xs"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -281,7 +283,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                             type="button"
                             onClick={(e) => handleStartEdit(e, customer)}
                             title="Quick Edit"
-                            className="p-2 rounded-xl bg-slate-100/80 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                            className="p-2 rounded-xl bg-slate-100/80 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer border border-slate-200/60 shadow-2xs"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
@@ -294,7 +296,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                                 onDeleteCustomer(customer.customerId);
                               }}
                               title="Delete Customer"
-                              className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                              className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer border border-rose-200/60 shadow-2xs"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -311,7 +313,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 bg-white">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 bg-slate-50/50">
           <p className="text-xs text-slate-500 font-medium">
             Showing{" "}
             <span className="font-bold text-slate-700">{startIndex + 1}</span>{" "}
@@ -328,18 +330,18 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 1}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
               aria-label="Previous Page"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-bold text-slate-700 px-2">
+            <span className="text-xs font-extrabold text-slate-700 px-2 font-mono">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
               aria-label="Next Page"
             >
               <ChevronRight className="w-4 h-4" />

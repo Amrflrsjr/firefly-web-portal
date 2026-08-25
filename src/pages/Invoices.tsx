@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import axios from "axios";
-import { Search, Plus, AlertCircle } from "lucide-react";
+import { Search, Plus, AlertCircle, Filter, X } from "lucide-react";
 import type { InvoiceResponseDto } from "../types/invoice";
 import type { QuotationResponseDto } from "../types/quotation";
 import toast from "react-hot-toast";
@@ -18,6 +18,9 @@ import { PdfPreviewModal } from "../components/common/PdfPreviewModal";
 export const Invoices: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
+  const statusFilter = searchParams.get("status") || "all";
+  const startDateFilter = searchParams.get("startDate") || "";
+  const endDateFilter = searchParams.get("endDate") || "";
   const sortBy = searchParams.get("sortBy") || "createdat";
   const ascending = searchParams.get("ascending") !== "false";
 
@@ -25,6 +28,9 @@ export const Invoices: React.FC = () => {
   const [quotations, setQuotations] = useState<QuotationResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // Mobile filter dropdown toggle state
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [paymentInvoice, setPaymentInvoice] =
@@ -42,38 +48,88 @@ export const Invoices: React.FC = () => {
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const loadData = async (query = "", sort = "createdat", asc = false) => {
-    try {
-      setLoading(true);
-      const [invRes, quoteRes] = await Promise.all([
-        api.get<InvoiceResponseDto[]>("/invoices", {
-          params: { search: query, sortBy: sort, ascending: asc },
-        }),
-        api.get<QuotationResponseDto[]>("/quotations"),
-      ]);
-      setInvoices(invRes.data);
-      setQuotations(quoteRes.data);
-      setApiError(null);
-    } catch (err: unknown) {
-      console.error("Failed to fetch data:", err);
-      if (axios.isAxiosError(err)) {
-        setApiError(
-          err.response?.data?.message ||
-            err.message ||
-            "Failed to connect to API",
-        );
-      } else {
-        setApiError("An unexpected error occurred while loading data");
+  const loadData = useCallback(
+    async (
+      query = "",
+      status = "all",
+      startDate = "",
+      endDate = "",
+      sort = "createdat",
+      asc = false,
+    ) => {
+      try {
+        setLoading(true);
+        const [invRes, quoteRes] = await Promise.all([
+          api.get<InvoiceResponseDto[]>("/invoices", {
+            params: {
+              search: query,
+              status: status !== "all" ? status : undefined,
+              startDate: startDate || undefined,
+              endDate: endDate || undefined,
+              sortBy: sort,
+              ascending: asc,
+            },
+          }),
+          api.get<QuotationResponseDto[]>("/quotations"),
+        ]);
+        setInvoices(invRes.data);
+        setQuotations(quoteRes.data);
+        setApiError(null);
+      } catch (err: unknown) {
+        console.error("Failed to fetch data:", err);
+        if (axios.isAxiosError(err)) {
+          setApiError(
+            err.response?.data?.message ||
+              err.message ||
+              "Failed to connect to API",
+          );
+        } else {
+          setApiError("An unexpected error occurred while loading data");
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [],
+  );
+
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData(searchQuery, sortBy, ascending);
-  }, [searchQuery, sortBy, ascending]);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadData(
+        searchQuery,
+        statusFilter,
+        startDateFilter,
+        endDateFilter,
+        sortBy,
+        ascending,
+      );
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      loadData(
+        searchQuery,
+        statusFilter,
+        startDateFilter,
+        endDateFilter,
+        sortBy,
+        ascending,
+      );
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [
+    searchQuery,
+    statusFilter,
+    startDateFilter,
+    endDateFilter,
+    sortBy,
+    ascending,
+    loadData,
+  ]);
 
   const exactMatchInvoice = searchQuery
     ? invoices.find(
@@ -83,23 +139,25 @@ export const Invoices: React.FC = () => {
 
   const activeInvoice = (selectedInvoice || exactMatchInvoice) ?? null;
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    const params: Record<string, string> = {};
-    if (val) params.search = val;
-    if (sortBy) params.sortBy = sortBy;
-    if (!ascending) params.ascending = "false";
+  const updateQueryParams = (updates: Record<string, string>) => {
+    const params: Record<string, string> = {
+      search: searchQuery,
+      status: statusFilter,
+      startDate: startDateFilter,
+      endDate: endDateFilter,
+      sortBy: sortBy,
+      ascending: String(ascending),
+      ...updates,
+    };
+    Object.keys(params).forEach((key) => {
+      if (!params[key] || params[key] === "all") delete params[key];
+    });
     setSearchParams(params, { replace: true });
   };
 
   const handleSortChange = (field: string) => {
     const newAscending = sortBy === field ? !ascending : true;
-    const params: Record<string, string> = {
-      sortBy: field,
-      ascending: String(newAscending),
-    };
-    if (searchQuery) params.search = searchQuery;
-    setSearchParams(params, { replace: true });
+    updateQueryParams({ sortBy: field, ascending: String(newAscending) });
   };
 
   const handleDownloadPdf = async (
@@ -110,7 +168,6 @@ export const Invoices: React.FC = () => {
       const response = await api.get(`/invoices/${invoiceId}/pdf`, {
         responseType: "blob",
       });
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -129,7 +186,14 @@ export const Invoices: React.FC = () => {
     try {
       await api.put(`/invoices/${invoiceId}/status`, { status });
       toast.success("Invoice status updated successfully!");
-      await loadData(searchQuery, sortBy, ascending);
+      loadData(
+        searchQuery,
+        statusFilter,
+        startDateFilter,
+        endDateFilter,
+        sortBy,
+        ascending,
+      );
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(err.response?.data || "Failed to update invoice status");
@@ -151,7 +215,14 @@ export const Invoices: React.FC = () => {
       toast.success("Invoice cancelled successfully!");
       setSelectedInvoice(null);
       setInvoiceToDelete(null);
-      loadData(searchQuery, sortBy, ascending);
+      loadData(
+        searchQuery,
+        statusFilter,
+        startDateFilter,
+        endDateFilter,
+        sortBy,
+        ascending,
+      );
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(err.response?.data?.message || "Failed to cancel invoice");
@@ -168,10 +239,8 @@ export const Invoices: React.FC = () => {
       const response = await api.get(`/invoices/${invoiceId}/pdf`, {
         responseType: "blob",
       });
-
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
-
       setPreviewPdfUrl(url);
       setPreviewTitle(`Invoice #${invoiceNumber}`);
       setPreviewFilename(`Invoice_${invoiceNumber}.pdf`);
@@ -188,54 +257,156 @@ export const Invoices: React.FC = () => {
     setPreviewPdfUrl(null);
   };
 
+  const hasActiveFilters =
+    statusFilter !== "all" || startDateFilter || endDateFilter || searchQuery;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Invoices & Payments
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 mt-0.5">
             Convert approved estimates to invoices and record customer payments
+            seamlessly
           </p>
         </div>
         <button
           onClick={() => setIsConvertOpen(true)}
-          className="inline-flex items-center gap-2 bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 font-extrabold px-5 py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/10 cursor-pointer active:scale-95"
         >
-          <Plus className="w-4 h-4" /> Convert Quotation to Invoice
+          <Plus className="w-4 h-4 stroke-3" /> Convert Quotation to Invoice
         </button>
       </div>
 
       {apiError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
-            onClick={() => loadData(searchQuery, sortBy, ascending)}
-            className="text-xs font-bold bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            onClick={() =>
+              loadData(
+                searchQuery,
+                statusFilter,
+                startDateFilter,
+                endDateFilter,
+                sortBy,
+                ascending,
+              )
+            }
+            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors"
           >
             Retry
           </button>
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by invoice number or customer name..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F]"
-          />
+      {/* Professional UI/UX Filter & Search Toolbar */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 space-y-4">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          {/* Enhanced Search Input & Mobile Filter Toggle Button */}
+          <div className="flex items-center gap-2 flex-1 max-w-lg">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by invoice number or customer name..."
+                value={searchQuery}
+                onChange={(e) => updateQueryParams({ search: e.target.value })}
+                className="w-full bg-slate-50/80 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all shadow-2xs"
+              />
+            </div>
+
+            {/* Mobile Filter Toggle Button */}
+            <button
+              onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
+              className={`lg:hidden flex items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
+                isMobileFiltersOpen || hasActiveFilters
+                  ? "bg-amber-50 border-amber-300 text-amber-800"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
+              title="Toggle Filters"
+            >
+              <Filter className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Desktop Filters Group (Hidden on mobile unless toggled via dropdown) */}
+          <div
+            className={`flex-wrap items-center gap-2.5 ${
+              isMobileFiltersOpen ? "flex" : "hidden lg:flex"
+            }`}
+          >
+            <div className="hidden lg:flex items-center gap-1.5 text-xs font-black text-slate-400 uppercase tracking-wider px-2">
+              <Filter className="w-3.5 h-3.5 text-amber-500" /> Filters:
+            </div>
+
+            {/* Status Select */}
+            <div className="w-full sm:w-auto">
+              <label className="block lg:hidden text-[10px] font-extrabold uppercase text-slate-400 mb-1">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => updateQueryParams({ status: e.target.value })}
+                className="w-full sm:w-auto bg-slate-50/80 border border-slate-200/80 rounded-2xl px-4 py-2.5 lg:py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all cursor-pointer shadow-2xs"
+              >
+                <option value="all">All Statuses</option>
+                <option value="Unpaid">Unpaid</option>
+                <option value="PartiallyPaid">Partially Paid</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+
+            {/* Start Date (From) */}
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 border border-slate-200/80 rounded-2xl px-3.5 py-2 shadow-2xs">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                From
+              </span>
+              <input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) =>
+                  updateQueryParams({ startDate: e.target.value })
+                }
+                className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+              />
+            </div>
+
+            {/* End Date (To) */}
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 border border-slate-200/80 rounded-2xl px-3.5 py-2 shadow-2xs">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                To
+              </span>
+              <input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => updateQueryParams({ endDate: e.target.value })}
+                className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+              />
+            </div>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setSearchParams({}, { replace: true });
+                  setIsMobileFiltersOpen(false);
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 border border-amber-200/60 px-4 py-3 lg:py-2.5 rounded-2xl transition-all cursor-pointer shadow-2xs"
+              >
+                <X className="w-3.5 h-3.5" /> Clear Filters
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 overflow-hidden">
         <InvoicesTable
           invoices={invoices}
           loading={loading}
@@ -251,13 +422,21 @@ export const Invoices: React.FC = () => {
         />
       </div>
 
+      {/* Modals */}
       <ConvertQuotationModal
         isOpen={isConvertOpen}
         onClose={() => setIsConvertOpen(false)}
         quotations={quotations}
         onSuccess={() => {
           setIsConvertOpen(false);
-          loadData(searchQuery, sortBy, ascending);
+          loadData(
+            searchQuery,
+            statusFilter,
+            startDateFilter,
+            endDateFilter,
+            sortBy,
+            ascending,
+          );
         }}
       />
 
@@ -267,7 +446,14 @@ export const Invoices: React.FC = () => {
           onClose={() => setPaymentInvoice(null)}
           onSuccess={() => {
             setPaymentInvoice(null);
-            loadData(searchQuery, sortBy, ascending);
+            loadData(
+              searchQuery,
+              statusFilter,
+              startDateFilter,
+              endDateFilter,
+              sortBy,
+              ascending,
+            );
           }}
         />
       )}
@@ -309,7 +495,14 @@ export const Invoices: React.FC = () => {
         onClose={() => setEmailInvoice(null)}
         onSuccess={() => {
           setEmailInvoice(null);
-          loadData(searchQuery, sortBy, ascending);
+          loadData(
+            searchQuery,
+            statusFilter,
+            startDateFilter,
+            endDateFilter,
+            sortBy,
+            ascending,
+          );
         }}
       />
     </div>

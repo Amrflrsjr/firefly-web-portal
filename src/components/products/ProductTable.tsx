@@ -12,6 +12,7 @@ import {
   X,
   Edit2,
   Trash2,
+  Edit,
 } from "lucide-react";
 
 interface ProductTableProps {
@@ -21,6 +22,7 @@ interface ProductTableProps {
   ascending: boolean;
   onSort: (field: string) => void;
   onViewVariants: (product: Product) => void;
+  onEditProduct?: (product: Product) => void;
   onUpdateVariantStock?: (
     productId: number,
     variantId: number,
@@ -36,6 +38,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   ascending,
   onSort,
   onViewVariants,
+  onEditProduct,
   onUpdateVariantStock,
   onDeleteProduct,
 }) => {
@@ -109,23 +112,27 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
   return (
     <div>
-      <div className="overflow-x-visible sm:overflow-x-auto">
+      <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">
               <th
                 onClick={() => onSort("name")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors"
+                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors whitespace-nowrap"
               >
                 <div className="flex items-center gap-1.5">
                   Product Name
                   {renderSortIcon("name")}
                 </div>
               </th>
-              <th className="py-3.5 px-6">Variants</th>
-              <th className="py-3.5 px-6">Price Range</th>
-              <th className="py-3.5 px-6">Stock Management</th>
-              <th className="py-3.5 px-6 text-right">Actions</th>
+              <th className="py-3.5 px-6 whitespace-nowrap">Variants</th>
+              <th className="py-3.5 px-6 whitespace-nowrap">Price Range</th>
+              <th className="py-3.5 px-6 whitespace-nowrap">
+                Stock Management
+              </th>
+              <th className="py-3.5 px-6 text-right whitespace-nowrap">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm font-medium">
@@ -139,11 +146,11 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               const totalStock =
                 product.variants?.reduce((acc, v) => acc + v.stock, 0) || 0;
 
-              const singleVariant =
-                product.variants?.length === 1 ? product.variants[0] : null;
-              const isEditing =
-                singleVariant !== null &&
-                editingProductId === product.productId;
+              const hasSingleVariant = product.variants?.length === 1;
+              const targetVariant = hasSingleVariant
+                ? product.variants[0]
+                : null;
+              const isEditing = editingProductId === product.productId;
 
               return (
                 <tr
@@ -152,12 +159,12 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   className="hover:bg-[#FCFDFF] transition-colors cursor-pointer group"
                 >
                   <td className="py-4 px-6 text-slate-800">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform">
+                    <div className="flex items-center gap-3.5 min-w-50">
+                      <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform shrink-0">
                         <Package className="w-4 h-4" />
                       </div>
-                      <div>
-                        <div className="text-slate-900 font-bold group-hover:text-amber-900 transition-colors">
+                      <div className="min-w-0">
+                        <div className="text-slate-900 font-bold group-hover:text-amber-900 transition-colors truncate">
                           {product.name}
                         </div>
                         <div className="text-xs text-slate-400 font-normal max-w-xs truncate mt-0.5">
@@ -167,115 +174,144 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                   </td>
 
-                  <td className="py-4 px-6 text-slate-600">
+                  <td className="py-4 px-6 text-slate-600 whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100/80 text-slate-700 border border-slate-200/60 shadow-2xs">
                       <Layers className="w-3 h-3 text-[#F9B53F]" />
                       {product.variants?.length || 0} Variants
                     </span>
                   </td>
 
-                  <td className="py-4 px-6 font-bold text-slate-800 font-mono text-xs">
+                  <td className="py-4 px-6 font-bold text-slate-900 font-mono text-xs whitespace-nowrap">
                     {minPrice === maxPrice
                       ? `PHP ${minPrice.toFixed(2)}`
                       : `PHP ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)}`}
                   </td>
 
                   <td
-                    className="py-4 px-6"
+                    className="py-4 px-6 whitespace-nowrap"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {singleVariant ? (
-                      isEditing ? (
-                        <div className="inline-flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            value={tempStock}
-                            onChange={(e) =>
-                              setTempStock(parseInt(e.target.value) || 0)
-                            }
-                            className="w-20 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] shadow-xs"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter")
-                                handleSaveStock(
-                                  product.productId,
-                                  singleVariant.productVariantId,
-                                  e,
-                                );
-                              if (e.key === "Escape") setEditingProductId(null);
-                            }}
-                          />
-                          <button
-                            type="button"
-                            disabled={savingStock}
-                            onClick={(e) =>
+                    {isEditing ? (
+                      <div className="inline-flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-amber-300 shadow-md animate-in fade-in zoom-in-95 duration-150">
+                        <input
+                          type="number"
+                          min={0}
+                          value={tempStock}
+                          onChange={(e) =>
+                            setTempStock(parseInt(e.target.value) || 0)
+                          }
+                          className="w-20 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white shadow-2xs"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const variantIdToSave = hasSingleVariant
+                                ? targetVariant?.productVariantId
+                                : product.variants?.[0]?.productVariantId;
                               handleSaveStock(
                                 product.productId,
-                                singleVariant.productVariantId,
+                                variantIdToSave,
                                 e,
-                              )
+                              );
                             }
-                            className="p-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                            title="Save"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingProductId(null)}
-                            className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                            title="Cancel"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => {
-                            setEditingProductId(product.productId);
-                            setTempStock(singleVariant.stock);
+                            if (e.key === "Escape") setEditingProductId(null);
                           }}
-                          className="group/stock inline-flex items-center gap-2 cursor-pointer py-1 px-2 rounded-xl hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200"
-                          title="Click to quickly update stock"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingStock}
+                          onClick={(e) => {
+                            const variantIdToSave = hasSingleVariant
+                              ? targetVariant?.productVariantId
+                              : product.variants?.[0]?.productVariantId;
+                            handleSaveStock(
+                              product.productId,
+                              variantIdToSave,
+                              e,
+                            );
+                          }}
+                          className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer shadow-2xs border border-emerald-200/60"
+                          title="Save stock"
                         >
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-2xs ${
-                              singleVariant.stock > 0
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
-                                : "bg-rose-50 text-rose-700 border-rose-200/80"
-                            }`}
-                          >
-                            {singleVariant.stock} in stock
-                          </span>
-                          <span>
-                            <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover/stock:opacity-100 transition-opacity" />
-                          </span>
-                        </div>
-                      )
-                    ) : (
-                      <span
-                        onClick={() => onViewVariants(product)}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/80 cursor-pointer hover:bg-slate-200 transition-colors"
-                        title="Multiple variants - click to manage variants"
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProductId(null)}
+                          className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer shadow-2xs border border-slate-200/60"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : hasSingleVariant && targetVariant ? (
+                      <div
+                        onClick={() => {
+                          setEditingProductId(product.productId);
+                          setTempStock(targetVariant.stock);
+                        }}
+                        className="group/stock inline-flex items-center gap-2 cursor-pointer py-1 px-2.5 rounded-xl hover:bg-amber-50/60 transition-all border border-transparent hover:border-amber-200"
+                        title="Click to quickly update stock"
                       >
-                        {totalStock} total (Multiple variants)
-                      </span>
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-2xs whitespace-nowrap ${
+                            targetVariant.stock > 0
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                              : "bg-rose-50 text-rose-700 border-rose-200/80"
+                          }`}
+                        >
+                          {targetVariant.stock} in stock
+                        </span>
+                        <span className="w-6 h-6 rounded-lg bg-amber-100/50 group-hover/stock:bg-amber-100 text-amber-700 flex items-center justify-center opacity-0 group-hover/stock:opacity-100 transition-all shadow-2xs">
+                          <Edit2 className="w-3 h-3" />
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => {
+                          if (product.variants && product.variants.length > 0) {
+                            setEditingProductId(product.productId);
+                            setTempStock(product.variants[0].stock);
+                          } else {
+                            onViewVariants(product);
+                          }
+                        }}
+                        className="group/stock inline-flex items-center gap-2 cursor-pointer py-1 px-2.5 rounded-xl hover:bg-amber-50/60 transition-all border border-transparent hover:border-amber-200"
+                        title="Click to quickly update primary variant stock or manage variants"
+                      >
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs whitespace-nowrap">
+                          {totalStock} total ({product.variants?.length || 0}{" "}
+                          variants)
+                        </span>
+                        <span className="w-6 h-6 rounded-lg bg-amber-100/50 group-hover/stock:bg-amber-100 text-amber-700 flex items-center justify-center opacity-0 group-hover/stock:opacity-100 transition-all shadow-2xs">
+                          <Edit2 className="w-3 h-3" />
+                        </span>
+                      </div>
                     )}
                   </td>
 
                   <td
-                    className="py-4 px-6 text-right"
+                    className="py-4 px-6 text-right whitespace-nowrap"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <button
-                      type="button"
-                      onClick={() => onDeleteProduct?.(product.productId)}
-                      className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl border border-rose-100 transition-colors cursor-pointer inline-flex items-center justify-center shadow-2xs"
-                      title="Delete Product"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onEditProduct?.(product)}
+                        title="Edit Product Details"
+                        className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onDeleteProduct?.(product.productId)}
+                        title="Delete Product"
+                        className="p-2 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200/80 hover:border-rose-200 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -285,7 +321,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 bg-white">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-200/80 bg-white">
           <p className="text-xs text-slate-500 font-medium">
             Showing{" "}
             <span className="font-bold text-slate-700">{startIndex + 1}</span>{" "}

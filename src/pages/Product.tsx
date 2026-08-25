@@ -209,6 +209,7 @@ export const Products: React.FC = () => {
       throw err;
     }
   };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const params: Record<string, string> = {};
@@ -305,8 +306,17 @@ export const Products: React.FC = () => {
           sortBy={sortBy}
           ascending={ascending}
           onSort={handleSortChange}
-          onViewVariants={(prod) => setSelectedProduct(prod)}
+          onViewVariants={(prod) => {
+            setSelectedProduct(prod);
+            setIsEditOpen(false);
+          }}
+          onEditProduct={(prod) => {
+            setSelectedProduct(prod);
+            setFormError("");
+            setIsEditOpen(true);
+          }}
           onUpdateVariantStock={handleUpdateVariantStock}
+          onDeleteProduct={(productId) => setProductToDelete(productId)}
         />
       </div>
 
@@ -349,7 +359,10 @@ export const Products: React.FC = () => {
           product={activeProduct}
           saving={saving}
           error={formError}
-          onClose={() => setIsEditOpen(false)}
+          onClose={() => {
+            setIsEditOpen(false);
+            setSelectedProduct(null);
+          }}
           onSubmit={handleEditProduct}
         />
       )}
