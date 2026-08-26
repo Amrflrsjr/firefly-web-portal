@@ -7,7 +7,14 @@ import type {
   CreateCustomerDto,
   CustomerContact,
 } from "../types/customer";
-import { Plus, Search, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Plus,
+  Search,
+  AlertCircle,
+  RefreshCw,
+  Sparkles,
+  ArrowUpRight,
+} from "lucide-react";
 import axios from "axios";
 
 import { CustomerTable } from "../components/customers/CustomerTable";
@@ -276,26 +283,39 @@ export const Customers: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Customers Directory
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Manage client companies and primary contacts seamlessly
-          </p>
+    <div className="space-y-6 pb-10">
+      {/* Executive Header Banner matching Dashboard style */}
+      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
+        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Customer Management Hub</span>
+            </div>
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+              Customers Directory
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
+              Manage client companies and primary contacts seamlessly across
+              your catalog.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setFormError("");
+                setIsCreateOpen(true);
+              }}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-3" />
+              <span>Add Customer</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => {
-            setFormError("");
-            setIsCreateOpen(true);
-          }}
-          className="inline-flex items-center justify-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 font-extrabold px-5 py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/10 cursor-pointer active:scale-95"
-        >
-          <Plus className="w-4 h-4 stroke-3" /> Add Customer
-        </button>
       </div>
 
       {apiError && (

@@ -14,11 +14,13 @@ import {
 } from "lucide-react";
 import { GlobalSearch } from "../components/search/GlobalSearch";
 import fireflyLogo from "../assets/Firefly Logo - No BG.png";
+import { ConfirmModal } from "./common/ConfirmModal";
 
 export const Layout: React.FC = () => {
   const { username, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -35,7 +37,8 @@ export const Layout: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col lg:flex-row relative">
+    <div className="min-h-screen bg-slate-50/70 text-slate-800 flex flex-col lg:flex-row relative selection:bg-[#F9B53F]/30 selection:text-slate-900">
+      {/* Mobile Sidebar Overlay Drawer */}
       <div
         className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${
           mobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"
@@ -51,14 +54,20 @@ export const Layout: React.FC = () => {
 
         {/* Sliding Sidebar Drawer */}
         <aside
-          className={`absolute top-0 bottom-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col justify-between p-4 shadow-2xl transition-transform duration-300 ease-in-out ${
+          className={`absolute top-0 bottom-0 left-0 w-72 bg-white border-r border-slate-200/80 flex flex-col justify-between p-5 shadow-2xl transition-transform duration-300 ease-in-out ${
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
           <div>
             {/* Logo & Mobile Close Header */}
             <div className="px-2 py-4 mb-6 border-b border-slate-100 flex items-center justify-between">
-              <div className="w-32 h-auto flex items-center justify-center overflow-hidden">
+              <div
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate("/dashboard");
+                }}
+                className="w-48 h-16 flex items-center justify-center overflow-hidden cursor-pointer mx-auto hover:opacity-90 transition-opacity"
+              >
                 <img
                   src={fireflyLogo}
                   alt="Firefly Crafts PH Logo"
@@ -66,13 +75,15 @@ export const Layout: React.FC = () => {
                 />
               </div>
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* Navigation Links */}
             <nav className="space-y-1.5">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -82,46 +93,66 @@ export const Layout: React.FC = () => {
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                      `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                         isActive
-                          ? "bg-[#FFCB62]/30 text-slate-900 border-l-4 border-[#F9B53F]"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                          ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
+                          : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
                       }`
                     }
                   >
-                    <Icon className="w-4 h-4 text-slate-700" />
-                    {item.label}
+                    {({ isActive }) => (
+                      <>
+                        <Icon
+                          className={`w-4 h-4 transition-colors ${
+                            isActive ? "text-amber-700" : "text-slate-400"
+                          }`}
+                        />
+                        <span>{item.label}</span>
+                      </>
+                    )}
                   </NavLink>
                 );
               })}
             </nav>
           </div>
 
-          <div className="border-t border-slate-100 pt-4">
-            <div className="px-3 mb-3">
-              <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">
-                Logged in as
-              </p>
-              <p className="text-sm font-bold text-slate-800 truncate">
-                {username || "Admin"}
-              </p>
+          {/* User Profile & Sign Out Footer */}
+          <div className="border-t border-slate-100 pt-4 space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center border border-amber-200/60 shadow-2xs shrink-0">
+                {(username || "A").charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+                  Logged in as
+                </p>
+                <p className="text-xs font-bold text-slate-800 truncate">
+                  {username || "Administrator"}
+                </p>
+              </div>
             </div>
+
             <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-100 active:scale-98 shadow-2xs"
             >
               <LogOut className="w-4 h-4" />
-              Sign Out
+              <span>Sign Out</span>
             </button>
           </div>
         </aside>
       </div>
 
       {/* Desktop Permanent Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col justify-between p-4 shadow-sm z-10 shrink-0">
+      <aside className="hidden lg:flex w-72 bg-white border-r border-slate-200/80 flex-col justify-between p-5 shadow-xs z-10 shrink-0">
         <div>
-          <div className="px-2 py-4 mb-6 border-b border-slate-100 flex items-center justify-center">
-            <div className="w-36 h-auto flex items-center justify-center overflow-hidden">
+          {/* Brand Logo Header */}
+          <div className="px-2 py-6 mb-6 border-b border-slate-100 flex items-center justify-center">
+            <div
+              onClick={() => navigate("/dashboard")}
+              className="w-52 h-25 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            >
               <img
                 src={fireflyLogo}
                 alt="Firefly Crafts PH Logo"
@@ -130,6 +161,7 @@ export const Layout: React.FC = () => {
             </div>
           </div>
 
+          {/* Navigation Links */}
           <nav className="space-y-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -138,36 +170,52 @@ export const Layout: React.FC = () => {
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                       isActive
-                        ? "bg-[#FFCB62]/30 text-slate-900 border-l-4 border-[#F9B53F]"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4 text-slate-700" />
-                  {item.label}
+                  {({ isActive }) => (
+                    <>
+                      <Icon
+                        className={`w-4 h-4 transition-colors ${
+                          isActive ? "text-amber-700" : "text-slate-400"
+                        }`}
+                      />
+                      <span>{item.label}</span>
+                    </>
+                  )}
                 </NavLink>
               );
             })}
           </nav>
         </div>
 
-        <div className="border-t border-slate-100 pt-4">
-          <div className="px-3 mb-3">
-            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">
-              Logged in as
-            </p>
-            <p className="text-sm font-bold text-slate-800 truncate">
-              {username || "Admin"}
-            </p>
+        {/* User Profile & Sign Out Footer */}
+        <div className="border-t border-slate-100 pt-4 space-y-3">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50/80 border border-slate-100 shadow-2xs">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center border border-amber-200/60 shadow-2xs shrink-0">
+              {(username || "A").charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+                Logged in as
+              </p>
+              <p className="text-xs font-bold text-slate-800 truncate">
+                {username || "Administrator"}
+              </p>
+            </div>
           </div>
+
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+            type="button"
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-100 active:scale-98 shadow-2xs"
           >
             <LogOut className="w-4 h-4" />
-            Sign Out
+            <span>Sign Out</span>
           </button>
         </div>
       </aside>
@@ -175,11 +223,12 @@ export const Layout: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
         {/* Top Header */}
-        <header className="bg-white border-b border-slate-200 h-16 px-4 sm:px-8 flex items-center justify-between shrink-0 gap-4 z-30">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 h-16 px-4 sm:px-8 flex items-center justify-between shrink-0 gap-4 z-30 shadow-2xs">
           <div className="flex items-center gap-3 flex-1">
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="lg:hidden p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer shadow-2xs"
               aria-label="Open Menu"
             >
               <Menu className="w-5 h-5" />
@@ -191,11 +240,26 @@ export const Layout: React.FC = () => {
           <div className="flex items-center gap-4"></div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
+        {/* Page Content Viewport */}
+        <main className="flex-1 p-4 sm:p-8 overflow-y-auto bg-slate-50/50">
           <Outlet />
         </main>
       </div>
+
+      {/* Sign Out Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Sign Out Confirmation"
+        message="Are you sure you want to log out of your session? You will need to sign in again to access the portal workspace."
+        confirmText="Yes, Sign Out"
+        cancelText="Cancel"
+        isDanger={true}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          handleLogout();
+        }}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
     </div>
   );
 };

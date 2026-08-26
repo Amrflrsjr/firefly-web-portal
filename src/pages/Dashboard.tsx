@@ -12,56 +12,43 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
-  CreditCard,
   ArrowUpRight,
   Sparkles,
   BarChart3,
+  Activity,
+  Percent,
+  User,
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-interface Payment {
-  paymentId: number;
-  invoiceId: number;
-  amountPaid: number;
-  paymentDate: string;
-  paymentMethod: string;
-  referenceNumber: string;
-  notes?: string;
-  createdAt: string;
+interface ChartPoint {
+  date: string;
+  amount: number;
 }
 
-interface Invoice {
-  invoiceId: number;
-  invoiceNumber: string;
-  companyName: string;
-  totalAmount: number;
-  status: string;
-  createdAt: string;
-  isDeleted?: boolean;
-  deletedAt?: string | null;
-  isActive?: boolean;
-  payments?: Payment[];
-  [key: string]: unknown;
+interface DashboardMetrics {
+  totalRevenue: number;
+  unpaidCount: number;
+  activeQuotesCount: number;
+  acceptedQuotesCount: number;
+  totalCustomersCount: number;
+  corporateCustomersCount: number;
+  personalCustomersCount: number;
+  totalPeriodRevenue: number;
+  chartData: ChartPoint[];
 }
 
-interface Quotation {
-  quotationId: number;
-  status: string;
-  isDeleted?: boolean;
-  deletedAt?: string | null;
-  isActive?: boolean;
-  [key: string]: unknown;
-}
-
-interface Customer {
-  customerId: number;
-  isDeleted?: boolean;
-  deletedAt?: string | null;
-  isActive?: boolean;
-  [key: string]: unknown;
-}
+type ChartTimeRange = "7d" | "30d" | "90d" | "all";
 
 export const Dashboard: React.FC = () => {
   const { username } = useAuth();
@@ -69,29 +56,23 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [chartTimeRange, setChartTimeRange] = useState<ChartTimeRange>("30d");
 
+  // Fetch pre-aggregated server-side metrics
   useEffect(() => {
     let isMounted = true;
 
-    const initFetch = async () => {
+    const fetchDashboardMetrics = async () => {
       setLoading(true);
       setError(null);
       try {
-        const [invRes, quoteRes, custRes, prodRes] = await Promise.all([
-          api.get("/invoices"),
-          api.get("/quotations"),
-          api.get("/customers"),
-          api.get("/products"),
-        ]);
+        const response = await api.get("/dashboard/metrics", {
+          params: { timeRange: chartTimeRange },
+        });
 
         if (isMounted) {
-          setInvoices(invRes.data);
-          setQuotations(quoteRes.data);
-          setCustomers(custRes.data);
-          void prodRes;
+          setMetrics(response.data);
         }
       } catch (err: unknown) {
         if (isMounted) {
@@ -110,87 +91,14 @@ export const Dashboard: React.FC = () => {
       }
     };
 
-    initFetch();
+    fetchDashboardMetrics();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [chartTimeRange]);
 
-  // Filter out soft-deleted or inactive records
-  const activeInvoices = invoices.filter(
-    (i) => i.isDeleted !== true && !i.deletedAt && i.isActive !== false,
-  );
-  const activeQuotations = quotations.filter(
-    (q) => q.isDeleted !== true && !q.deletedAt && q.isActive !== false,
-  );
-  const activeCustomers = customers.filter(
-    (c) => c.isDeleted !== true && !c.deletedAt && c.isActive !== false,
-  );
-
-  // Metrics computations
-  const totalRevenue = activeInvoices
-    .filter((i) => i.status?.toLowerCase() === "paid")
-    .reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
-
-  const unpaidCount = activeInvoices.filter(
-    (i) =>
-      i.status?.toLowerCase() === "unpaid" ||
-      i.status?.toLowerCase() === "partiallypaid",
-  ).length;
-
-  const activeQuotesCount = activeQuotations.filter(
-    (q) =>
-      q.status?.toLowerCase() === "created" ||
-      q.status?.toLowerCase() === "sent",
-  ).length;
-
-  const acceptedQuotesCount = activeQuotations.filter((q) => {
-    const status = q.status?.toLowerCase();
-    return status === "accepted" || status === "approved";
-  }).length;
-
-  const totalCustomersCount = activeCustomers.length;
-
-  // Flatten and sort recent payments
-  const allPayments = activeInvoices.flatMap((invoice) =>
-    (invoice.payments || []).map((payment) => ({
-      ...payment,
-      invoiceNumber: invoice.invoiceNumber,
-      companyName: invoice.companyName,
-    })),
-  );
-
-  const recentPayments = [...allPayments]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
-    .slice(0, 5);
-
-  // Compute revenue grouped by date for the bar chart
-  const revenueByDateMap = allPayments.reduce(
-    (acc: Record<string, number>, payment) => {
-      const dateKey = new Date(payment.createdAt).toLocaleDateString(
-        undefined,
-        {
-          month: "short",
-          day: "numeric",
-        },
-      );
-      acc[dateKey] = (acc[dateKey] || 0) + (payment.amountPaid || 0);
-      return acc;
-    },
-    {},
-  );
-
-  const chartData = Object.entries(revenueByDateMap)
-    .map(([date, amount]) => ({ date, amount }))
-    .slice(-6); // Keep latest 6 data points for clean spacing
-
-  const maxChartAmount = Math.max(...chartData.map((d) => d.amount), 1);
-
-  if (loading) {
+  if (loading && !metrics) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400 font-medium text-sm p-4">
         <div className="w-8 h-8 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
@@ -215,6 +123,27 @@ export const Dashboard: React.FC = () => {
       </div>
     );
   }
+
+  const chartData = metrics?.chartData || [];
+
+  // Compute conversion rates or ratios for the Health Metrics Card
+  const totalInvoicesApprox =
+    (metrics?.totalRevenue ? 1 : 0) + (metrics?.unpaidCount || 0);
+  const collectionRate =
+    totalInvoicesApprox > 0
+      ? Math.round(
+          ((metrics?.totalRevenue ? 1 : 0) / totalInvoicesApprox) * 100,
+        )
+      : 100;
+
+  const totalQuotesApprox =
+    (metrics?.activeQuotesCount || 0) + (metrics?.acceptedQuotesCount || 0);
+  const estimateAcceptanceRate =
+    totalQuotesApprox > 0
+      ? Math.round(
+          ((metrics?.acceptedQuotesCount || 0) / totalQuotesApprox) * 100,
+        )
+      : 0;
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
@@ -250,8 +179,8 @@ export const Dashboard: React.FC = () => {
 
       {/* Top Key Performance Indicators Grid */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
-        {/* Paid Revenue (Spans full width on mobile) */}
-        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-lg sm:shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group col-span-2 xl:col-span-1">
+        {/* Paid Revenue */}
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group col-span-2 xl:col-span-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
               Paid Revenue
@@ -260,10 +189,10 @@ export const Dashboard: React.FC = () => {
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-4">
-            <h3 className="text-lg sm:text-2xl font-black text-slate-900 font-mono tracking-tight truncate">
+          <div className="mt-3 sm:mt-4">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight truncate">
               ₱
-              {totalRevenue.toLocaleString(undefined, {
+              {(metrics?.totalRevenue || 0).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
@@ -275,7 +204,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Unpaid Invoices */}
-        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-lg sm:shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
               Unpaid Invoices
@@ -284,9 +213,9 @@ export const Dashboard: React.FC = () => {
               <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-4">
-            <h3 className="text-lg sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {unpaidCount}
+          <div className="mt-3 sm:mt-4">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
+              {metrics?.unpaidCount || 0}
             </h3>
             <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1">
               Pending remittances
@@ -295,7 +224,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Active Estimates */}
-        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-lg sm:shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
               Active Estimates
@@ -304,9 +233,9 @@ export const Dashboard: React.FC = () => {
               <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-4">
-            <h3 className="text-lg sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {activeQuotesCount}
+          <div className="mt-3 sm:mt-4">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
+              {metrics?.activeQuotesCount || 0}
             </h3>
             <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1">
               Sent or draft quotes
@@ -315,7 +244,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Accepted Estimates */}
-        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-lg sm:shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
               Accepted Estimates
@@ -324,9 +253,9 @@ export const Dashboard: React.FC = () => {
               <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-4">
-            <h3 className="text-lg sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {acceptedQuotesCount}
+          <div className="mt-3 sm:mt-4">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
+              {metrics?.acceptedQuotesCount || 0}
             </h3>
             <p className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold mt-0.5 sm:mt-1">
               Ready for invoice
@@ -334,8 +263,8 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Active Customers (Now sits beside Accepted Estimates) */}
-        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-lg sm:shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
+        {/* Active Customers */}
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
               Active Clients
@@ -344,9 +273,9 @@ export const Dashboard: React.FC = () => {
               <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-4">
-            <h3 className="text-lg sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {totalCustomersCount}
+          <div className="mt-3 sm:mt-4">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
+              {metrics?.totalCustomersCount || 0}
             </h3>
             <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1">
               Registered accounts
@@ -355,269 +284,402 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Split: Recent Payments & Income Bar Chart */}
+      {/* Main Grid: Area Chart (Left 2 Cols) & Analytics Cards Stack (Right Col) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Payments Feed (Spans 2 columns) */}
+        {/* Interactive Income Trend Area Chart (Spans 2 columns) */}
         <div className="lg:col-span-2 bg-white p-5 sm:p-7 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                Recent Transactions Feed
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Latest payment remittances recorded across invoices
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate("/invoices")}
-              className="text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 cursor-pointer transition-colors self-start sm:self-auto"
-            >
-              <span>View All Invoices</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="flex-1 py-2">
-            {recentPayments.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs italic">
-                No payment transactions recorded yet.
+          <div className="space-y-4 pb-4 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                  Income & Collection Trend
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Total Collected in Period:{" "}
+                  <span className="font-mono font-bold text-slate-700">
+                    ₱
+                    {(metrics?.totalPeriodRevenue || 0).toLocaleString(
+                      undefined,
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      },
+                    )}
+                  </span>
+                </p>
               </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {recentPayments.map((payment) => (
-                  <div
-                    key={payment.paymentId}
-                    className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm hover:bg-slate-50/50 px-2 rounded-2xl transition-colors"
+              <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl self-start sm:self-auto">
+                {(
+                  [
+                    { id: "7d", label: "7D" },
+                    { id: "30d", label: "30D" },
+                    { id: "90d", label: "90D" },
+                    { id: "all", label: "All" },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setChartTimeRange(tab.id)}
+                    className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                      chartTimeRange === tab.id
+                        ? "bg-white text-slate-900 shadow-2xs border border-slate-200/60"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
                   >
-                    <div className="flex items-start sm:items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs mt-0.5 sm:mt-0">
-                        <CreditCard className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-slate-900 font-bold flex flex-wrap items-center gap-2">
-                          <span className="truncate max-w-50 sm:max-w-xs">
-                            {payment.companyName}
-                          </span>
-                          <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md">
-                            {payment.invoiceNumber}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-400 mt-0.5">
-                          Method:{" "}
-                          <span className="font-semibold text-slate-600">
-                            {payment.paymentMethod}
-                          </span>{" "}
-                          {payment.referenceNumber
-                            ? `• Ref: ${payment.referenceNumber}`
-                            : ""}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-left sm:text-right pl-14 sm:pl-0">
-                      <div className="font-mono font-black text-emerald-600 text-sm">
-                        +₱
-                        {payment.amountPaid.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </div>
-                      <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-                        {new Date(payment.createdAt).toLocaleDateString(
-                          undefined,
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    {tab.label}
+                  </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div className="pt-6 h-80 w-full">
+            {chartData.length === 0 ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-slate-400 text-xs italic">
+                <BarChart3 className="w-5 h-5 text-slate-300" />
+                <span>No collections recorded in this range.</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient
+                      id="colorRevenue"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="5%" stopColor="#F9B53F" stopOpacity={0.4} />
+                      <stop
+                        offset="95%"
+                        stopColor="#F9B53F"
+                        stopOpacity={0.0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="date"
+                    stroke="#94A3B8"
+                    fontSize={11}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#94A3B8"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(value) =>
+                      `₱${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`
+                    }
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
+                            <p className="font-bold text-amber-300">{label}</p>
+                            <p className="font-mono text-sm font-black">
+                              ₱
+                              {Number(payload[0].value).toLocaleString(
+                                undefined,
+                                { minimumFractionDigits: 2 },
+                              )}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#F9B53F"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        {/* Income / Revenue Trend Bar Chart Card (Spans 1 column) */}
-        <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                Income Trend
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Payment collections over time
+        {/* Right Column Stack: Performance Health & Client Demographics */}
+        <div className="space-y-6 flex flex-col justify-between">
+          {/* Performance Health Ratios Card */}
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 flex flex-col justify-between">
+            <div className="space-y-1 pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                  Performance Health
+                </h2>
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-[#F9B53F] flex items-center justify-center">
+                  <Activity className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xs text-slate-400">
+                Key operational conversion benchmarks
               </p>
             </div>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-[#F9B53F] flex items-center justify-center">
-              <BarChart3 className="w-4 h-4" />
+
+            <div className="py-5 space-y-4">
+              {/* Metric 1: Invoice Collection Efficiency */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-600 flex items-center gap-1.5">
+                    <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                    Collection Rate
+                  </span>
+                  <span className="font-mono text-slate-900">
+                    {collectionRate}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${collectionRate}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Metric 2: Estimate Conversion Velocity */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-600 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    Estimate Acceptance
+                  </span>
+                  <span className="font-mono text-slate-900">
+                    {estimateAcceptanceRate}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${estimateAcceptanceRate}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Metric 3: Active Portfolio Ratio */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-600 flex items-center gap-1.5">
+                    <Percent className="w-3.5 h-3.5 text-amber-600" />
+                    Pending Invoices Load
+                  </span>
+                  <span className="font-mono text-slate-900">
+                    {metrics?.unpaidCount || 0} active
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(((metrics?.unpaidCount || 0) / 10) * 100, 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="py-6 flex-1 flex items-end justify-between gap-1.5 sm:gap-2 h-52 overflow-x-auto">
-            {chartData.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs italic">
-                No payment history available for chart.
+          {/* Client Demographics Card */}
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 flex flex-col justify-between">
+            <div className="space-y-1 pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                  Client Demographics
+                </h2>
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
               </div>
-            ) : (
-              chartData.map((item, idx) => {
-                const heightPercentage = Math.max(
-                  (item.amount / maxChartAmount) * 100,
-                  12,
-                );
-                return (
+              <p className="text-xs text-slate-400">
+                Corporate vs. Personal account ratio
+              </p>
+            </div>
+
+            <div className="py-5 space-y-4">
+              {/* Corporate Accounts */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-600 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                    Corporate Accounts
+                  </span>
+                  <span className="font-mono text-slate-900">
+                    {metrics?.corporateCustomersCount ?? 0}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                   <div
-                    key={idx}
-                    className="flex-1 flex flex-col items-center gap-2 h-full justify-end group min-w-8"
-                  >
-                    <div className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                      ₱{item.amount.toLocaleString()}
-                    </div>
-                    <div className="w-full bg-slate-100 rounded-xl overflow-hidden h-36 flex items-end">
-                      <div
-                        style={{ height: `${heightPercentage}%` }}
-                        className="w-full bg-linear-to-t from-amber-500 to-[#F9B53F] rounded-t-lg group-hover:brightness-110 transition-all"
-                      />
-                    </div>
-                    <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 truncate max-w-full">
-                      {item.date}
-                    </span>
-                  </div>
-                );
-              })
-            )}
+                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${
+                        metrics?.totalCustomersCount &&
+                        metrics.totalCustomersCount > 0
+                          ? ((metrics.corporateCustomersCount ?? 0) /
+                              metrics.totalCustomersCount) *
+                            100
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Personal Accounts */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-600 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-blue-600" />
+                    Personal Accounts
+                  </span>
+                  <span className="font-mono text-slate-900">
+                    {metrics?.personalCustomersCount ?? 0}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${
+                        metrics?.totalCustomersCount &&
+                        metrics.totalCustomersCount > 0
+                          ? ((metrics.personalCustomersCount ?? 0) /
+                              metrics.totalCustomersCount) *
+                            100
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+              <span>Total Directory</span>
+              <span className="font-mono font-bold text-slate-800">
+                {metrics?.totalCustomersCount ?? 0} Accounts
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Access Navigation Hub */}
-      <div className="space-y-4 pt-2">
+      {/* Modern Sleek & Compact Navigation Hub */}
+      <div className="space-y-3 pt-4">
         <div>
-          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
             Navigation Hub
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Select a module below to quickly manage your portal sections
+            Quick links to manage your application modules
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {/* Customers */}
           <button
             type="button"
             onClick={() => navigate("/customers")}
-            className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl hover:border-amber-200 transition-all cursor-pointer flex flex-row sm:flex-col items-center sm:items-start justify-between sm:aspect-square group text-left gap-3 sm:gap-0"
+            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
           >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-700 transition-all shadow-2xs shrink-0">
-              <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
+                  Customers
+                </h3>
+                <p className="text-[10px] text-slate-400">Directory</p>
+              </div>
             </div>
-            <div className="space-y-0.5 sm:space-y-1 flex-1 sm:flex-none">
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-900 transition-colors">
-                Customers
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-1 sm:line-clamp-2">
-                Manage client directories & contact persons
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-700 group-hover:text-amber-800 sm:pt-2 transition-colors shrink-0">
-              <span className="hidden sm:inline">View Directory</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
           </button>
 
           {/* Products */}
           <button
             type="button"
             onClick={() => navigate("/products")}
-            className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl hover:border-amber-200 transition-all cursor-pointer flex flex-row sm:flex-col items-center sm:items-start justify-between sm:aspect-square group text-left gap-3 sm:gap-0"
+            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
           >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-700 transition-all shadow-2xs shrink-0">
-              <Package className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
+                <Package className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
+                  Products
+                </h3>
+                <p className="text-[10px] text-slate-400">Catalog</p>
+              </div>
             </div>
-            <div className="space-y-0.5 sm:space-y-1 flex-1 sm:flex-none">
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-900 transition-colors">
-                Products
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-1 sm:line-clamp-2">
-                Manage catalog items, SKUs & variants
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-700 group-hover:text-amber-800 sm:pt-2 transition-colors shrink-0">
-              <span className="hidden sm:inline">View Catalog</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
           </button>
 
           {/* Quotations */}
           <button
             type="button"
             onClick={() => navigate("/quotations")}
-            className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl hover:border-amber-200 transition-all cursor-pointer flex flex-row sm:flex-col items-center sm:items-start justify-between sm:aspect-square group text-left gap-3 sm:gap-0"
+            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
           >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-700 transition-all shadow-2xs shrink-0">
-              <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
+                  Quotations
+                </h3>
+                <p className="text-[10px] text-slate-400">Estimates</p>
+              </div>
             </div>
-            <div className="space-y-0.5 sm:space-y-1 flex-1 sm:flex-none">
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-900 transition-colors">
-                Quotations
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-1 sm:line-clamp-2">
-                Create estimates & convert to invoices
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-700 group-hover:text-amber-800 sm:pt-2 transition-colors shrink-0">
-              <span className="hidden sm:inline">View Estimates</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
           </button>
 
           {/* Invoices */}
           <button
             type="button"
             onClick={() => navigate("/invoices")}
-            className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl hover:border-amber-200 transition-all cursor-pointer flex flex-row sm:flex-col items-center sm:items-start justify-between sm:aspect-square group text-left gap-3 sm:gap-0"
+            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
           >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-700 transition-all shadow-2xs shrink-0">
-              <Receipt className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
+                  Invoices
+                </h3>
+                <p className="text-[10px] text-slate-400">Billing</p>
+              </div>
             </div>
-            <div className="space-y-0.5 sm:space-y-1 flex-1 sm:flex-none">
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-900 transition-colors">
-                Invoices
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-1 sm:line-clamp-2">
-                Track billing, balances & payments
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-700 group-hover:text-amber-800 sm:pt-2 transition-colors shrink-0">
-              <span className="hidden sm:inline">View Invoices</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
           </button>
 
           {/* Archive / Trash */}
           <button
             type="button"
             onClick={() => navigate("/trash")}
-            className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl hover:border-amber-200 transition-all cursor-pointer flex flex-row sm:flex-col items-center sm:items-start justify-between sm:aspect-square group text-left gap-3 sm:gap-0 sm:col-span-2 lg:col-span-1"
+            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left col-span-2 sm:col-span-1"
           >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-700 transition-all shadow-2xs shrink-0">
-              <Trash2 className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
+                  Archive
+                </h3>
+                <p className="text-[10px] text-slate-400">Trash & Recovery</p>
+              </div>
             </div>
-            <div className="space-y-0.5 sm:space-y-1 flex-1 sm:flex-none">
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-900 transition-colors">
-                Archive
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-1 sm:line-clamp-2">
-                Restore or purge soft-deleted records
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-700 group-hover:text-amber-800 sm:pt-2 transition-colors shrink-0">
-              <span className="hidden sm:inline">View Archive</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
           </button>
         </div>
       </div>

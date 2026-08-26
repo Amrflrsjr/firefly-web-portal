@@ -6,3 +6,14 @@
   --color-firefly-accent: #f4d158;
   --color-firefly-bg: #ffffff;
 }
+
+body {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background-color: var(--color-firefly-bg);
+}

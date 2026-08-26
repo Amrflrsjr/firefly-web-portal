@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import api from "../../api/axios";
 import axios from "axios";
-import { X, Search, FileText, CheckCircle2 } from "lucide-react";
+import { X, Search, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import type { QuotationResponseDto } from "../../types/quotation";
 import toast from "react-hot-toast";
 
@@ -75,9 +75,16 @@ export const ConvertQuotationModal: React.FC<Props> = ({
       onSuccess();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setFormError(err.response?.data || "Failed to convert quotation");
+        const errorMessage =
+          typeof err.response?.data === "string"
+            ? err.response.data
+            : err.response?.data?.message ||
+              "An active invoice has already been generated for this quotation. Please cancel the existing invoice before generating a new one.";
+        setFormError(errorMessage);
       } else {
-        setFormError("An unexpected error occurred");
+        setFormError(
+          "An unexpected error occurred while converting the quotation.",
+        );
       }
     } finally {
       setSaving(false);
@@ -85,28 +92,32 @@ export const ConvertQuotationModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200/80 space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">
               Convert Quotation to Invoice
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
               Select an approved proposal to generate a billing statement
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {formError && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm p-3.5 rounded-xl font-medium">
-            {formError}
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl flex items-start gap-3 shadow-2xs animate-in slide-in-from-top-2 duration-150">
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+            <span className="text-xs font-semibold leading-relaxed">
+              {formError}
+            </span>
           </div>
         )}
 
@@ -119,18 +130,19 @@ export const ConvertQuotationModal: React.FC<Props> = ({
               placeholder="Search by quotation # or customer name..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] transition-all"
+              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] transition-all"
             />
           </div>
 
           {/* Scrollable list of backend-filtered quotation cards */}
-          <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          <div className="max-h-60 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
             {loading ? (
-              <div className="p-8 text-center text-slate-400 text-xs font-medium">
-                Searching quotations...
+              <div className="p-10 text-center text-slate-400 text-xs font-medium flex flex-col items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                <span>Searching quotations...</span>
               </div>
             ) : quotations.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs font-medium">
+              <div className="p-10 text-center text-slate-400 text-xs font-medium">
                 No matching quotations found.
               </div>
             ) : (
@@ -140,15 +152,15 @@ export const ConvertQuotationModal: React.FC<Props> = ({
                   <div
                     key={q.quotationId}
                     onClick={() => setSelectedQuotationId(q.quotationId)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                       isSelected
-                        ? "bg-amber-50/60 border-[#F9B53F] shadow-2xs"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                        ? "bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/50 shadow-2xs"
+                        : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-[#FCFDFF]"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3.5">
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-colors ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${
                           isSelected
                             ? "bg-[#FFCB62] text-slate-900 shadow-2xs"
                             : "bg-slate-100 text-slate-600"
@@ -156,17 +168,17 @@ export const ConvertQuotationModal: React.FC<Props> = ({
                       >
                         <FileText className="w-4 h-4" />
                       </div>
-                      <div>
-                        <div className="text-xs font-bold font-mono text-slate-900">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold font-mono text-slate-900 truncate">
                           {q.quotationNumber}
                         </div>
-                        <div className="text-sm font-bold text-slate-800 mt-0.5">
+                        <div className="text-xs font-bold text-slate-800 truncate mt-0.5">
                           {q.companyName || "N/A"}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <div className="text-xs font-bold font-mono text-slate-900">
                           PHP {(q.totalAmount ?? 0).toFixed(2)}
@@ -176,7 +188,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
                         </div>
                       </div>
                       <div
-                        className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
                           isSelected
                             ? "bg-[#F9B53F] border-[#F9B53F] text-slate-900"
                             : "border-slate-300 bg-white"
@@ -191,20 +203,20 @@ export const ConvertQuotationModal: React.FC<Props> = ({
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !selectedQuotationId}
-              className="px-5 py-2.5 text-sm font-bold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {saving ? "Converting..." : "Generate Invoice"}
+              {saving ? "Generating..." : "Generate Invoice"}
             </button>
           </div>
         </form>

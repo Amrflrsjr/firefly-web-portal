@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../api/axios";
@@ -7,7 +7,13 @@ import type {
   CreateProductDto,
   ProductVariant,
 } from "../types/product";
-import { Plus, Search, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Search,
+  AlertCircle,
+  Sparkles,
+  ArrowUpRight,
+} from "lucide-react";
 import axios from "axios";
 
 import { ProductTable } from "../components/products/ProductTable";
@@ -37,31 +43,45 @@ export const Products: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const loadProducts = async (query = "", sort = "name", asc = true) => {
-    try {
-      setLoading(true);
-      const response = await api.get<Product[]>("/products", {
-        params: { search: query, sortBy: sort, ascending: asc },
-      });
-      setProducts(response.data);
-      setApiError(null);
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const msg =
-          err.response?.data?.message ||
-          err.message ||
-          "Failed to connect to API";
-        setApiError(msg);
+  const loadProducts = useCallback(
+    async (query = "", sort = "name", asc = true) => {
+      try {
+        setLoading(true);
+        const response = await api.get<Product[]>("/products", {
+          params: { search: query, sortBy: sort, ascending: asc },
+        });
+        setProducts(response.data);
+        setApiError(null);
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err)) {
+          const msg =
+            err.response?.data?.message ||
+            err.message ||
+            "Failed to connect to API";
+          setApiError(msg);
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [],
+  );
+
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadProducts(searchQuery, sortBy, ascending);
-  }, [searchQuery, sortBy, ascending]);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadProducts(searchQuery, sortBy, ascending);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      loadProducts(searchQuery, sortBy, ascending);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, sortBy, ascending, loadProducts]);
 
   // Auto-open modal if there's an exact ID match
   const exactMatchProduct = searchQuery
@@ -70,7 +90,19 @@ export const Products: React.FC = () => {
 
   const activeProduct = selectedProduct || exactMatchProduct;
 
-  // Handlers
+  const updateQueryParams = (updates: Record<string, string>) => {
+    const params: Record<string, string> = {
+      search: searchQuery,
+      sortBy: sortBy,
+      ascending: String(ascending),
+      ...updates,
+    };
+    Object.keys(params).forEach((key) => {
+      if (!params[key]) delete params[key];
+    });
+    setSearchParams(params, { replace: true });
+  };
+
   const handleCreateProduct = async (dto: CreateProductDto) => {
     setSaving(true);
     setFormError("");
@@ -183,10 +215,8 @@ export const Products: React.FC = () => {
       await api.put(`/products/variants/${variantId}`, payload);
       toast.success("Stock updated successfully!");
 
-      // 1. Reload the main products table data
       await loadProducts(searchQuery, sortBy, ascending);
 
-      // 2. Fetch fresh data and update the active modal's product state so it reflects instantly
       const updatedResponse = await api.get<Product[]>("/products", {
         params: { search: searchQuery, sortBy, ascending },
       });
@@ -210,23 +240,9 @@ export const Products: React.FC = () => {
     }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    const params: Record<string, string> = {};
-    if (val) params.search = val;
-    if (sortBy) params.sortBy = sortBy;
-    if (!ascending) params.ascending = "false";
-    setSearchParams(params, { replace: true });
-  };
-
   const handleSortChange = (field: string) => {
     const newAscending = sortBy === field ? !ascending : true;
-    const params: Record<string, string> = {
-      sortBy: field,
-      ascending: String(newAscending),
-    };
-    if (searchQuery) params.search = searchQuery;
-    setSearchParams(params, { replace: true });
+    updateQueryParams({ sortBy: field, ascending: String(newAscending) });
   };
 
   const executeDeleteProduct = async () => {
@@ -250,56 +266,71 @@ export const Products: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Products & Catalog
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Manage items, variants, SKUs, and unit pricing
-          </p>
+    <div className="space-y-6 pb-10">
+      {/* Executive Header Banner matching Dashboard style */}
+      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
+        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Catalog & Inventory Hub</span>
+            </div>
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+              Products & Catalog
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
+              Manage items, variants, SKUs, and unit pricing seamlessly across
+              your inventory.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setFormError("");
+                setIsCreateOpen(true);
+              }}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-3" />
+              <span>Add Product</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => {
-            setFormError("");
-            setIsCreateOpen(true);
-          }}
-          className="inline-flex items-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 font-bold px-4 py-2.5 rounded-2xl shadow-xs transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Add Product
-        </button>
       </div>
 
       {apiError && (
-        <div className="bg-rose-50 border border-rose-200/80 text-rose-700 p-4 rounded-2xl flex items-center justify-between shadow-2xs">
-          <div className="flex items-center gap-2.5">
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
             onClick={() => loadProducts(searchQuery, sortBy, ascending)}
-            className="text-xs font-bold bg-white hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-1.5 rounded-xl transition-colors cursor-pointer shadow-2xs"
+            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors"
           >
             Retry
           </button>
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      {/* Professional UI/UX Search Toolbar */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 flex items-center justify-between">
+        <div className="relative w-full max-w-lg">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search by product name, description, or SKU..."
             value={searchQuery}
-            onChange={handleSearchChange}
-            className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all shadow-2xs"
+            onChange={(e) => updateQueryParams({ search: e.target.value })}
+            className="w-full bg-slate-50/80 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all shadow-2xs"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 overflow-hidden">
         <ProductTable
           loading={loading}
           products={products}

@@ -55,8 +55,11 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-slate-400 text-sm font-medium">
-        Loading invoices directory...
+      <div className="p-16 text-center text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="w-6 h-6 border-2 border-[#F9B53F] border-t-transparent rounded-full animate-spin" />
+        <span className="font-semibold text-slate-600">
+          Loading Invoice Catalog...
+        </span>
       </div>
     );
   }
@@ -262,7 +265,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                         <button
                           type="button"
                           onClick={(e) => handleSaveStatus(e, inv.invoiceId)}
-                          className="p-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors"
+                          className="p-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
                         >
                           <Check className="w-3.5 h-3.5" />
                         </button>
@@ -272,7 +275,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                             e.stopPropagation();
                             setEditingStatusId(null);
                           }}
-                          className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                          className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -292,7 +295,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                           type="button"
                           onClick={(e) => handleStartEditStatus(e, inv)}
                           title="Edit Status"
-                          className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+                          className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                         >
                           <Pencil className="w-3 h-3" />
                         </button>

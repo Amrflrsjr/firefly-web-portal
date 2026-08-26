@@ -10,6 +10,7 @@ import { Quotations } from "./pages/Quotation";
 import { Invoices } from "./pages/Invoices";
 import { Trash } from "./pages/Trash";
 import { Dashboard } from "./pages/Dashboard";
+import { NotFound } from "./components/common/NotFound";
 
 export function App() {
   return (
@@ -21,7 +22,7 @@ export function App() {
           style: {
             fontSize: "14px",
             borderRadius: "10px",
-            background: "#1e293b", // Slate 800
+            background: "#1e293b",
             color: "#fff",
           },
           success: {
@@ -44,13 +45,15 @@ export function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
-              <Route path="/" element={<Navigate to="/customers" replace />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/quotations" element={<Quotations />} />
               <Route path="/products" element={<Products />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/trash" element={<Trash />} />
               <Route path="/dashboard" element={<Dashboard />} />
+
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Route>
         </Routes>

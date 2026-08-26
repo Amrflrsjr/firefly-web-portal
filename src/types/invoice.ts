@@ -9,13 +9,13 @@ export interface InvoiceItemDto {
 
 export interface PaymentDto {
   paymentId: number;
-  invoiceId: number; // Added to match C# PaymentResponseDto
-  amountPaid: number; // Changed from 'amount'
+  invoiceId: number;
+  amountPaid: number;
   paymentDate: string;
   paymentMethod: string;
   referenceNumber: string;
   notes: string;
-  createdAt: string; // Added to match C#
+  createdAt: string;
 }
 
 export interface InvoiceResponseDto {
@@ -24,36 +24,40 @@ export interface InvoiceResponseDto {
   quotationId: number;
   quotationNumber: string;
   customerId: number;
-  companyName: string; // Changed from 'customerName' to match C#
-  contactNameSnapshot: string; // Added to match C#
-  contactEmailSnapshot: string; // Added to match C#
-  issueDate: string; // Added to match C#
-  dueDate: string; // Added to match C#
-  vatType: string; // Added to match C#
-  subtotal: number; // Added to match C#
-  vatAmount: number; // Added to match C#
+  companyName: string;
+  contactNameSnapshot: string;
+  contactEmailSnapshot: string;
+  issueDate: string;
+  dueDate: string;
+  vatType: string;
+  subtotal: number;
+  vatAmount: number;
   totalAmount: number;
-  totalPaid: number; // Changed from 'paidAmount' to match C#
+  totalPaid: number;
   balanceDue: number;
   status: string;
-  notes: string; // Added to match C#
+  notes: string;
   createdAt: string;
-  items?: InvoiceItemDto[]; // Made optional in case it isn't always returned
+  items?: InvoiceItemDto[];
   payments: PaymentDto[];
 }
 
 export interface ConvertQuotationToInvoiceDto {
   quotationId: number;
-  dueDate: string; // Removed '?' to ensure it is sent
-  notes: string; // Removed '?' to ensure it is sent
+  dueDate: string;
+  notes: string;
 }
 
 export interface RecordPaymentDto {
-  amountPaid: number; // Changed from 'amount'
-  paymentDate: string; // Added missing property
+  amountPaid: number;
+  paymentDate: string;
   paymentMethod: string;
   referenceNumber: string;
   notes: string;
+}
+
+export interface UpdateInvoiceStatusDto {
+  status: string;
 }
 
 export interface EmailPreviewDto {

@@ -2,7 +2,15 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import axios from "axios";
-import { Search, Plus, AlertCircle, Filter, X } from "lucide-react";
+import {
+  Search,
+  Plus,
+  AlertCircle,
+  Filter,
+  X,
+  Sparkles,
+  ArrowUpRight,
+} from "lucide-react";
 import type { InvoiceResponseDto } from "../types/invoice";
 import type { QuotationResponseDto } from "../types/quotation";
 import toast from "react-hot-toast";
@@ -184,7 +192,7 @@ export const Invoices: React.FC = () => {
 
   const handleUpdateStatus = async (invoiceId: number, status: string) => {
     try {
-      await api.put(`/invoices/${invoiceId}/status`, { status });
+      await api.patch(`/invoices/${invoiceId}/status`, { status });
       toast.success("Invoice status updated successfully!");
       loadData(
         searchQuery,
@@ -196,7 +204,11 @@ export const Invoices: React.FC = () => {
       );
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data || "Failed to update invoice status");
+        toast.error(
+          err.response?.data?.message ||
+            err.response?.data ||
+            "Failed to update invoice status",
+        );
       } else {
         toast.error("Failed to update invoice status");
       }
@@ -212,7 +224,7 @@ export const Invoices: React.FC = () => {
     setSaving(true);
     try {
       await api.delete(`/invoices/${invoiceToDelete}`);
-      toast.success("Invoice cancelled successfully!");
+      toast.success("Invoice moved to trash successfully!");
       setSelectedInvoice(null);
       setInvoiceToDelete(null);
       loadData(
@@ -225,9 +237,9 @@ export const Invoices: React.FC = () => {
       );
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data?.message || "Failed to cancel invoice");
+        toast.error(err.response?.data?.message || "Failed to delete invoice");
       } else {
-        toast.error("Failed to cancel invoice");
+        toast.error("Failed to delete invoice");
       }
     } finally {
       setSaving(false);
@@ -261,24 +273,36 @@ export const Invoices: React.FC = () => {
     statusFilter !== "all" || startDateFilter || endDateFilter || searchQuery;
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Invoices & Payments
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Convert approved estimates to invoices and record customer payments
-            seamlessly
-          </p>
+    <div className="space-y-6 pb-10">
+      {/* Executive Header Banner matching Dashboard/Customers style */}
+      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
+        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Billing & Payments Hub</span>
+            </div>
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+              Invoices & Payments
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
+              Convert approved estimates to invoices and record customer
+              payments seamlessly.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsConvertOpen(true)}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-3" />
+              <span>Convert Quotation to Invoice</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setIsConvertOpen(true)}
-          className="inline-flex items-center justify-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 font-extrabold px-5 py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/10 cursor-pointer active:scale-95"
-        >
-          <Plus className="w-4 h-4 stroke-3" /> Convert Quotation to Invoice
-        </button>
       </div>
 
       {apiError && (
@@ -314,7 +338,7 @@ export const Invoices: React.FC = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by invoice number or customer name..."
+                placeholder="Search by invoice number, customer name or quotation number..."
                 value={searchQuery}
                 onChange={(e) => updateQueryParams({ search: e.target.value })}
                 className="w-full bg-slate-50/80 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all shadow-2xs"
@@ -353,12 +377,13 @@ export const Invoices: React.FC = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => updateQueryParams({ status: e.target.value })}
-                className="w-full sm:w-auto bg-slate-50/80 border border-slate-200/80 rounded-2xl px-4 py-2.5 lg:py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all cursor-pointer shadow-2xs"
+                className="w-full sm:w-auto bg-slate-50/80 border border-slate-200/80 rounded-2xl px-3 py-2.5 lg:py-1 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all cursor-pointer shadow-2xs"
               >
                 <option value="all">All Statuses</option>
                 <option value="Unpaid">Unpaid</option>
                 <option value="PartiallyPaid">Partially Paid</option>
                 <option value="Paid">Paid</option>
+                <option value="Cancelled">Cancelled</option>
               </select>
             </div>
 
@@ -481,9 +506,9 @@ export const Invoices: React.FC = () => {
 
       <ConfirmModal
         isOpen={invoiceToDelete !== null}
-        title="Cancel Invoice"
-        message="Are you sure you want to cancel this invoice? This will set its status to Cancelled and remove it from active financial tracking."
-        confirmText="Yes, Cancel"
+        title="Move Invoice to Trash"
+        message="Are you sure you want to move this invoice to the trash? You can restore it later from the archive view if needed."
+        confirmText="Yes, Move to Trash"
         isDanger={true}
         loading={saving}
         onConfirm={executeDeleteInvoice}

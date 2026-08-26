@@ -55,8 +55,11 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-slate-400 text-sm font-medium">
-        Loading quotations directory...
+      <div className="p-16 text-center text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="w-6 h-6 border-2 border-[#F9B53F] border-t-transparent rounded-full animate-spin" />
+        <span className="font-semibold text-slate-600">
+          Loading quotations directory...
+        </span>
       </div>
     );
   }
