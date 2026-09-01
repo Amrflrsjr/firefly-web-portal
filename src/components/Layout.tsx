@@ -33,7 +33,7 @@ export const Layout: React.FC = () => {
     { label: "Invoices", path: "/invoices", icon: Receipt },
     { label: "Customers", path: "/customers", icon: Users },
     { label: "Products", path: "/products", icon: Package },
-    { label: "Recently Deleted", path: "/trash", icon: Trash2 },
+    { label: "Archive", path: "/trash", icon: Trash2 },
   ];
 
   return (

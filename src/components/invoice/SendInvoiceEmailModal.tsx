@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from "react";
 import api from "../../api/axios";
 import axios from "axios";
-import { X, Mail, FileText, Loader2, Trash2, Plus } from "lucide-react";
+import {
+  X,
+  Mail,
+  Paperclip,
+  AlertCircle,
+  RefreshCw,
+  Send,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import type {
   InvoiceResponseDto,
   EmailPreviewDto,
   SendEmailRequestDto,
 } from "../../types/invoice";
 import toast from "react-hot-toast";
+import { ConfirmModal } from "../common/ConfirmModal";
 
 interface Props {
   invoice: InvoiceResponseDto | null;
@@ -23,6 +33,7 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [, setPreview] = useState<EmailPreviewDto | null>(null);
   const [emailData, setEmailData] = useState<SendEmailRequestDto>({
@@ -74,8 +85,23 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
 
   if (!invoice) return null;
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validEmails = emailData.recipientEmails.filter(
+      (email) => email.trim() !== "",
+    );
+
+    if (validEmails.length === 0) {
+      setError("Please provide at least one recipient email address.");
+      return;
+    }
+
+    setError("");
+    setShowConfirm(true);
+  };
+
+  const executeSendEmail = async () => {
+    setShowConfirm(false); // Hide ConfirmModal immediately
     setSending(true);
     setError("");
 
@@ -127,153 +153,189 @@ export const SendInvoiceEmailModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] font-bold flex items-center justify-center text-xs shadow-2xs">
-              <Mail className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">
-                Send Invoice via Email
-              </h2>
-              <p className="text-xs text-slate-500 font-mono">
-                {invoice.invoiceNumber}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm p-3.5 rounded-xl font-medium">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
-            <Loader2 className="w-7 h-7 animate-spin text-[#F9B53F]" />
-            <p className="text-xs font-semibold">Generating email preview...</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSend} className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                  Recipients (To) *
-                </label>
-                <button
-                  type="button"
-                  onClick={addEmailField}
-                  className="text-xs font-bold text-[#d99723] hover:text-[#b37a18] inline-flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Recipient
-                </button>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-xl overflow-hidden my-auto flex flex-col max-h-[94vh]">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-[#F9B53F] shadow-2xs">
+                <Mail className="w-5 h-5" />
               </div>
-              <div className="space-y-2">
-                {emailData.recipientEmails.map((email, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="email"
-                      required={idx === 0}
-                      value={email}
-                      onChange={(e) => handleEmailChange(idx, e.target.value)}
-                      placeholder="customer@example.com"
-                      className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all"
-                    />
-                    {emailData.recipientEmails.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeEmailField(idx)}
-                        className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+              <div>
+                <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                  Send Invoice via Email
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                  Dispatch official PDF invoice directly to client inbox
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              disabled={sending}
+              className="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/80 transition-colors cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Content Body */}
+          <div className="p-5 sm:p-6 overflow-y-auto flex-1 bg-slate-50/40 space-y-4">
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-semibold shadow-2xs">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="py-12 text-center text-slate-400 text-xs font-bold flex flex-col items-center justify-center gap-2">
+                <RefreshCw className="w-5 h-5 animate-spin text-[#F9B53F]" />
+                Generating email preview...
+              </div>
+            ) : (
+              <form
+                id="email-invoice-form"
+                onSubmit={handleFormSubmit}
+                className="space-y-4"
+              >
+                {/* Dynamic Recipients Input */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                      Recipients <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addEmailField}
+                      disabled={sending}
+                      className="text-[10px] font-extrabold text-[#F9B53F] hover:underline cursor-pointer inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-3 h-3" /> Add Recipient
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="space-y-2">
+                    {emailData.recipientEmails.map((email, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="email"
+                          required={idx === 0}
+                          disabled={sending}
+                          value={email}
+                          onChange={(e) =>
+                            handleEmailChange(idx, e.target.value)
+                          }
+                          placeholder="client@company.com"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] transition-all disabled:opacity-60"
+                        />
+                        {emailData.recipientEmails.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeEmailField(idx)}
+                            disabled={sending}
+                            className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/60 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                Subject *
-              </label>
-              <input
-                type="text"
-                required
-                value={emailData.subject}
-                onChange={(e) =>
-                  setEmailData({ ...emailData, subject: e.target.value })
-                }
-                className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all font-medium"
-              />
-            </div>
+                {/* Subject Line */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Subject Line <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={sending}
+                    value={emailData.subject}
+                    onChange={(e) =>
+                      setEmailData({ ...emailData, subject: e.target.value })
+                    }
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] transition-all disabled:opacity-60"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                Message Body *
-              </label>
-              <textarea
-                required
-                rows={4}
-                value={emailData.body}
-                onChange={(e) =>
-                  setEmailData({ ...emailData, body: e.target.value })
-                }
-                className="w-full bg-[#FCFDFF] border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all"
-              />
-            </div>
+                {/* Message Body */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Message Body <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    rows={6}
+                    required
+                    disabled={sending}
+                    value={emailData.body}
+                    onChange={(e) =>
+                      setEmailData({ ...emailData, body: e.target.value })
+                    }
+                    className="w-full bg-white border border-slate-200 rounded-2xl p-3.5 text-xs font-medium text-slate-800 leading-relaxed focus:outline-none focus:border-[#F9B53F] resize-none transition-all disabled:opacity-60"
+                  />
+                </div>
 
-            {/* Attachment Preview Box */}
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 flex items-center gap-3 shadow-2xs">
-              <div className="w-10 h-10 rounded-xl bg-white shadow-2xs border border-slate-200/80 flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5 text-rose-500" />
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold text-slate-800 truncate">
-                  Invoice_{invoice.invoiceNumber}.pdf
-                </p>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  Auto-generated PDF attachment included
-                </p>
-              </div>
-            </div>
+                {/* Attached PDF Box */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/60 text-rose-500 flex items-center justify-center shrink-0">
+                      <Paperclip className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-800">
+                        Attached PDF Document
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400">
+                        Invoice_{invoice.invoiceNumber}.pdf
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase bg-amber-50 text-amber-800 border border-amber-200/60 px-2.5 py-1 rounded-full">
+                    Auto-Attached
+                  </span>
+                </div>
+              </form>
+            )}
+          </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          {/* Modal Footer Actions */}
+          {!loading && (
+            <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-slate-100 bg-white shrink-0">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                disabled={sending}
+                className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-500 text-xs font-bold rounded-2xl transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
+                form="email-invoice-form"
                 type="submit"
                 disabled={sending}
-                className="px-5 py-2.5 text-sm font-bold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-extrabold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-2xl shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {sending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Sending...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="w-4 h-4" /> Send Email
-                  </>
-                )}
+                <Send className="w-3.5 h-3.5" />
+                {sending ? "Sending Email..." : "Send Email"}
               </button>
             </div>
-          </form>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+
+      <ConfirmModal
+        isOpen={showConfirm}
+        title="Send Invoice Email"
+        message={`Are you sure you want to send invoice #${invoice.invoiceNumber} to the specified recipient(s)?`}
+        confirmText="Send Now"
+        loading={sending}
+        onConfirm={executeSendEmail}
+        onClose={() => setShowConfirm(false)}
+      />
+    </>
   );
 };

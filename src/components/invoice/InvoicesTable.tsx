@@ -7,15 +7,13 @@ import {
   Download,
   Mail,
   Trash2,
-  Check,
-  X,
-  Pencil,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   CreditCard,
+  ChevronDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -46,9 +44,6 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   onUpdateStatus,
   onDeleteInvoice,
 }) => {
-  const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string>("Unpaid");
-
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -84,18 +79,19 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  const getStatusBadge = (status: string) => {
+  // Dynamic badge styling helper for invoice status options
+  const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case "paid":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200/80";
+        return "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80";
       case "partiallypaid":
       case "partially paid":
-        return "bg-amber-50 text-amber-700 border-amber-200/80";
+        return "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100/80";
       case "cancelled":
-        return "bg-slate-100 text-slate-600 border-slate-200/80";
+        return "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200/80";
       case "unpaid":
       default:
-        return "bg-rose-50 text-rose-700 border-rose-200/80";
+        return "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80";
     }
   };
 
@@ -122,19 +118,13 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     }
   };
 
-  const handleStartEditStatus = (
-    e: React.MouseEvent,
-    inv: InvoiceResponseDto,
+  const handleStatusChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+    invoiceId: number,
   ) => {
     e.stopPropagation();
-    setEditingStatusId(inv.invoiceId);
-    setSelectedStatus(inv.status || "Unpaid");
-  };
-
-  const handleSaveStatus = (e: React.MouseEvent, invoiceId: number) => {
-    e.stopPropagation();
-    onUpdateStatus(invoiceId, selectedStatus);
-    setEditingStatusId(null);
+    const newStatus = e.target.value;
+    onUpdateStatus(invoiceId, newStatus);
   };
 
   const renderSortIcon = (field: string) => {
@@ -212,13 +202,11 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm font-medium">
             {currentInvoices.map((inv) => {
-              const isEditingStatus = editingStatusId === inv.invoiceId;
-
               return (
                 <tr
                   key={inv.invoiceId}
-                  onClick={() => !isEditingStatus && onViewDetails(inv)}
-                  className="hover:bg-[#FCFDFF] transition-colors cursor-pointer group"
+                  onClick={() => onViewDetails(inv)}
+                  className="hover:bg-slate-50/60 transition-colors cursor-pointer group"
                 >
                   <td className="py-4 px-6 text-slate-800">
                     <div className="flex items-center gap-3.5">
@@ -246,61 +234,46 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                     ).toLocaleDateString()}
                   </td>
 
-                  <td className="py-4 px-6">
-                    {isEditingStatus ? (
-                      <div
-                        className="flex items-center gap-1.5"
-                        onClick={(e) => e.stopPropagation()}
+                  {/* Direct Dropdown Status Badge */}
+                  <td
+                    className="py-4 px-6"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative inline-flex items-center">
+                      <select
+                        value={inv.status || "Unpaid"}
+                        onChange={(e) => handleStatusChange(e, inv.invoiceId)}
+                        className={`appearance-none cursor-pointer pl-3 pr-7 py-1 rounded-full text-xs font-bold border transition-all duration-200 outline-none focus:ring-2 focus:ring-amber-400/40 shadow-xs ${getStatusBadgeStyle(
+                          inv.status,
+                        )}`}
                       >
-                        <select
-                          value={selectedStatus}
-                          onChange={(e) => setSelectedStatus(e.target.value)}
-                          className="bg-white border border-slate-300 rounded-xl px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                        <option
+                          value="Unpaid"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          <option value="Unpaid">Unpaid</option>
-                          <option value="PartiallyPaid">Partially Paid</option>
-                          <option value="Paid">Paid</option>
-                          <option value="Cancelled">Cancelled</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={(e) => handleSaveStatus(e, inv.invoiceId)}
-                          className="p-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
+                          Unpaid
+                        </option>
+                        <option
+                          value="PartiallyPaid"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingStatusId(null);
-                          }}
-                          className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                          Partially Paid
+                        </option>
+                        <option
+                          value="Paid"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-2">
-                        <span
-                          className={`inline-flex items-center text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${getStatusBadge(
-                            inv.status,
-                          )}`}
+                          Paid
+                        </option>
+                        <option
+                          value="Cancelled"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          {inv.status === "PartiallyPaid"
-                            ? "Partially Paid"
-                            : inv.status}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleStartEditStatus(e, inv)}
-                          title="Edit Status"
-                          className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
+                          Cancelled
+                        </option>
+                      </select>
+                      <ChevronDown className="w-3 h-3 absolute right-2.5 pointer-events-none opacity-60" />
+                    </div>
                   </td>
 
                   <td className="py-4 px-6 text-right font-bold text-rose-600 font-mono text-xs">
@@ -311,6 +284,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                     PHP {(inv.totalAmount ?? 0).toFixed(2)}
                   </td>
 
+                  {/* Redesigned Modern Action Buttons */}
                   <td className="py-4 px-6 text-right">
                     <div
                       className="flex items-center justify-end gap-1.5"
@@ -319,7 +293,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                       <button
                         onClick={() => onRecordPayment(inv)}
                         title="Record Payment"
-                        className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-700 border border-emerald-200/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
                         <CreditCard className="w-4 h-4" />
                       </button>
@@ -329,23 +303,23 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                           onViewPdf(inv.invoiceId, inv.invoiceNumber)
                         }
                         title="Preview PDF"
-                        className="p-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-white/80 hover:bg-slate-100 text-slate-600 hover:text-blue-600 border border-slate-200/80 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
-                        <Eye className="w-4 h-4 text-blue-500" />
+                        <Eye className="w-4 h-4" />
                       </button>
 
                       <button
                         onClick={(e) => handlePdfDownload(e, inv)}
                         title="Download PDF"
-                        className="p-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-white/80 hover:bg-slate-100 text-slate-600 hover:text-emerald-600 border border-slate-200/80 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
-                        <Download className="w-4 h-4 text-emerald-500" />
+                        <Download className="w-4 h-4" />
                       </button>
 
                       <button
                         onClick={() => onOpenEmail(inv)}
                         title="Send Email"
-                        className="p-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-medium rounded-xl transition-all duration-150 shadow-2xs hover:shadow-amber-500/20 active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
                         <Mail className="w-4 h-4" />
                       </button>
@@ -353,7 +327,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                       <button
                         onClick={() => onDeleteInvoice(inv.invoiceId)}
                         title="Delete Invoice"
-                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl transition-all cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-rose-50 hover:bg-rose-100/80 text-rose-600 border border-rose-200/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

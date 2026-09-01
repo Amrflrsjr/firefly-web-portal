@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { quotationApi } from "../../api/quotations";
 import type { EmailPreviewDto } from "../../types/quotation";
-import { X, Send, Mail, Paperclip } from "lucide-react";
+import { X, Send, Mail, Paperclip, AlertCircle, RefreshCw } from "lucide-react";
+import { ConfirmModal } from "../common/ConfirmModal"; // Adjust import path if needed
 
 interface EmailQuotationModalProps {
   quotationId: number;
@@ -17,6 +18,7 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
   const [preview, setPreview] = useState<EmailPreviewDto | null>(null);
 
   const [recipients, setRecipients] = useState("");
@@ -33,11 +35,11 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
 
         setPreview(data);
 
-        // 1. Extract recipients array (handles 'recipients' from DocumentEmailPreviewDto)
+        // 1. Extract recipients array
         const recipientList = data.recipients || data.recipientEmails || [];
         setRecipients(recipientList.join(", "));
 
-        // 2. Extract quotation number safely (handles 'documentNumber' from DocumentEmailPreviewDto)
+        // 2. Extract quotation number safely
         const qNum =
           data.documentNumber ||
           data.quotationNumber ||
@@ -63,7 +65,7 @@ export const EmailQuotationModal: React.FC<EmailQuotationModalProps> = ({
                   style: "currency",
                   currency: "PHP",
                 }).format(data.totalAmount)
-              : "PHP 0.00";
+              : "₱0.00";
 
           const generatedBody = `Dear ${contactPerson},
 
@@ -102,11 +104,8 @@ Firefly Team`;
     };
   }, [quotationId]);
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSending(true);
-    setError("");
-
     const emailList = recipients
       .split(",")
       .map((item) => item.trim())
@@ -114,9 +113,22 @@ Firefly Team`;
 
     if (emailList.length === 0) {
       setError("Please provide at least one recipient email address.");
-      setSending(false);
       return;
     }
+
+    setError("");
+    setShowConfirm(true);
+  };
+
+  const executeSendEmail = async () => {
+    setShowConfirm(false);
+    setSending(true);
+    setError("");
+
+    const emailList = recipients
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
 
     try {
       await quotationApi.sendEmail(quotationId, emailList, body, subject);
@@ -135,114 +147,157 @@ Firefly Team`;
     preview?.attachmentFileName || `Quotation_${displayQNum}.pdf`;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-          <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-[#F9B53F]" />
-            <h2 className="text-lg font-bold text-slate-800">
-              Email Quotation
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-lg mb-3">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="p-8 text-center text-slate-500 text-sm">
-            Loading email preview...
-          </div>
-        ) : (
-          <form onSubmit={handleSend} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                Recipients (comma separated) *
-              </label>
-              <input
-                type="text"
-                required
-                value={recipients}
-                onChange={(e) => setRecipients(e.target.value)}
-                placeholder="client@company.com"
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 font-mono text-xs focus:ring-2 focus:ring-[#FFCB62] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                Subject *
-              </label>
-              <input
-                type="text"
-                required
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-[#FFCB62] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                Message Body
-              </label>
-              <textarea
-                rows={7}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 font-sans leading-relaxed focus:ring-2 focus:ring-[#FFCB62] outline-none"
-              />
-            </div>
-
-            {/* Attached PDF Box */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-red-100 text-red-600 rounded-lg">
-                  <Paperclip className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-800">
-                    Attached PDF File
-                  </div>
-                  <div className="text-[11px] font-mono text-slate-500">
-                    {pdfFileName}
-                  </div>
-                </div>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-xl overflow-hidden my-auto flex flex-col max-h-[94vh]">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-[#F9B53F] shadow-2xs">
+                <Mail className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold uppercase bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md">
-                Included
-              </span>
+              <div>
+                <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                  Email Quotation
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                  Dispatch official PDF proposal directly to client inbox
+                </p>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              onClick={onClose}
+              disabled={sending}
+              className="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/80 transition-colors cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Content Body */}
+          <div className="p-5 sm:p-6 overflow-y-auto flex-1 bg-slate-50/40 space-y-4">
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-semibold shadow-2xs">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="py-12 text-center text-slate-400 text-xs font-bold flex flex-col items-center justify-center gap-2">
+                <RefreshCw className="w-5 h-5 animate-spin text-[#F9B53F]" />
+                Loading email preview...
+              </div>
+            ) : (
+              <form
+                id="email-quotation-form"
+                onSubmit={handleFormSubmit}
+                className="space-y-4"
+              >
+                {/* Recipients Input */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Recipients (comma separated){" "}
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={sending}
+                    value={recipients}
+                    onChange={(e) => setRecipients(e.target.value)}
+                    placeholder="client@company.com, contact@company.com"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                {/* Subject Input */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Subject Line <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={sending}
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                {/* Message Body Input */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Message Body
+                  </label>
+                  <textarea
+                    rows={6}
+                    disabled={sending}
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-2xl p-3.5 text-xs font-medium text-slate-800 leading-relaxed focus:outline-none focus:border-[#F9B53F] resize-none transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                {/* Attached PDF Box */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/60 text-rose-500 flex items-center justify-center shrink-0">
+                      <Paperclip className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-800">
+                        Attached PDF Document
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400">
+                        {pdfFileName}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase bg-amber-50 text-amber-800 border border-amber-200/60 px-2.5 py-1 rounded-full">
+                    Auto-Attached
+                  </span>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* Modal Footer Actions */}
+          {!loading && (
+            <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-slate-100 bg-white shrink-0">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                disabled={sending}
+                className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-500 text-xs font-bold rounded-2xl transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
+                form="email-quotation-form"
                 type="submit"
                 disabled={sending}
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-bold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-extrabold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-2xl shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" />
-                {sending ? "Sending..." : "Send Quotation"}
+                <Send className="w-3.5 h-3.5" />
+                {sending ? "Sending Email..." : "Send Quotation"}
               </button>
             </div>
-          </form>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+
+      <ConfirmModal
+        isOpen={showConfirm}
+        title="Send Quotation Email"
+        message={`Are you sure you want to send quotation #${displayQNum} to the specified recipient(s)?`}
+        confirmText="Send Now"
+        loading={sending}
+        onConfirm={executeSendEmail}
+        onClose={() => setShowConfirm(false)}
+      />
+    </>
   );
 };

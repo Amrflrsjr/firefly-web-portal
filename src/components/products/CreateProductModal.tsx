@@ -12,6 +12,7 @@ import {
   DollarSign,
   Box,
   Sliders,
+  Palette,
 } from "lucide-react";
 
 interface CreateProductModalProps {
@@ -33,8 +34,8 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     variants: [
       {
         sku: "",
-        color: "Standard",
-        size: "Standard",
+        color: "",
+        size: "",
         unitPrice: 0,
         stock: 0,
         isActive: true,
@@ -65,8 +66,8 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
         ...formData.variants,
         {
           sku: "",
-          color: "Standard",
-          size: "Standard",
+          color: "",
+          size: "",
           unitPrice: 0,
           stock: 0,
           isActive: true,
@@ -93,7 +94,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl overflow-hidden my-8 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
         {/* Top Accent Gradient Bar */}
         <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
 
@@ -206,21 +207,50 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                       <div className="space-y-1">
                         <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 uppercase">
-                          <Tag className="w-3 h-3 text-[#F9B53F]" /> SKU{" "}
-                          <span className="text-rose-500">*</span>
+                          <Tag className="w-3 h-3 text-[#F9B53F]" /> SKU
                         </label>
                         <input
                           type="text"
-                          required
                           value={variant.sku}
                           onChange={(e) =>
                             handleVariantChange(index, "sku", e.target.value)
                           }
-                          placeholder="SKU-101"
+                          placeholder="Optional"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 uppercase focus:outline-none focus:border-[#F9B53F]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 uppercase">
+                          <Palette className="w-3 h-3 text-[#F9B53F]" /> Color
+                        </label>
+                        <input
+                          type="text"
+                          value={variant.color}
+                          onChange={(e) =>
+                            handleVariantChange(index, "color", e.target.value)
+                          }
+                          placeholder="e.g. Red, Matte"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#F9B53F]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 uppercase">
+                          <Sliders className="w-3 h-3 text-[#F9B53F]" /> Size /
+                          Option
+                        </label>
+                        <input
+                          type="text"
+                          value={variant.size}
+                          onChange={(e) =>
+                            handleVariantChange(index, "size", e.target.value)
+                          }
+                          placeholder="e.g. A4, Large"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#F9B53F]"
                         />
                       </div>
 
@@ -247,8 +277,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
 
                       <div className="space-y-1">
                         <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 uppercase">
-                          <Box className="w-3 h-3 text-[#F9B53F]" /> Initial
-                          Stock
+                          <Box className="w-3 h-3 text-[#F9B53F]" /> Stock
                         </label>
                         <input
                           type="number"
@@ -261,22 +290,6 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                             )
                           }
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 uppercase">
-                          <Sliders className="w-3 h-3 text-[#F9B53F]" /> Size /
-                          Option
-                        </label>
-                        <input
-                          type="text"
-                          value={variant.size}
-                          onChange={(e) =>
-                            handleVariantChange(index, "size", e.target.value)
-                          }
-                          placeholder="Glossy / Matte"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#F9B53F]"
                         />
                       </div>
                     </div>

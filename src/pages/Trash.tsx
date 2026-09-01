@@ -13,18 +13,30 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Archive,
+  Layers,
 } from "lucide-react";
 import axios from "axios";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 
-type TabType = "products" | "customers" | "quotations" | "invoices";
+type TabType =
+  | "products"
+  | "variants"
+  | "customers"
+  | "quotations"
+  | "invoices";
 
 interface DeletedItem {
   productId?: number;
+  productVariantId?: number;
+  variantId?: number;
   customerId?: number;
   quotationId?: number;
   invoiceId?: number;
   name?: string;
+  sku?: string;
+  color?: string;
+  size?: string;
   companyName?: string;
   quotationNumber?: string;
   invoiceNumber?: string;
@@ -49,12 +61,24 @@ export const Trash: React.FC = () => {
   const [itemToRestore, setItemToRestore] = useState<number | null>(null);
   const [itemToPurge, setItemToPurge] = useState<number | null>(null);
 
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   const fetchDeletedItems = useCallback(
     async (targetTab: TabType, search: string = "") => {
       setLoading(true);
       setApiError(null);
       try {
-        const response = await api.get(`/${targetTab}/deleted`, {
+        // Dynamic endpoint addressing for /products/variants/deleted or standard /tab/deleted
+        const endpoint =
+          targetTab === "variants"
+            ? "/products/variants/deleted"
+            : `/${targetTab}/deleted`;
+
+        const response = await api.get(endpoint, {
           params: { search: search.trim() ? search : undefined },
         });
         setItems(response.data);
@@ -82,7 +106,12 @@ export const Trash: React.FC = () => {
       setLoading(true);
       setApiError(null);
       try {
-        const response = await api.get(`/${activeTab}/deleted`, {
+        const endpoint =
+          activeTab === "variants"
+            ? "/products/variants/deleted"
+            : `/${activeTab}/deleted`;
+
+        const response = await api.get(endpoint, {
           params: { search: searchQuery.trim() ? searchQuery : undefined },
         });
         if (isMounted) {
@@ -121,7 +150,12 @@ export const Trash: React.FC = () => {
     if (itemToRestore === null) return;
     setActionLoading(true);
     try {
-      await api.post(`/${activeTab}/${itemToRestore}/restore`);
+      const endpoint =
+        activeTab === "variants"
+          ? `/products/variants/${itemToRestore}/restore`
+          : `/${activeTab}/${itemToRestore}/restore`;
+
+      await api.post(endpoint);
       toast.success("Item restored successfully!");
       setItemToRestore(null);
       fetchDeletedItems(activeTab, searchQuery);
@@ -144,7 +178,12 @@ export const Trash: React.FC = () => {
     if (itemToPurge === null) return;
     setActionLoading(true);
     try {
-      await api.delete(`/${activeTab}/${itemToPurge}/permanent`);
+      const endpoint =
+        activeTab === "variants"
+          ? `/products/variants/${itemToPurge}/permanent`
+          : `/${activeTab}/${itemToPurge}/permanent`;
+
+      await api.delete(endpoint);
       toast.success("Item permanently deleted!");
       setItemToPurge(null);
       fetchDeletedItems(activeTab, searchQuery);
@@ -181,6 +220,8 @@ export const Trash: React.FC = () => {
     switch (key) {
       case "products":
         return Package;
+      case "variants":
+        return Layers;
       case "customers":
         return Building2;
       case "quotations":
@@ -190,28 +231,61 @@ export const Trash: React.FC = () => {
     }
   };
 
+  const formatVariantName = (item: DeletedItem) => {
+    if (activeTab !== "variants") return null;
+    const parts = [item.sku, item.color, item.size].filter(
+      (p) => p && String(p).trim() !== "",
+    );
+    return parts.length > 0 ? parts.join(" / ") : "Unnamed Variant";
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
       {/* Executive Command Header Banner */}
       <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Archive & Trash Management</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Archive &amp; Trash Management</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                </span>
+                {today}
+              </div>
             </div>
             <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
-              Recently Deleted Records
+              Archive
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Restore soft-deleted system components back to active workflows or
-              purge them permanently from the database.
+              Restore soft-deleted system records back to active workflows or
+              purge them permanently from your database.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
-            <div className="px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-white text-xs font-bold font-mono">
-              Total Archived: {items.length}
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0 self-start md:self-auto">
+            {/* Real-time Summary Indicator */}
+            <div className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-semibold">
+              <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                <Archive className="w-4 h-4" />
+                <span>
+                  {items.length} Deleted {activeTab}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -223,6 +297,7 @@ export const Trash: React.FC = () => {
           {(
             [
               { key: "products", label: "Products" },
+              { key: "variants", label: "Variants" },
               { key: "customers", label: "Customers" },
               { key: "quotations", label: "Quotations" },
               { key: "invoices", label: "Invoices" },
@@ -317,15 +392,16 @@ export const Trash: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm font-medium">
                   {paginatedItems.map((item) => {
-                    // Prioritize invoiceId and quotationId first so they don't fall back to customerId/productId #1
                     const id =
+                      item.productVariantId ||
+                      item.variantId ||
                       item.invoiceId ||
                       item.quotationId ||
                       item.productId ||
                       item.customerId;
 
-                    // Prioritize invoiceNumber and quotationNumber first
                     const name =
+                      formatVariantName(item) ||
                       item.invoiceNumber ||
                       item.quotationNumber ||
                       item.companyName ||

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../api/axios";
@@ -14,6 +14,9 @@ import {
   RefreshCw,
   Sparkles,
   ArrowUpRight,
+  Users,
+  Building2,
+  User,
 } from "lucide-react";
 import axios from "axios";
 
@@ -53,6 +56,12 @@ export const Customers: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   const getUserRole = (): boolean => {
     const token = localStorage.getItem("token");
     if (!token) return false;
@@ -84,37 +93,54 @@ export const Customers: React.FC = () => {
 
   const isAdmin = getUserRole();
 
-  const loadCustomers = async (
-    query = "",
-    sort = "companyname",
-    asc = true,
-  ) => {
-    try {
-      setLoading(true);
-      const response = await api.get<Customer[]>("/customers", {
-        params: { search: query, sortBy: sort, ascending: asc },
-      });
-      setCustomers(response.data);
-      setApiError(null);
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const msg =
-          err.response?.data?.message ||
-          err.message ||
-          "Failed to connect to API";
-        setApiError(msg);
+  const loadCustomers = useCallback(
+    async (query = "", sort = "companyname", asc = true) => {
+      try {
+        setLoading(true);
+        const response = await api.get<Customer[]>("/customers", {
+          params: { search: query, sortBy: sort, ascending: asc },
+        });
+        setCustomers(response.data);
+        setApiError(null);
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err)) {
+          const msg =
+            err.response?.data?.message ||
+            err.message ||
+            "Failed to connect to API";
+          setApiError(msg);
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [],
+  );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadCustomers(searchQuery, sortBy, ascending);
-  }, [searchQuery, sortBy, ascending]);
+    let isMounted = true;
+
+    const fetchInitialData = async () => {
+      await loadCustomers(searchQuery, sortBy, ascending);
+      if (!isMounted) return;
+    };
+
+    void fetchInitialData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchQuery, sortBy, ascending, loadCustomers]);
 
   const activeCustomer = selectedCustomer;
+
+  // Compute breakdown stats for header indicators
+  const totalCustomers = customers.length;
+  const corporateCount = useMemo(
+    () => customers.filter((c) => c.contacts && c.contacts.length > 0).length,
+    [customers],
+  );
+  const personalCount = totalCustomers - corporateCount;
 
   const handleCreateCustomer = async (dto: CreateCustomerDto) => {
     setSaving(true);
@@ -204,7 +230,7 @@ export const Customers: React.FC = () => {
       );
       toast.success("Contact updated successfully!");
       setIsEditContactOpen(false);
-      setSelectedContact(null);
+      setSelectedCustomer(null);
       await loadCustomers(searchQuery, sortBy, ascending);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -283,32 +309,69 @@ export const Customers: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
       {/* Executive Header Banner matching Dashboard style */}
       <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Customer Management Hub</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Customer Management Hub</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                </span>
+                {today}
+              </div>
             </div>
             <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
-              Customers Directory
+              Client Directory
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Manage client companies and primary contacts seamlessly across
-              your catalog.
+              Manage client companies, contact profiles, and tax identification
+              details across your active account portfolio.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {/* Real-time Directory Counters */}
+            <div className="hidden lg:flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-semibold">
+              <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                <Users className="w-4 h-4" />
+                <span>{totalCustomers}</span>
+              </div>
+              <span className="text-slate-500">•</span>
+              <div className="flex items-center gap-1 text-slate-300">
+                <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>{corporateCount} Corp</span>
+              </div>
+              <span className="text-slate-500">•</span>
+              <div className="flex items-center gap-1 text-slate-300">
+                <User className="w-3.5 h-3.5 text-indigo-400" />
+                <span>{personalCount} Ind</span>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={() => {
                 setFormError("");
                 setIsCreateOpen(true);
               }}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
             >
               <Plus className="w-4 h-4 stroke-3" />
               <span>Add Customer</span>
@@ -326,14 +389,14 @@ export const Customers: React.FC = () => {
           </div>
           <button
             onClick={() => loadCustomers(searchQuery, sortBy, ascending)}
-            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors inline-flex items-center gap-1.5"
+            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Retry
           </button>
         </div>
       )}
 
-      {/* Professional UI/UX Filter & Search Toolbar */}
+      {/* Professional Filter & Search Toolbar */}
       <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 space-y-4">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
           <div className="flex items-center gap-2 flex-1 max-w-lg">

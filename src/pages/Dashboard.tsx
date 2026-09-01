@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../api/axios";
 import {
   FileText,
@@ -18,6 +18,7 @@ import {
   Activity,
   Percent,
   User,
+  RefreshCw,
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
@@ -25,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
   Area,
+  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
@@ -50,10 +52,24 @@ interface DashboardMetrics {
 
 type ChartTimeRange = "7d" | "30d" | "90d" | "all";
 
+const currency = (value: number) =>
+  `₱${(value || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+};
+
 export const Dashboard: React.FC = () => {
   const { username } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -64,7 +80,11 @@ export const Dashboard: React.FC = () => {
     let isMounted = true;
 
     const fetchDashboardMetrics = async () => {
-      setLoading(true);
+      if (metrics) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
         const response = await api.get("/dashboard/metrics", {
@@ -87,6 +107,7 @@ export const Dashboard: React.FC = () => {
       } finally {
         if (isMounted) {
           setLoading(false);
+          setRefreshing(false);
         }
       }
     };
@@ -96,35 +117,13 @@ export const Dashboard: React.FC = () => {
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartTimeRange]);
 
-  if (loading && !metrics) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400 font-medium text-sm p-4">
-        <div className="w-8 h-8 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
-        Loading executive dashboard overview...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="mx-4 sm:mx-0 bg-rose-50 border border-rose-200 text-rose-700 p-6 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-          <span className="text-sm font-medium">{error}</span>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="text-xs font-bold bg-white px-4 py-2 rounded-xl border border-rose-200 shadow-2xs hover:bg-rose-100 transition-colors cursor-pointer"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const chartData = metrics?.chartData || [];
+  const chartData = useMemo(
+    () => metrics?.chartData || [],
+    [metrics?.chartData],
+  );
 
   // Compute conversion rates or ratios for the Health Metrics Card
   const totalInvoicesApprox =
@@ -145,30 +144,215 @@ export const Dashboard: React.FC = () => {
         )
       : 0;
 
+  // Highest single collection day within the selected range — a real,
+  // non-fabricated signal to surface next to the trend chart.
+  const peakDay = useMemo(() => {
+    if (chartData.length === 0) return null;
+    return chartData.reduce((max, point) =>
+      point.amount > max.amount ? point : max,
+    );
+  }, [chartData]);
+
+  const totalCustomers = metrics?.totalCustomersCount || 0;
+  const corporateCount = metrics?.corporateCustomersCount || 0;
+  const personalCount = metrics?.personalCustomersCount || 0;
+  const corporatePct =
+    totalCustomers > 0 ? (corporateCount / totalCustomers) * 100 : 0;
+  const personalPct =
+    totalCustomers > 0 ? (personalCount / totalCustomers) * 100 : 0;
+
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  // ---------------------------------------------------------------------
+  // Loading skeleton — mirrors the final layout so nothing "jumps" in
+  // ---------------------------------------------------------------------
+  if (loading && !metrics) {
+    return (
+      <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0">
+        <div className="h-40 sm:h-44 rounded-3xl bg-slate-100 animate-pulse" />
+        <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className={`h-32 rounded-2xl sm:rounded-3xl bg-slate-100 animate-pulse ${
+                i === 0 ? "col-span-2 xl:col-span-1" : ""
+              }`}
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-96 rounded-3xl bg-slate-100 animate-pulse" />
+          <div className="space-y-6">
+            <div className="h-56 rounded-3xl bg-slate-100 animate-pulse" />
+            <div className="h-56 rounded-3xl bg-slate-100 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-4 sm:mx-0 bg-rose-50 border border-rose-200 text-rose-700 p-6 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+          <span className="text-sm font-medium">{error}</span>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-xs font-bold bg-white px-4 py-2 rounded-xl border border-rose-200 shadow-2xs hover:bg-rose-100 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60 focus-visible:ring-offset-2"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const kpis = [
+    {
+      label: "Paid Revenue",
+      value: currency(metrics?.totalRevenue || 0),
+      caption: "Fully settled collections",
+      captionClass: "text-emerald-600",
+      icon: TrendingUp,
+      iconClass: "bg-amber-50 text-[#DB9A28] border-amber-100/60",
+      accent: "from-amber-400 to-amber-300",
+      wide: true,
+    },
+    {
+      label: "Unpaid Invoices",
+      value: metrics?.unpaidCount || 0,
+      caption: "Pending remittances",
+      captionClass: "text-slate-400",
+      icon: Clock,
+      iconClass: "bg-amber-50 text-amber-600 border-amber-100/60",
+      accent: "from-amber-400 to-amber-300",
+    },
+    {
+      label: "Active Estimates",
+      value: metrics?.activeQuotesCount || 0,
+      caption: "Sent or draft quotes",
+      captionClass: "text-slate-400",
+      icon: FileText,
+      iconClass: "bg-blue-50 text-blue-600 border-blue-100/60",
+      accent: "from-blue-400 to-blue-300",
+    },
+    {
+      label: "Accepted Estimates",
+      value: metrics?.acceptedQuotesCount || 0,
+      caption: "Ready for invoice",
+      captionClass: "text-emerald-600",
+      icon: CheckCircle2,
+      iconClass: "bg-emerald-50 text-emerald-600 border-emerald-100/60",
+      accent: "from-emerald-400 to-emerald-300",
+    },
+    {
+      label: "Active Clients",
+      value: totalCustomers,
+      caption: "Registered accounts",
+      captionClass: "text-slate-400",
+      icon: Users,
+      iconClass: "bg-indigo-50 text-indigo-600 border-indigo-100/60",
+      accent: "from-indigo-400 to-indigo-300",
+    },
+  ];
+
+  const navModules = [
+    {
+      label: "Customers",
+      caption: "Directory",
+      icon: Building2,
+      path: "/customers",
+      hoverIcon: "group-hover:bg-indigo-50 group-hover:text-indigo-600",
+      hoverBorder: "hover:border-indigo-300",
+    },
+    {
+      label: "Products",
+      caption: "Catalog",
+      icon: Package,
+      path: "/products",
+      hoverIcon: "group-hover:bg-purple-50 group-hover:text-purple-600",
+      hoverBorder: "hover:border-purple-300",
+    },
+    {
+      label: "Quotations",
+      caption: "Estimates",
+      icon: FileText,
+      path: "/quotations",
+      hoverIcon: "group-hover:bg-blue-50 group-hover:text-blue-600",
+      hoverBorder: "hover:border-blue-300",
+    },
+    {
+      label: "Invoices",
+      caption: "Billing",
+      icon: Receipt,
+      path: "/invoices",
+      hoverIcon: "group-hover:bg-emerald-50 group-hover:text-emerald-600",
+      hoverBorder: "hover:border-emerald-300",
+    },
+    {
+      label: "Archive",
+      caption: "Trash & Recovery",
+      icon: Trash2,
+      path: "/trash",
+      hoverIcon: "group-hover:bg-rose-50 group-hover:text-rose-600",
+      hoverBorder: "hover:border-rose-300",
+      wideOnSm: true,
+    },
+  ];
+
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
       {/* Executive Header Banner */}
       <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Business Command Center</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Business Command Center</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                </span>
+                {today}
+              </div>
             </div>
             <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
-              Welcome back, {username || "Admin"}
+              {getGreeting()}, {username || "Admin"}
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
               Here is your real-time business health metrics, financial
               overview, and quick catalog shortcuts for today.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            {refreshing && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                Syncing
+              </span>
+            )}
             <button
               type="button"
               onClick={() => navigate("/quotations")}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
             >
               <span>Create Estimate</span>
               <ArrowUpRight className="w-4 h-4" />
@@ -179,109 +363,38 @@ export const Dashboard: React.FC = () => {
 
       {/* Top Key Performance Indicators Grid */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
-        {/* Paid Revenue */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group col-span-2 xl:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Paid Revenue
-            </span>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-50 text-[#F9B53F] flex items-center justify-center border border-amber-100/60 group-hover:scale-110 transition-transform">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+        {kpis.map((kpi) => (
+          <div
+            key={kpi.label}
+            className={`relative overflow-hidden bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl hover:-translate-y-0.5 transition-all flex flex-col justify-between group ${
+              kpi.wide ? "col-span-2 xl:col-span-1" : ""
+            }`}
+          >
+            <div
+              className={`absolute top-0 left-0 right-0 h-1 bg-linear-to-r ${kpi.accent} opacity-70`}
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                {kpi.label}
+              </span>
+              <div
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border group-hover:scale-110 transition-transform ${kpi.iconClass}`}
+              >
+                <kpi.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+            </div>
+            <div className="mt-3 sm:mt-4">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight tabular-nums truncate">
+                {kpi.value}
+              </h3>
+              <p
+                className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 sm:mt-1 ${kpi.captionClass}`}
+              >
+                {kpi.caption}
+              </p>
             </div>
           </div>
-          <div className="mt-3 sm:mt-4">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight truncate">
-              ₱
-              {(metrics?.totalRevenue || 0).toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </h3>
-            <p className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold mt-0.5 sm:mt-1">
-              Fully settled collections
-            </p>
-          </div>
-        </div>
-
-        {/* Unpaid Invoices */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Unpaid Invoices
-            </span>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100/60 group-hover:scale-110 transition-transform">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-          </div>
-          <div className="mt-3 sm:mt-4">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {metrics?.unpaidCount || 0}
-            </h3>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1">
-              Pending remittances
-            </p>
-          </div>
-        </div>
-
-        {/* Active Estimates */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Active Estimates
-            </span>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/60 group-hover:scale-110 transition-transform">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-          </div>
-          <div className="mt-3 sm:mt-4">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {metrics?.activeQuotesCount || 0}
-            </h3>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1">
-              Sent or draft quotes
-            </p>
-          </div>
-        </div>
-
-        {/* Accepted Estimates */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Accepted Estimates
-            </span>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/60 group-hover:scale-110 transition-transform">
-              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-          </div>
-          <div className="mt-3 sm:mt-4">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {metrics?.acceptedQuotesCount || 0}
-            </h3>
-            <p className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold mt-0.5 sm:mt-1">
-              Ready for invoice
-            </p>
-          </div>
-        </div>
-
-        {/* Active Customers */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 hover:shadow-2xl transition-all flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Active Clients
-            </span>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100/60 group-hover:scale-110 transition-transform">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-          </div>
-          <div className="mt-3 sm:mt-4">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
-              {metrics?.totalCustomersCount || 0}
-            </h3>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1">
-              Registered accounts
-            </p>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Main Grid: Area Chart (Left 2 Cols) & Analytics Cards Stack (Right Col) */}
@@ -292,21 +405,24 @@ export const Dashboard: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                  Income & Collection Trend
+                  Income &amp; Collection Trend
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Total Collected in Period:{" "}
-                  <span className="font-mono font-bold text-slate-700">
-                    ₱
-                    {(metrics?.totalPeriodRevenue || 0).toLocaleString(
-                      undefined,
-                      {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      },
-                    )}
-                  </span>
-                </p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                  <p className="text-xs text-slate-400">
+                    Collected:{" "}
+                    <span className="font-mono font-bold text-slate-700 tabular-nums">
+                      {currency(metrics?.totalPeriodRevenue || 0)}
+                    </span>
+                  </p>
+                  {peakDay && (
+                    <p className="text-xs text-slate-400">
+                      Peak day:{" "}
+                      <span className="font-mono font-bold text-slate-700 tabular-nums">
+                        {peakDay.date}
+                      </span>
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl self-start sm:self-auto">
                 {(
@@ -321,7 +437,7 @@ export const Dashboard: React.FC = () => {
                     key={tab.id}
                     type="button"
                     onClick={() => setChartTimeRange(tab.id)}
-                    className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 ${
                       chartTimeRange === tab.id
                         ? "bg-white text-slate-900 shadow-2xs border border-slate-200/60"
                         : "text-slate-500 hover:text-slate-800"
@@ -336,13 +452,20 @@ export const Dashboard: React.FC = () => {
 
           <div className="pt-6 h-80 w-full">
             {chartData.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-slate-400 text-xs italic">
-                <BarChart3 className="w-5 h-5 text-slate-300" />
-                <span>No collections recorded in this range.</span>
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-slate-300" />
+                </div>
+                <span className="italic">
+                  No collections recorded in this range.
+                </span>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient
                       id="colorRevenue"
@@ -359,32 +482,41 @@ export const Dashboard: React.FC = () => {
                       />
                     </linearGradient>
                   </defs>
+                  <CartesianGrid
+                    vertical={false}
+                    stroke="#F1F5F9"
+                    strokeDasharray="4 8"
+                  />
                   <XAxis
                     dataKey="date"
                     stroke="#94A3B8"
                     fontSize={11}
                     tickLine={false}
+                    axisLine={false}
                   />
                   <YAxis
                     stroke="#94A3B8"
                     fontSize={11}
                     tickLine={false}
+                    axisLine={false}
+                    width={48}
                     tickFormatter={(value) =>
                       `₱${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`
                     }
                   />
                   <Tooltip
+                    cursor={{
+                      stroke: "#F9B53F",
+                      strokeWidth: 1,
+                      strokeDasharray: "4 4",
+                    }}
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
                           <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
                             <p className="font-bold text-amber-300">{label}</p>
-                            <p className="font-mono text-sm font-black">
-                              ₱
-                              {Number(payload[0].value).toLocaleString(
-                                undefined,
-                                { minimumFractionDigits: 2 },
-                              )}
+                            <p className="font-mono text-sm font-black tabular-nums">
+                              {currency(Number(payload[0].value))}
                             </p>
                           </div>
                         );
@@ -399,6 +531,12 @@ export const Dashboard: React.FC = () => {
                     strokeWidth={3}
                     fillOpacity={1}
                     fill="url(#colorRevenue)"
+                    activeDot={{
+                      r: 5,
+                      fill: "#F9B53F",
+                      stroke: "#fff",
+                      strokeWidth: 2,
+                    }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -415,7 +553,7 @@ export const Dashboard: React.FC = () => {
                 <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
                   Performance Health
                 </h2>
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-[#F9B53F] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-[#DB9A28] flex items-center justify-center">
                   <Activity className="w-4 h-4" />
                 </div>
               </div>
@@ -432,7 +570,7 @@ export const Dashboard: React.FC = () => {
                     <Receipt className="w-3.5 h-3.5 text-emerald-600" />
                     Collection Rate
                   </span>
-                  <span className="font-mono text-slate-900">
+                  <span className="font-mono text-slate-900 tabular-nums">
                     {collectionRate}%
                   </span>
                 </div>
@@ -451,7 +589,7 @@ export const Dashboard: React.FC = () => {
                     <FileText className="w-3.5 h-3.5 text-blue-600" />
                     Estimate Acceptance
                   </span>
-                  <span className="font-mono text-slate-900">
+                  <span className="font-mono text-slate-900 tabular-nums">
                     {estimateAcceptanceRate}%
                   </span>
                 </div>
@@ -470,7 +608,7 @@ export const Dashboard: React.FC = () => {
                     <Percent className="w-3.5 h-3.5 text-amber-600" />
                     Pending Invoices Load
                   </span>
-                  <span className="font-mono text-slate-900">
+                  <span className="font-mono text-slate-900 tabular-nums">
                     {metrics?.unpaidCount || 0} active
                   </span>
                 </div>
@@ -502,68 +640,61 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
 
-            <div className="py-5 space-y-4">
-              {/* Corporate Accounts */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-600 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-amber-600" />
-                    Corporate Accounts
+            <div className="py-5 flex items-center gap-5">
+              {/* Donut ring */}
+              <div className="relative w-24 h-24 shrink-0">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      totalCustomers > 0
+                        ? `conic-gradient(#F9B53F 0% ${corporatePct}%, #6366F1 ${corporatePct}% 100%)`
+                        : "#F1F5F9",
+                  }}
+                />
+                <div className="absolute inset-1.75 rounded-full bg-white flex flex-col items-center justify-center">
+                  <span className="text-lg font-black text-slate-900 font-mono tabular-nums leading-none">
+                    {totalCustomers}
                   </span>
-                  <span className="font-mono text-slate-900">
-                    {metrics?.corporateCustomersCount ?? 0}
+                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-1">
+                    Accounts
                   </span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${
-                        metrics?.totalCustomersCount &&
-                        metrics.totalCustomersCount > 0
-                          ? ((metrics.corporateCustomersCount ?? 0) /
-                              metrics.totalCustomersCount) *
-                            100
-                          : 0
-                      }%`,
-                    }}
-                  />
                 </div>
               </div>
 
-              {/* Personal Accounts */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-600 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-blue-600" />
-                    Personal Accounts
+              {/* Legend */}
+              <div className="flex-1 space-y-3 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 min-w-0">
+                    <Building2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="truncate">Corporate</span>
                   </span>
-                  <span className="font-mono text-slate-900">
-                    {metrics?.personalCustomersCount ?? 0}
+                  <span className="font-mono text-xs font-bold text-slate-900 tabular-nums shrink-0">
+                    {corporateCount}
+                    <span className="text-slate-400 font-medium ml-1">
+                      ({Math.round(corporatePct)}%)
+                    </span>
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-blue-500 h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${
-                        metrics?.totalCustomersCount &&
-                        metrics.totalCustomersCount > 0
-                          ? ((metrics.personalCustomersCount ?? 0) /
-                              metrics.totalCustomersCount) *
-                            100
-                          : 0
-                      }%`,
-                    }}
-                  />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 min-w-0">
+                    <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span className="truncate">Personal</span>
+                  </span>
+                  <span className="font-mono text-xs font-bold text-slate-900 tabular-nums shrink-0">
+                    {personalCount}
+                    <span className="text-slate-400 font-medium ml-1">
+                      ({Math.round(personalPct)}%)
+                    </span>
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
               <span>Total Directory</span>
-              <span className="font-mono font-bold text-slate-800">
-                {metrics?.totalCustomersCount ?? 0} Accounts
+              <span className="font-mono font-bold text-slate-800 tabular-nums">
+                {totalCustomers} Accounts
               </span>
             </div>
           </div>
@@ -582,105 +713,33 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {/* Customers */}
-          <button
-            type="button"
-            onClick={() => navigate("/customers")}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
-                <Building2 className="w-4 h-4" />
+          {navModules.map((mod) => (
+            <button
+              key={mod.label}
+              type="button"
+              onClick={() => navigate(mod.path)}
+              className={`bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 ${
+                mod.hoverBorder
+              } ${mod.wideOnSm ? "col-span-2 sm:col-span-1" : ""}`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={`w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-all shadow-2xs shrink-0 ${mod.hoverIcon}`}
+                >
+                  <mod.icon className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-bold text-slate-900 transition-colors truncate">
+                    {mod.label}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 truncate">
+                    {mod.caption}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
-                  Customers
-                </h3>
-                <p className="text-[10px] text-slate-400">Directory</p>
-              </div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          {/* Products */}
-          <button
-            type="button"
-            onClick={() => navigate("/products")}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
-                <Package className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
-                  Products
-                </h3>
-                <p className="text-[10px] text-slate-400">Catalog</p>
-              </div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          {/* Quotations */}
-          <button
-            type="button"
-            onClick={() => navigate("/quotations")}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
-                <FileText className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
-                  Quotations
-                </h3>
-                <p className="text-[10px] text-slate-400">Estimates</p>
-              </div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          {/* Invoices */}
-          <button
-            type="button"
-            onClick={() => navigate("/invoices")}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
-                <Receipt className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
-                  Invoices
-                </h3>
-                <p className="text-[10px] text-slate-400">Billing</p>
-              </div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          {/* Archive / Trash */}
-          <button
-            type="button"
-            onClick={() => navigate("/trash")}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-md hover:shadow-xl hover:border-amber-300 hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left col-span-2 sm:col-span-1"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all shadow-2xs">
-                <Trash2 className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
-                  Archive
-                </h3>
-                <p className="text-[10px] text-slate-400">Trash & Recovery</p>
-              </div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
-          </button>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          ))}
         </div>
       </div>
     </div>

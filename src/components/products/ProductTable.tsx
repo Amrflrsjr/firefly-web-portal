@@ -13,6 +13,8 @@ import {
   Edit2,
   Trash2,
   Edit,
+  Loader2,
+  ChevronDown,
 } from "lucide-react";
 
 interface ProductTableProps {
@@ -28,6 +30,10 @@ interface ProductTableProps {
     variantId: number,
     newStock: number,
   ) => Promise<void>;
+  onUpdateProductDetails?: (
+    productId: number,
+    data: { name: string; description: string; isActive: boolean },
+  ) => Promise<void>;
   onDeleteProduct?: (productId: number) => void;
 }
 
@@ -40,16 +46,22 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   onViewVariants,
   onEditProduct,
   onUpdateVariantStock,
+  onUpdateProductDetails,
   onDeleteProduct,
 }) => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // Inline stock editing states (tracking editing product id)
+  // Inline stock editing states
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [tempStock, setTempStock] = useState<number>(0);
   const [savingStock, setSavingStock] = useState(false);
+
+  // Inline catalog status updating state
+  const [updatingStatusProductId, setUpdatingStatusProductId] = useState<
+    number | null
+  >(null);
 
   if (loading) {
     return (
@@ -113,6 +125,28 @@ export const ProductTable: React.FC<ProductTableProps> = ({
     }
   };
 
+  const handleStatusChange = async (
+    product: Product,
+    newStatus: boolean,
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    e.stopPropagation();
+    if (!onUpdateProductDetails || product.isActive === newStatus) return;
+
+    try {
+      setUpdatingStatusProductId(product.productId);
+      await onUpdateProductDetails(product.productId, {
+        name: product.name,
+        description: product.description || "",
+        isActive: newStatus,
+      });
+    } catch (err) {
+      console.error("Failed to update product status", err);
+    } finally {
+      setUpdatingStatusProductId(null);
+    }
+  };
+
   return (
     <div>
       <div className="overflow-x-auto">
@@ -128,6 +162,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   {renderSortIcon("name")}
                 </div>
               </th>
+              <th className="py-3.5 px-6 whitespace-nowrap">Catalog Status</th>
               <th className="py-3.5 px-6 whitespace-nowrap">Variants</th>
               <th className="py-3.5 px-6 whitespace-nowrap">Price Range</th>
               <th className="py-3.5 px-6 whitespace-nowrap">
@@ -153,19 +188,26 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               const targetVariant = hasSingleVariant
                 ? product.variants[0]
                 : null;
-              const isEditing = editingProductId === product.productId;
+              const isEditing =
+                hasSingleVariant && editingProductId === product.productId;
+
+              const isActiveInCatalog = product.isActive !== false;
+              const isUpdatingStatus =
+                updatingStatusProductId === product.productId;
 
               return (
                 <tr
                   key={product.productId}
-                  onClick={() => !isEditing && onViewVariants(product)}
                   className={`transition-colors ${
                     isEditing
                       ? "bg-amber-50/70 ring-1 ring-inset ring-amber-300/60"
-                      : "hover:bg-[#FCFDFF] cursor-pointer group"
+                      : "hover:bg-[#FCFDFF] group"
                   }`}
                 >
-                  <td className="py-4 px-6 text-slate-800">
+                  <td
+                    className="py-4 px-6 text-slate-800 cursor-pointer"
+                    onClick={() => !isEditing && onViewVariants(product)}
+                  >
                     <div className="flex items-center gap-3.5 min-w-50">
                       <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform shrink-0">
                         <Package className="w-4 h-4" />
@@ -181,14 +223,73 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                   </td>
 
-                  <td className="py-4 px-6 text-slate-600 whitespace-nowrap">
+                  {/* Dynamic Active/Inactive Colored Dropdown */}
+                  <td
+                    className="py-4 px-6 whitespace-nowrap"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative inline-flex items-center">
+                      <select
+                        disabled={isUpdatingStatus}
+                        value={isActiveInCatalog ? "active" : "inactive"}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            product,
+                            e.target.value === "active",
+                            e,
+                          )
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                        className={`appearance-none pl-3.5 pr-7 py-1 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 transition-all shadow-2xs ${
+                          isActiveInCatalog
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 hover:bg-emerald-100/80 focus:ring-emerald-300"
+                            : "bg-rose-50 text-rose-700 border border-rose-200/80 hover:bg-rose-100/80 focus:ring-rose-300"
+                        }`}
+                      >
+                        <option
+                          value="active"
+                          className="bg-white text-emerald-700 font-bold"
+                        >
+                          Active
+                        </option>
+                        <option
+                          value="inactive"
+                          className="bg-white text-rose-700 font-bold"
+                        >
+                          Inactive
+                        </option>
+                      </select>
+
+                      <div className="absolute right-2.5 pointer-events-none flex items-center justify-center">
+                        {isUpdatingStatus ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-slate-400" />
+                        ) : (
+                          <ChevronDown
+                            className={`w-3 h-3 ${
+                              isActiveInCatalog
+                                ? "text-emerald-500"
+                                : "text-rose-500"
+                            }`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  <td
+                    className="py-4 px-6 text-slate-600 whitespace-nowrap cursor-pointer"
+                    onClick={() => !isEditing && onViewVariants(product)}
+                  >
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/60 shadow-2xs">
                       <Layers className="w-3 h-3 text-[#F9B53F]" />
                       {product.variants?.length || 0} Variants
                     </span>
                   </td>
 
-                  <td className="py-4 px-6 font-bold text-slate-900 font-mono text-xs whitespace-nowrap">
+                  <td
+                    className="py-4 px-6 font-bold text-slate-900 font-mono text-xs whitespace-nowrap cursor-pointer"
+                    onClick={() => !isEditing && onViewVariants(product)}
+                  >
                     <span className="bg-slate-100/80 px-2.5 py-1 rounded-lg text-slate-700 border border-slate-200/60">
                       {minPrice === maxPrice
                         ? `PHP ${minPrice.toFixed(2)}`
@@ -196,10 +297,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     </span>
                   </td>
 
-                  <td
-                    className="py-4 px-6 whitespace-nowrap"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <td className="py-4 px-6 whitespace-nowrap">
                     {isEditing ? (
                       <div className="inline-flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-amber-300 shadow-md animate-in fade-in zoom-in-95 duration-150">
                         <input
@@ -213,12 +311,9 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           autoFocus
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
-                              const variantIdToSave = hasSingleVariant
-                                ? targetVariant?.productVariantId
-                                : product.variants?.[0]?.productVariantId;
                               handleSaveStock(
                                 product.productId,
-                                variantIdToSave,
+                                targetVariant?.productVariantId,
                                 e,
                               );
                             }
@@ -228,17 +323,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                         <button
                           type="button"
                           disabled={savingStock}
-                          onClick={(e) => {
-                            const variantIdToSave = hasSingleVariant
-                              ? targetVariant?.productVariantId
-                              : product.variants?.[0]?.productVariantId;
+                          onClick={(e) =>
                             handleSaveStock(
                               product.productId,
-                              variantIdToSave,
+                              targetVariant?.productVariantId,
                               e,
-                            );
-                          }}
-                          className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer shadow-2xs border border-emerald-200/60"
+                            )
+                          }
+                          className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer shadow-2xs border border-emerald-200/60 active:scale-95"
                           title="Save stock"
                         >
                           <Check className="w-4 h-4" />
@@ -246,7 +338,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                         <button
                           type="button"
                           onClick={() => setEditingProductId(null)}
-                          className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer shadow-2xs border border-slate-200/60"
+                          className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer shadow-2xs border border-slate-200/60 active:scale-95"
                           title="Cancel"
                         >
                           <X className="w-4 h-4" />
@@ -276,47 +368,40 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       </div>
                     ) : (
                       <div
-                        onClick={() => {
-                          if (product.variants && product.variants.length > 0) {
-                            setEditingProductId(product.productId);
-                            setTempStock(product.variants[0].stock);
-                          } else {
-                            onViewVariants(product);
-                          }
-                        }}
-                        className="group/stock inline-flex items-center gap-2 cursor-pointer py-1 px-2.5 rounded-xl hover:bg-amber-50/60 transition-all border border-transparent hover:border-amber-200"
-                        title="Click to quickly update primary variant stock or manage variants"
+                        onClick={() => onViewVariants(product)}
+                        className="inline-flex items-center gap-2 cursor-pointer py-1 px-2.5 rounded-xl hover:bg-slate-100/80 transition-all border border-transparent"
+                        title="Click to view and edit variant stocks in modal"
                       >
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs whitespace-nowrap">
                           {totalStock} total ({product.variants?.length || 0}{" "}
                           variants)
                         </span>
-                        <span className="w-6 h-6 rounded-lg bg-amber-100/50 group-hover/stock:bg-amber-100 text-amber-700 flex items-center justify-center opacity-0 group-hover/stock:opacity-100 transition-all shadow-2xs">
-                          <Edit2 className="w-3 h-3" />
-                        </span>
                       </div>
                     )}
                   </td>
 
-                  <td
-                    className="py-4 px-6 text-right whitespace-nowrap"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <td className="py-4 px-6 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        onClick={() => onEditProduct?.(product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditProduct?.(product);
+                        }}
                         title="Edit Product Details"
-                        className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-colors cursor-pointer inline-flex items-center justify-center"
+                        className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center active:scale-95"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => onDeleteProduct?.(product.productId)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteProduct?.(product.productId);
+                        }}
                         title="Delete Product"
-                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/60 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center active:scale-95"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

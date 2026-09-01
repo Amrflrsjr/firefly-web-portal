@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import axios from "axios";
@@ -10,6 +16,9 @@ import {
   X,
   Sparkles,
   ArrowUpRight,
+  Receipt,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import type { InvoiceResponseDto } from "../types/invoice";
 import type { QuotationResponseDto } from "../types/quotation";
@@ -55,6 +64,12 @@ export const Invoices: React.FC = () => {
 
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   const loadData = useCallback(
     async (
@@ -138,6 +153,22 @@ export const Invoices: React.FC = () => {
     ascending,
     loadData,
   ]);
+
+  // Compute live breakdown stats for header indicators
+  const totalCount = invoices.length;
+  const paidCount = useMemo(
+    () => invoices.filter((i) => i.status?.toLowerCase() === "paid").length,
+    [invoices],
+  );
+  const unpaidCount = useMemo(
+    () =>
+      invoices.filter(
+        (i) =>
+          i.status?.toLowerCase() === "unpaid" ||
+          i.status?.toLowerCase() === "partiallypaid",
+      ).length,
+    [invoices],
+  );
 
   const exactMatchInvoice = searchQuery
     ? invoices.find(
@@ -273,32 +304,69 @@ export const Invoices: React.FC = () => {
     statusFilter !== "all" || startDateFilter || endDateFilter || searchQuery;
 
   return (
-    <div className="space-y-6 pb-10">
-      {/* Executive Header Banner matching Dashboard/Customers style */}
+    <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
+      {/* Executive Header Banner matching Dashboard style */}
       <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Billing & Payments Hub</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Billing &amp; Payments Hub</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                </span>
+                {today}
+              </div>
             </div>
             <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
-              Invoices & Payments
+              Invoices &amp; Payments
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Convert approved estimates to invoices and record customer
-              payments seamlessly.
+              Convert approved estimates to invoices, dispatch PDFs, and record
+              customer remittances efficiently.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {/* Real-time Summary Indicators */}
+            <div className="hidden lg:flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-semibold">
+              <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                <Receipt className="w-4 h-4" />
+                <span>{totalCount} Total</span>
+              </div>
+              <span className="text-slate-500">•</span>
+              <div className="flex items-center gap-1 text-slate-300">
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span>{unpaidCount} Pending</span>
+              </div>
+              <span className="text-slate-500">•</span>
+              <div className="flex items-center gap-1 text-slate-300">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{paidCount} Settled</span>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={() => setIsConvertOpen(true)}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
             >
               <Plus className="w-4 h-4 stroke-3" />
-              <span>Convert Quotation to Invoice</span>
+              <span>Convert Quotation</span>
               <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>
@@ -322,7 +390,7 @@ export const Invoices: React.FC = () => {
                 ascending,
               )
             }
-            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors"
+            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors cursor-pointer"
           >
             Retry
           </button>
@@ -359,7 +427,7 @@ export const Invoices: React.FC = () => {
             </button>
           </div>
 
-          {/* Desktop Filters Group (Hidden on mobile unless toggled via dropdown) */}
+          {/* Desktop Filters Group */}
           <div
             className={`flex-wrap items-center gap-2.5 ${
               isMobileFiltersOpen ? "flex" : "hidden lg:flex"

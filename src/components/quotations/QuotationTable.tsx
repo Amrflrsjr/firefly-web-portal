@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import type { QuotationResponseDto } from "../../types/quotation";
 import { quotationApi } from "../../api/quotations";
 import {
@@ -7,15 +7,13 @@ import {
   Download,
   Mail,
   Trash2,
-  Check,
-  X,
-  Pencil,
+  Edit,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Edit,
+  ChevronDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -46,12 +44,25 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   onDeleteQuotation,
   onEdit,
 }) => {
-  const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string>("Draft");
-
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // Client-side fallback sorting: defaults to newest first if no external sort field is provided
+  const processedQuotations = useMemo(() => {
+    if (!quotations) return [];
+
+    // If external sorting is already handling "createdat", retain passed order
+    if (sortBy?.toLowerCase() === "createdat") {
+      return quotations;
+    }
+
+    // Default fallback: Sort newest to oldest by createdAt date
+    return [...quotations].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [quotations, sortBy]);
 
   if (loading) {
     return (
@@ -64,7 +75,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     );
   }
 
-  if (quotations.length === 0) {
+  if (processedQuotations.length === 0) {
     return (
       <div className="p-12 text-center text-slate-400 text-sm font-medium">
         No quotations found. Click{" "}
@@ -74,9 +85,12 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     );
   }
 
-  const totalPages = Math.ceil(quotations.length / pageSize);
+  const totalPages = Math.ceil(processedQuotations.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const currentQuotations = quotations.slice(startIndex, startIndex + pageSize);
+  const currentQuotations = processedQuotations.slice(
+    startIndex,
+    startIndex + pageSize,
+  );
 
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -86,18 +100,19 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  const getStatusBadge = (status: string) => {
+  // Dynamic badge status styling helper
+  const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case "approved":
       case "accepted":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200/80";
+        return "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80";
       case "sent":
-        return "bg-blue-50 text-blue-700 border-blue-200/80";
+        return "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100/80";
       case "declined":
       case "cancelled":
-        return "bg-rose-50 text-rose-700 border-rose-200/80";
+        return "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80";
       default:
-        return "bg-amber-50 text-amber-800 border-amber-200/80";
+        return "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/80";
     }
   };
 
@@ -113,19 +128,13 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     }
   };
 
-  const handleStartEditStatus = (
-    e: React.MouseEvent,
-    q: QuotationResponseDto,
+  const handleStatusChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+    quotationId: number,
   ) => {
     e.stopPropagation();
-    setEditingStatusId(q.quotationId);
-    setSelectedStatus(q.status || "Draft");
-  };
-
-  const handleSaveStatus = (e: React.MouseEvent, quotationId: number) => {
-    e.stopPropagation();
-    onUpdateStatus(quotationId, selectedStatus);
-    setEditingStatusId(null);
+    const newStatus = e.target.value;
+    onUpdateStatus(quotationId, newStatus);
   };
 
   const renderSortIcon = (field: string) => {
@@ -195,13 +204,13 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm font-medium">
             {currentQuotations.map((q) => {
-              const isEditingStatus = editingStatusId === q.quotationId;
+              const isEditable = q.status === "Created" || q.status === "Draft";
 
               return (
                 <tr
                   key={q.quotationId}
-                  onClick={() => !isEditingStatus && onView(q)}
-                  className="hover:bg-[#FCFDFF] transition-colors cursor-pointer group"
+                  onClick={() => onView(q)}
+                  className="hover:bg-slate-50/60 transition-colors cursor-pointer group"
                 >
                   <td className="py-4 px-6 text-slate-800">
                     <div className="flex items-center gap-3.5">
@@ -231,66 +240,59 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                     {new Date(q.createdAt).toLocaleDateString()}
                   </td>
 
-                  <td className="py-4 px-6">
-                    {isEditingStatus ? (
-                      <div
-                        className="flex items-center gap-1.5"
-                        onClick={(e) => e.stopPropagation()}
+                  {/* Direct Dropdown Status Badge */}
+                  <td
+                    className="py-4 px-6"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative inline-flex items-center">
+                      <select
+                        value={q.status || "Draft"}
+                        onChange={(e) => handleStatusChange(e, q.quotationId)}
+                        className={`appearance-none cursor-pointer pl-3 pr-7 py-1 rounded-full text-xs font-bold border transition-all duration-200 outline-none focus:ring-2 focus:ring-amber-400/40 shadow-xs ${getStatusBadgeStyle(
+                          q.status,
+                        )}`}
                       >
-                        <select
-                          value={selectedStatus}
-                          onChange={(e) => setSelectedStatus(e.target.value)}
-                          className="bg-white border border-slate-300 rounded-xl px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                        <option
+                          value="Draft"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          <option value="Draft">Draft</option>
-                          <option value="Sent">Sent</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Declined">Declined</option>
-                          <option value="Cancelled">Cancelled</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={(e) => handleSaveStatus(e, q.quotationId)}
-                          className="p-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors"
+                          Draft
+                        </option>
+                        <option
+                          value="Sent"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingStatusId(null);
-                          }}
-                          className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                          Sent
+                        </option>
+                        <option
+                          value="Approved"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-2">
-                        <span
-                          className={`inline-flex items-center text-xs font-bold px-3 py-1 rounded-full border capitalize shadow-2xs ${getStatusBadge(
-                            q.status,
-                          )}`}
+                          Approved
+                        </option>
+                        <option
+                          value="Declined"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          {q.status}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleStartEditStatus(e, q)}
-                          title="Edit Status"
-                          className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
+                          Declined
+                        </option>
+                        <option
+                          value="Cancelled"
+                          className="bg-white text-slate-800 font-semibold"
                         >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
+                          Cancelled
+                        </option>
+                      </select>
+                      <ChevronDown className="w-3 h-3 absolute right-2.5 pointer-events-none opacity-60" />
+                    </div>
                   </td>
 
                   <td className="py-4 px-6 text-right font-bold text-slate-900 font-mono text-xs">
                     PHP {q.totalAmount.toFixed(2)}
                   </td>
 
+                  {/* Modern Action Buttons */}
                   <td className="py-4 px-6 text-right">
                     <div
                       className="flex items-center justify-end gap-1.5"
@@ -301,49 +303,49 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                           onViewPdf(q.quotationId, q.quotationNumber)
                         }
                         title="Preview PDF"
-                        className="p-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-white/80 hover:bg-slate-100 text-slate-600 hover:text-blue-600 border border-slate-200/80 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
-                        <Eye className="w-4 h-4 text-blue-500" />
+                        <Eye className="w-4 h-4" />
                       </button>
 
                       <button
                         onClick={(e) => handlePdfDownload(e, q)}
                         title="Download PDF"
-                        className="p-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-white/80 hover:bg-slate-100 text-slate-600 hover:text-emerald-600 border border-slate-200/80 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
-                        <Download className="w-4 h-4 text-emerald-500" />
+                        <Download className="w-4 h-4" />
                       </button>
 
                       <button
                         onClick={() => onOpenEmail(q)}
                         title="Send Email"
-                        className="p-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-medium rounded-xl transition-all duration-150 shadow-2xs hover:shadow-amber-500/20 active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
                         <Mail className="w-4 h-4" />
                       </button>
 
-                      {/* Check if status allows editing */}
-                      {q.status === "Created" || q.status === "Draft" ? (
+                      {isEditable ? (
                         <button
                           onClick={() => onEdit(q)}
-                          className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-colors cursor-pointer"
                           title="Edit Quotation"
+                          className="p-2 bg-amber-50 hover:bg-amber-100/80 text-amber-700 border border-amber-200/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                       ) : (
-                        <span
-                          className="inline-block p-2 text-slate-300 cursor-not-allowed"
-                          title="Only quotations in Created or Draft status can be edited."
+                        <button
+                          disabled
+                          title="Only Created or Draft status can be edited"
+                          className="p-2 bg-slate-50 text-slate-300 border border-slate-100 rounded-xl cursor-not-allowed inline-flex items-center justify-center"
                         >
-                          <Edit className="w-4 h-4 opacity-40" />
-                        </span>
+                          <Edit className="w-4 h-4" />
+                        </button>
                       )}
 
                       <button
                         onClick={() => onDeleteQuotation(q.quotationId)}
                         title="Delete Quotation"
-                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl transition-all cursor-pointer inline-flex items-center justify-center hover:scale-105"
+                        className="p-2 bg-rose-50 hover:bg-rose-100/80 text-rose-600 border border-rose-200/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -363,11 +365,11 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
             <span className="font-bold text-slate-700">{startIndex + 1}</span>{" "}
             to{" "}
             <span className="font-bold text-slate-700">
-              {Math.min(startIndex + pageSize, quotations.length)}
+              {Math.min(startIndex + pageSize, processedQuotations.length)}
             </span>{" "}
             of{" "}
             <span className="font-bold text-slate-700">
-              {quotations.length}
+              {processedQuotations.length}
             </span>{" "}
             results
           </p>
