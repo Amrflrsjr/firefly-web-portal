@@ -2,8 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminRoute } from "./components/AdminRoute";
 import { Layout } from "./components/Layout";
 import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
 import { Customers } from "./pages/Customer";
 import { Products } from "./pages/Product";
 import { Quotations } from "./pages/Quotation";
@@ -41,8 +43,10 @@ export function App() {
       />
       <BrowserRouter>
         <Routes>
+          {/* Public Route */}
           <Route path="/login" element={<Login />} />
 
+          {/* Authenticated Routes */}
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -52,6 +56,11 @@ export function App() {
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/trash" element={<Trash />} />
               <Route path="/dashboard" element={<Dashboard />} />
+
+              {/* Admin-Only Route */}
+              <Route element={<AdminRoute />}>
+                <Route path="/register" element={<Register />} />
+              </Route>
 
               <Route path="*" element={<NotFound />} />
             </Route>

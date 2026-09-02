@@ -1,7 +1,14 @@
 import axios from "axios";
 
+// Dynamically check for local dev vs production URL
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV
+    ? "http://localhost:5236/api"
+    : "https://portal.fireflycraftsph.com/api");
+
 const api = axios.create({
-  baseURL: "/api",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },

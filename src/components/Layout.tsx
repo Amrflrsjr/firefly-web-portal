@@ -11,16 +11,24 @@ import {
   LayoutDashboard,
   Menu,
   X,
+  UserPlus,
 } from "lucide-react";
 import { GlobalSearch } from "../components/search/GlobalSearch";
 import fireflyLogo from "../assets/Firefly Logo - No BG.png";
 import { ConfirmModal } from "./common/ConfirmModal";
 
 export const Layout: React.FC = () => {
-  const { username, logout } = useAuth();
+  const { username, roles, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Check if current user is an Admin
+  const isAdmin =
+    Array.isArray(roles) &&
+    roles.some(
+      (role) => typeof role === "string" && role.toLowerCase() === "admin",
+    );
 
   const handleLogout = () => {
     logout();
@@ -113,6 +121,24 @@ export const Layout: React.FC = () => {
                   </NavLink>
                 );
               })}
+
+              {/* Admin-Only User Registration Link */}
+              {isAdmin && (
+                <NavLink
+                  to="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
+                      isActive
+                        ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
+                        : "text-amber-700 bg-amber-500/10 hover:bg-amber-500/20"
+                    }`
+                  }
+                >
+                  <UserPlus className="w-4 h-4 text-amber-700" />
+                  <span>Add New User</span>
+                </NavLink>
+              )}
             </nav>
           </div>
 
@@ -190,6 +216,32 @@ export const Layout: React.FC = () => {
                 </NavLink>
               );
             })}
+
+            {/* Admin-Only User Registration Link */}
+            {isAdmin && (
+              <NavLink
+                to="/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
+                    isActive
+                      ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <UserPlus
+                      className={`w-4 h-4 transition-colors ${
+                        isActive ? "text-amber-700" : "text-slate-400"
+                      }`}
+                    />
+                    <span>Add New User</span>
+                  </>
+                )}
+              </NavLink>
+            )}
           </nav>
         </div>
 
@@ -237,7 +289,18 @@ export const Layout: React.FC = () => {
               <GlobalSearch />
             </div>
           </div>
-          <div className="flex items-center gap-4"></div>
+          <div className="flex items-center gap-4">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => navigate("/register")}
+                className="hidden sm:flex items-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-amber-400 text-slate-950 text-xs font-extrabold px-3.5 py-2 rounded-xl transition-all shadow-xs cursor-pointer active:scale-98"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Add User</span>
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Page Content Viewport */}
