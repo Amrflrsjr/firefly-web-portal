@@ -44,6 +44,14 @@ export const Layout: React.FC = () => {
     { label: "Archive", path: "/trash", icon: Trash2 },
   ];
 
+  // Common NavLink class generator for uniform button design across navigation
+  const getNavLinkClass = (isActive: boolean) =>
+    `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+      isActive
+        ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
+        : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+    }`;
+
   return (
     <div className="min-h-screen bg-slate-50/70 text-slate-800 flex flex-col lg:flex-row relative selection:bg-[#F9B53F]/30 selection:text-slate-900">
       {/* Mobile Sidebar Overlay Drawer */}
@@ -100,13 +108,7 @@ export const Layout: React.FC = () => {
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
-                        isActive
-                          ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
-                          : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
-                      }`
-                    }
+                    className={({ isActive }) => getNavLinkClass(isActive)}
                   >
                     {({ isActive }) => (
                       <>
@@ -127,16 +129,18 @@ export const Layout: React.FC = () => {
                 <NavLink
                   to="/register"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
-                      isActive
-                        ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
-                        : "text-amber-700 bg-amber-500/10 hover:bg-amber-500/20"
-                    }`
-                  }
+                  className={({ isActive }) => getNavLinkClass(isActive)}
                 >
-                  <UserPlus className="w-4 h-4 text-amber-700" />
-                  <span>Add New User</span>
+                  {({ isActive }) => (
+                    <>
+                      <UserPlus
+                        className={`w-4 h-4 transition-colors ${
+                          isActive ? "text-amber-700" : "text-slate-400"
+                        }`}
+                      />
+                      <span>Add New User</span>
+                    </>
+                  )}
                 </NavLink>
               )}
             </nav>
@@ -161,7 +165,7 @@ export const Layout: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowLogoutConfirm(true)}
-              className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-100 active:scale-98 shadow-2xs"
+              className="w-full flex items-center justify-center gap-2 px-3.5 py-3 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-rose-100 active:scale-98 shadow-2xs"
             >
               <LogOut className="w-4 h-4" />
               <span>Sign Out</span>
@@ -195,13 +199,7 @@ export const Layout: React.FC = () => {
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
-                      isActive
-                        ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                    }`
-                  }
+                  className={({ isActive }) => getNavLinkClass(isActive)}
                 >
                   {({ isActive }) => (
                     <>
@@ -221,14 +219,7 @@ export const Layout: React.FC = () => {
             {isAdmin && (
               <NavLink
                 to="/register"
-                onClick={() => setMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
-                    isActive
-                      ? "bg-linear-to-r from-[#FFCB62]/30 to-[#F9B53F]/20 text-slate-900 border-l-4 border-[#F9B53F] shadow-2xs"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`
-                }
+                className={({ isActive }) => getNavLinkClass(isActive)}
               >
                 {({ isActive }) => (
                   <>
@@ -247,7 +238,7 @@ export const Layout: React.FC = () => {
 
         {/* User Profile & Sign Out Footer */}
         <div className="border-t border-slate-100 pt-4 space-y-3">
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50/80 border border-slate-100 shadow-2xs">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 shadow-2xs">
             <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center border border-amber-200/60 shadow-2xs shrink-0">
               {(username || "A").charAt(0).toUpperCase()}
             </div>
@@ -264,7 +255,7 @@ export const Layout: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowLogoutConfirm(true)}
-            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-100 active:scale-98 shadow-2xs"
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-3 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-rose-100 active:scale-98 shadow-2xs"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
@@ -288,18 +279,6 @@ export const Layout: React.FC = () => {
             <div className="w-full max-w-md">
               <GlobalSearch />
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => navigate("/register")}
-                className="hidden sm:flex items-center gap-2 bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-amber-400 text-slate-950 text-xs font-extrabold px-3.5 py-2 rounded-xl transition-all shadow-xs cursor-pointer active:scale-98"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Add User</span>
-              </button>
-            )}
           </div>
         </header>
 

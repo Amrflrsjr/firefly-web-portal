@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -22,6 +23,7 @@ export const Register: React.FC = () => {
     confirmPassword: "",
     fullName: "",
   });
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
@@ -45,18 +47,42 @@ export const Register: React.FC = () => {
     setLoading(true);
 
     try {
+      // Calls relative /auth/register against baseURL (".../api"), resolving to /api/auth/register
       await api.post("/auth/register", {
-        username: formData.username,
-        email: formData.email,
+        username: formData.username.trim(),
+        email: formData.email.trim(),
         password: formData.password,
-        fullName: formData.fullName,
+        fullName: formData.fullName.trim(),
+        role: isAdmin ? "Admin" : "User",
       });
 
-      toast.success("User account created successfully");
+      toast.success(
+        `User account created successfully as ${isAdmin ? "Admin" : "User"}`,
+      );
+
+      setFormData({
+        username: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        fullName: "",
+      });
+
       navigate("/dashboard");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "User registration failed");
+        const responseData = err.response?.data;
+        if (typeof responseData === "string") {
+          setError(responseData);
+        } else if (responseData && typeof responseData === "object") {
+          setError(
+            (responseData as { message?: string; title?: string }).message ||
+              (responseData as { message?: string; title?: string }).title ||
+              "User registration failed",
+          );
+        } else {
+          setError("User registration failed");
+        }
       } else {
         setError("An unexpected error occurred");
       }
@@ -203,6 +229,38 @@ export const Register: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Admin Toggle Section */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200/80 my-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10 text-[#F9B53F]">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800">
+                  Grant Administrator Privileges
+                </p>
+                <p className="text-[11px] font-medium text-slate-500">
+                  {isAdmin
+                    ? "User will have full access to manage users and portal settings."
+                    : "User will have standard staff portal access."}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAdmin(!isAdmin)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isAdmin ? "bg-[#F9B53F]" : "bg-slate-300"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  isAdmin ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4">

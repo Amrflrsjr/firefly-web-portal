@@ -31,7 +31,19 @@ export const Login: React.FC = () => {
       navigate("/dashboard");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data || "Invalid username or password");
+        const responseData = err.response?.data;
+
+        if (typeof responseData === "string") {
+          setError(responseData);
+        } else if (responseData && typeof responseData === "object") {
+          setError(
+            (responseData as { message?: string; title?: string }).message ||
+              (responseData as { message?: string; title?: string }).title ||
+              "Invalid username or password",
+          );
+        } else {
+          setError("Invalid username or password");
+        }
       } else {
         setError("An unexpected error occurred");
       }
@@ -44,11 +56,9 @@ export const Login: React.FC = () => {
     <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 bg-slate-950 font-sans selection:bg-[#F9B53F] selection:text-slate-950">
       {/* Left Brand Panel (7 Cols) */}
       <div className="lg:col-span-7 bg-linear-to-br from-slate-900 via-slate-950 to-black p-10 lg:p-20 flex flex-col justify-between relative overflow-hidden border-r border-slate-800/60">
-        {/* Ambient Glow Effects */}
         <div className="absolute top-1/4 -left-20 w-96 h-96 rounded-full bg-[#F9B53F]/10 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-amber-500/5 blur-[100px] pointer-events-none" />
 
-        {/* Top Logo Badge */}
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-28 h-auto">
             <img
@@ -59,7 +69,6 @@ export const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Hero Message */}
         <div className="relative z-10 space-y-6 my-auto py-12 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[#F9B53F] text-xs font-bold tracking-wide uppercase">
             <Sparkles className="w-3.5 h-3.5" /> NXF Sticker Shop Portal
@@ -76,7 +85,6 @@ export const Login: React.FC = () => {
           </p>
         </div>
 
-        {/* Footer info */}
         <div className="relative z-10 flex items-center justify-between text-xs text-slate-500 font-medium border-t border-slate-900 pt-6">
           <span>© {new Date().getFullYear()} Firefly Crafts PH</span>
           <span>Mandaue City, Cebu</span>

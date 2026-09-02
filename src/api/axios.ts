@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// Dynamically check for local dev vs production URL
 const baseURL =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV
@@ -27,7 +26,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Check if the request was to any auth endpoint (/auth/login, /auth/register, etc.)
+    const isAuthEndpoint = error.config?.url?.includes("/auth/");
+
+    // Only redirect if a 401 happens on general protected data routes
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       console.warn("Unauthorized request - redirecting to login");
       localStorage.clear();
       window.location.href = "/login";
