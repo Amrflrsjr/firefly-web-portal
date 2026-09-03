@@ -6,7 +6,7 @@ export const NotFound: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 sm:px-0 animate-in fade-in duration-300">
+    <div className="min-h-screen w-full flex items-center justify-center px-4 sm:px-0 bg-slate-50/50 animate-in fade-in duration-300">
       <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-100/80 p-8 sm:p-10 text-center space-y-6 relative overflow-hidden">
         {/* Subtle background glow accent */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />

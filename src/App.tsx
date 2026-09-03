@@ -5,7 +5,6 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminRoute } from "./components/AdminRoute";
 import { Layout } from "./components/Layout";
 import { Login } from "./pages/Login";
-import { Register } from "./pages/Register";
 import { Customers } from "./pages/Customer";
 import { Products } from "./pages/Product";
 import { Quotations } from "./pages/Quotation";
@@ -13,6 +12,8 @@ import { Invoices } from "./pages/Invoices";
 import { Trash } from "./pages/Trash";
 import { Dashboard } from "./pages/Dashboard";
 import { NotFound } from "./components/common/NotFound";
+import { Users } from "./pages/Users";
+import { Profile } from "./pages/Profile";
 
 export function App() {
   return (
@@ -55,13 +56,13 @@ export function App() {
               <Route path="/customers" element={<Customers />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/trash" element={<Trash />} />
+              <Route path="/dashboard" element={<Dashboard />} />{" "}
               <Route path="/dashboard" element={<Dashboard />} />
-
+              <Route path="/profile" element={<Profile />} />
               {/* Admin-Only Route */}
               <Route element={<AdminRoute />}>
-                <Route path="/register" element={<Register />} />
+                <Route path="/users" element={<Users />} />
               </Route>
-
               <Route path="*" element={<NotFound />} />
             </Route>
           </Route>

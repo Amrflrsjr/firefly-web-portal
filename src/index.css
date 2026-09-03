@@ -7,6 +7,10 @@
   --color-firefly-bg: #ffffff;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family:
     "Inter",
