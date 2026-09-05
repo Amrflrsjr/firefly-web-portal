@@ -11,7 +11,11 @@ import type {
   QuotationResponseDto,
   CreateQuotationDto,
 } from "../types/quotation";
-import type { Customer, CustomerContact } from "../types/customer";
+import type {
+  CreateCustomerDto,
+  Customer,
+  CustomerContact,
+} from "../types/customer";
 import {
   Plus,
   Search,
@@ -35,6 +39,7 @@ import { AddContactModal } from "../components/customers/AddContactModal";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { PdfPreviewModal } from "../components/common/PdfPreviewModal";
 import { EditQuotationModal } from "../components/quotations/EditQuotationModal";
+import { CreateCustomerModal } from "../components/customers/CreateCustomerModal";
 
 export const Quotations: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,8 +48,10 @@ export const Quotations: React.FC = () => {
   const startDateFilter = searchParams.get("startDate") || "";
   const endDateFilter = searchParams.get("endDate") || "";
   const sortBy = searchParams.get("sortBy") || "createdat";
-  const ascending = searchParams.get("ascending") !== "false";
+  // Default ascending to false so newest/new quotations are at the top by default
+  const ascending = searchParams.get("ascending") === "true";
 
+  const [isCreateCustomerOpen, setIsCreateCustomerOpen] = useState(false);
   const [quotations, setQuotations] = useState<QuotationResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -80,6 +87,25 @@ export const Quotations: React.FC = () => {
   const [formError, setFormError] = useState("");
   const [contactRefreshCounter, setContactRefreshCounter] = useState(0);
 
+  const handleCreateCustomerFromModal = async (dto: CreateCustomerDto) => {
+    setSaving(true);
+    try {
+      const response = await api.post<Customer>("/customers", dto);
+      toast.success("Customer created successfully!");
+      setIsCreateCustomerOpen(false);
+
+      // Automatically select the newly created customer inside the quotation form if desired
+      if (response.data) {
+        setContactRefreshCounter((prev) => prev + 1);
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Failed to create customer");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -654,10 +680,20 @@ export const Quotations: React.FC = () => {
           onSubmit={handleCreateQuotation}
           onSubmitAndSend={handleCreateAndSendQuotation}
           refreshTrigger={contactRefreshCounter}
+          onTriggerAddCustomer={() => setIsCreateCustomerOpen(true)}
           onTriggerAddContact={(customer) => {
             setSelectedCustomerForContact(customer);
             setIsAddContactOpen(true);
           }}
+        />
+      )}
+
+      {isCreateCustomerOpen && (
+        <CreateCustomerModal
+          saving={saving}
+          error={formError}
+          onClose={() => setIsCreateCustomerOpen(false)}
+          onSubmit={handleCreateCustomerFromModal}
         />
       )}
 

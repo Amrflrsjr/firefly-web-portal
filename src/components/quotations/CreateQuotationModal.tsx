@@ -27,6 +27,8 @@ import {
   RefreshCw,
   Copy,
   Calendar,
+  ChevronDown,
+  Building2,
 } from "lucide-react";
 import { CreateProductModal } from "../products/CreateProductModal";
 import { ProductVariantsModal } from "../products/ProductVariantsModal";
@@ -37,9 +39,16 @@ interface CreateQuotationModalProps {
   onClose: () => void;
   onSubmit: (dto: CreateQuotationDto) => void;
   onSubmitAndSend?: (dto: CreateQuotationDto) => void;
+  onTriggerAddCustomer: () => void;
   onTriggerAddContact: (customer: Customer) => void;
   refreshTrigger?: number;
 }
+
+const currency = (value: number) =>
+  `₱${(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   saving,
@@ -47,22 +56,24 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   onClose,
   onSubmit,
   onSubmitAndSend,
+  onTriggerAddCustomer,
   onTriggerAddContact,
   refreshTrigger = 0,
 }) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<number>(0);
-  const [availableContacts, setAvailableContacts] = useState<CustomerContact[]>(
-    [],
-  );
   const [selectedContactId, setSelectedContactId] = useState<number>(0);
 
-  // Server-side customer search states
+  // Search states for Customer and Contact Person
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
   const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+
+  const [contactSearchQuery, setContactSearchQuery] = useState("");
+  const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
 
   const [vatType, setVatType] = useState<string>("Exclusive");
   const [validityDays, setValidityDays] = useState<number>(7);
@@ -138,6 +149,16 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     }
   }, []);
 
+  const fetchAllCustomers = useCallback(async () => {
+    try {
+      const res = await api.get<Customer[]>("/customers");
+      setAllCustomers(res.data);
+      setSearchedCustomers(res.data);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Failed to load customers."));
+    }
+  }, []);
+
   const loadCustomerDetails = useCallback(async (customerId: number) => {
     if (!customerId) return;
     try {
@@ -149,8 +170,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         fullCustomer.contacts &&
         fullCustomer.contacts.length > 0
       ) {
-        setAvailableContacts(fullCustomer.contacts);
-
         const primaryContact =
           fullCustomer.contacts.find((c) => c.isPrimary) ||
           fullCustomer.contacts[0];
@@ -158,12 +177,13 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
           setSelectedContactId(primaryContact.contactId ?? 0);
           setContactNameSnapshot(primaryContact.name || "");
           setContactEmailSnapshot(primaryContact.email || "");
+          setContactSearchQuery(primaryContact.name || "");
         }
       } else {
-        setAvailableContacts([]);
         setSelectedContactId(0);
         setContactNameSnapshot(fullCustomer?.companyName || "");
         setContactEmailSnapshot("");
+        setContactSearchQuery(fullCustomer?.companyName || "");
       }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to reload customer contacts."));
@@ -173,34 +193,42 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   useEffect(() => {
     let isMounted = true;
 
-    const loadInitialProducts = async () => {
-      await fetchProducts();
+    const loadInitialData = async () => {
+      await Promise.all([fetchProducts(), fetchAllCustomers()]);
       if (!isMounted) return;
     };
 
-    void loadInitialProducts();
+    void loadInitialData();
 
     return () => {
       isMounted = false;
     };
-  }, [fetchProducts]);
+  }, [fetchProducts, fetchAllCustomers]);
 
   useEffect(() => {
     let isMounted = true;
 
-    if (refreshTrigger > 0 && selectedCustomerId > 0) {
-      const reloadContacts = async () => {
-        await loadCustomerDetails(selectedCustomerId);
+    if (refreshTrigger > 0) {
+      const reloadData = async () => {
+        await fetchAllCustomers();
+        if (selectedCustomerId > 0) {
+          await loadCustomerDetails(selectedCustomerId);
+        }
         if (!isMounted) return;
       };
 
-      void reloadContacts();
+      void reloadData();
     }
 
     return () => {
       isMounted = false;
     };
-  }, [refreshTrigger, selectedCustomerId, loadCustomerDetails]);
+  }, [
+    refreshTrigger,
+    selectedCustomerId,
+    loadCustomerDetails,
+    fetchAllCustomers,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -208,6 +236,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         setActiveProductSearchIndex(null);
         setActiveVariantSearchIndex(null);
         setIsCustomerSearchOpen(false);
+        setIsContactSearchOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -217,7 +246,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   useEffect(() => {
     const fetchSearchedCustomers = async () => {
       if (!customerSearchQuery.trim()) {
-        setSearchedCustomers([]);
+        setSearchedCustomers(allCustomers);
         return;
       }
 
@@ -236,7 +265,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
     const timer = setTimeout(fetchSearchedCustomers, 300);
     return () => clearTimeout(timer);
-  }, [customerSearchQuery]);
+  }, [customerSearchQuery, allCustomers]);
 
   const handleSelectCustomer = async (customer: Customer) => {
     setSelectedCustomerId(customer.customerId);
@@ -245,28 +274,31 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     await loadCustomerDetails(customer.customerId);
   };
 
-  const handleContactSelect = (value: string) => {
-    if (value === "ADD_NEW") {
-      api
-        .get<Customer>(`/customers/${selectedCustomerId}`)
-        .then((res) => {
-          if (res.data) onTriggerAddContact(res.data);
-        })
-        .catch((err: unknown) => {
-          toast.error(getErrorMessage(err, "Failed to load customer."));
-        });
-      return;
-    }
-
-    const contactId = Number(value);
-    setSelectedContactId(contactId);
-
-    const contact = availableContacts.find((c) => c.contactId === contactId);
-    if (contact) {
-      setContactNameSnapshot(contact.name || "");
-      setContactEmailSnapshot(contact.email || "");
-    }
+  const handleSelectContactByPerson = (
+    contact: CustomerContact,
+    parentCustomer: Customer,
+  ) => {
+    setSelectedCustomerId(parentCustomer.customerId);
+    setCustomerSearchQuery(parentCustomer.companyName);
+    setSelectedContactId(contact.contactId ?? 0);
+    setContactNameSnapshot(contact.name || "");
+    setContactEmailSnapshot(contact.email || "");
+    setContactSearchQuery(contact.name || "");
+    setIsContactSearchOpen(false);
+    loadCustomerDetails(parentCustomer.customerId);
   };
+
+  // Flatten all contacts from all loaded customers for secondary searching
+  const allAvailableContacts = allCustomers.flatMap((cust) =>
+    (cust.contacts || []).map((contact) => ({
+      contact,
+      customer: cust,
+    })),
+  );
+
+  const filteredContacts = allAvailableContacts.filter(({ contact }) =>
+    contact.name.toLowerCase().includes(contactSearchQuery.toLowerCase()),
+  );
 
   const handleItemChange = (
     index: number,
@@ -515,7 +547,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
               <div className="hidden sm:block px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 font-mono text-xs font-bold border border-slate-200/60">
                 {items.length} {items.length === 1 ? "item" : "items"} •{" "}
                 <span className="text-amber-600 font-extrabold">
-                  ₱{calculatedTotal.toFixed(2)}
+                  {currency(calculatedTotal)}
                 </span>
               </div>
               <button
@@ -550,7 +582,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {/* Customer Search */}
+                  {/* Customer Searchable Dropdown with + Add New option */}
                   <div className="space-y-1.5 relative">
                     <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                       Customer <span className="text-rose-500">*</span>
@@ -560,7 +592,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                       <input
                         type="text"
                         required
-                        placeholder="Search customer..."
+                        placeholder="Search or select customer..."
                         value={customerSearchQuery}
                         onFocus={() => setIsCustomerSearchOpen(true)}
                         onChange={(e) => {
@@ -568,17 +600,36 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                           setIsCustomerSearchOpen(true);
                           if (!e.target.value) {
                             setSelectedCustomerId(0);
-                            setAvailableContacts([]);
                             setSelectedContactId(0);
                           }
                         }}
-                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl pl-8 pr-8 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
                       />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsCustomerSearchOpen(!isCustomerSearchOpen)
+                        }
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
                     </div>
 
-                    {isCustomerSearchOpen &&
-                      customerSearchQuery.trim().length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto z-50">
+                    {isCustomerSearchOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                        <div
+                          onClick={() => {
+                            setIsCustomerSearchOpen(false);
+                            onTriggerAddCustomer();
+                          }}
+                          className="px-3.5 py-3 text-xs font-black text-amber-900 bg-amber-50 hover:bg-amber-100 cursor-pointer flex items-center gap-2 border-b border-amber-200 shrink-0 transition-colors"
+                        >
+                          <Building2 className="w-4 h-4 text-[#F9B53F]" />
+                          <span>+ Add New Customer</span>
+                        </div>
+
+                        <div className="max-h-48 overflow-y-auto">
                           {isSearchingCustomers ? (
                             <div className="px-3 py-3 text-xs text-slate-400 text-center font-medium flex items-center justify-center gap-2">
                               <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#F9B53F]" />
@@ -603,11 +654,12 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             </div>
                           )}
                         </div>
-                      )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Contact Person */}
-                  <div className="space-y-1.5">
+                  {/* Searchable Contact Person Field */}
+                  <div className="space-y-1.5 relative">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                         Contact Person
@@ -616,19 +668,10 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            api
-                              .get<Customer>(`/customers/${selectedCustomerId}`)
-                              .then((res) => {
-                                if (res.data) onTriggerAddContact(res.data);
-                              })
-                              .catch((err: unknown) => {
-                                toast.error(
-                                  getErrorMessage(
-                                    err,
-                                    "Failed to load customer.",
-                                  ),
-                                );
-                              });
+                            const currentCust = allCustomers.find(
+                              (c) => c.customerId === selectedCustomerId,
+                            );
+                            if (currentCust) onTriggerAddContact(currentCust);
                           }}
                           className="text-[10px] font-bold text-[#F9B53F] hover:underline cursor-pointer inline-flex items-center gap-0.5"
                         >
@@ -636,33 +679,70 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         </button>
                       )}
                     </div>
-                    {availableContacts.length > 0 ? (
-                      <select
-                        value={selectedContactId}
-                        onChange={(e) => handleContactSelect(e.target.value)}
-                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
-                      >
-                        {availableContacts.map((contact) => (
-                          <option
-                            key={contact.contactId}
-                            value={contact.contactId}
-                          >
-                            {contact.name}{" "}
-                            {contact.position ? `(${contact.position})` : ""}{" "}
-                            {contact.isPrimary ? "[Primary]" : ""}
-                          </option>
-                        ))}
-                        <option value="ADD_NEW">+ Create New Contact...</option>
-                      </select>
-                    ) : (
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                       <input
                         type="text"
-                        value={contactNameSnapshot}
-                        onChange={(e) => setContactNameSnapshot(e.target.value)}
-                        placeholder="Enter contact name"
-                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                        placeholder="Search contact person..."
+                        value={contactSearchQuery}
+                        onFocus={() => setIsContactSearchOpen(true)}
+                        onChange={(e) => {
+                          setContactSearchQuery(e.target.value);
+                          setIsContactSearchOpen(true);
+                          if (!e.target.value) {
+                            setSelectedContactId(0);
+                            setContactNameSnapshot("");
+                            setContactEmailSnapshot("");
+                          }
+                        }}
+                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl pl-8 pr-8 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
                       />
-                    )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsContactSearchOpen(!isContactSearchOpen)
+                        }
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+
+                      {isContactSearchOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-48">
+                          <div className="overflow-y-auto">
+                            {filteredContacts.length > 0 ? (
+                              filteredContacts.map(({ contact, customer }) => (
+                                <div
+                                  key={contact.contactId}
+                                  onClick={() =>
+                                    handleSelectContactByPerson(
+                                      contact,
+                                      customer,
+                                    )
+                                  }
+                                  className="px-3.5 py-2.5 text-xs hover:bg-amber-50 cursor-pointer flex items-center justify-between border-b border-slate-50 last:border-none"
+                                >
+                                  <div>
+                                    <span className="font-bold text-slate-800">
+                                      {contact.name}
+                                    </span>
+                                    <div className="text-[10px] text-slate-400 font-medium">
+                                      Company: {customer.companyName}
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-3 py-3 text-xs text-slate-400 text-center font-medium">
+                                No contact persons found
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Contact Email */}
@@ -690,7 +770,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     <select
                       value={vatType}
                       onChange={(e) => setVatType(e.target.value)}
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all cursor-pointer"
                     >
                       <option value="Exclusive">VAT Exclusive (12%)</option>
                       <option value="Inclusive">VAT Inclusive (12%)</option>
@@ -765,7 +845,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
                           <div className="flex items-center gap-2">
                             <span className="font-mono font-extrabold text-xs text-slate-800 pr-1">
-                              ₱{rowTotal.toFixed(2)}
+                              {currency(rowTotal)}
                             </span>
                             <button
                               type="button"
@@ -931,7 +1011,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                                 )}
                                             </div>
                                             <span className="font-bold font-mono text-slate-700">
-                                              ₱{variant.unitPrice.toFixed(2)}
+                                              {currency(variant.unitPrice)}
                                             </span>
                                           </div>
                                         );
@@ -1046,13 +1126,13 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                   <div className="flex justify-between text-slate-600">
                     <span>Subtotal</span>
                     <span className="font-mono font-bold text-slate-900">
-                      ₱{calculatedSubtotal.toFixed(2)}
+                      {currency(calculatedSubtotal)}
                     </span>
                   </div>
                   <div className="flex justify-between text-slate-600">
                     <span>VAT ({vatType})</span>
                     <span className="font-mono font-bold text-slate-900">
-                      ₱{calculatedVat.toFixed(2)}
+                      {currency(calculatedVat)}
                     </span>
                   </div>
                   <div className="pt-2.5 border-t border-slate-100 flex justify-between items-baseline">
@@ -1060,7 +1140,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                       Total
                     </span>
                     <span className="font-mono text-lg font-black text-amber-600">
-                      ₱{calculatedTotal.toFixed(2)}
+                      {currency(calculatedTotal)}
                     </span>
                   </div>
                 </div>
@@ -1077,7 +1157,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                 <select
                   value={validityDays}
                   onChange={(e) => setValidityDays(Number(e.target.value))}
-                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all cursor-pointer"
                 >
                   <option value={7}>7 days</option>
                   <option value={14}>14 days</option>

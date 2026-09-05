@@ -28,10 +28,25 @@ interface UserResponse {
   username: string;
   email: string;
   fullName: string;
+  profilePictureUrl?: string;
   isActive: boolean;
   roles: string[];
   createdAt: string;
 }
+
+const getImageUrl = (url?: string) => {
+  if (!url) return "";
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("blob:")
+  ) {
+    return url;
+  }
+  const apiBase = api.defaults.baseURL || "http://localhost:5000";
+  const baseOrigin = apiBase.replace(/\/api\/?$/, "");
+  return `${baseOrigin}${url.startsWith("/") ? "" : "/"}${url}`;
+};
 
 export const Users: React.FC = () => {
   const { username: currentUsername } = useAuth();
@@ -367,6 +382,7 @@ export const Users: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 text-sm font-medium">
                   {currentUsers.map((u) => {
                     const isEditing = editingUserId === u.id;
+                    const resolvedAvatarUrl = getImageUrl(u.profilePictureUrl);
 
                     return (
                       <tr
@@ -414,8 +430,16 @@ export const Users: React.FC = () => {
                             </div>
                           ) : (
                             <div className="flex items-center gap-3.5">
-                              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center border border-amber-200/60 group-hover:scale-105 transition-transform shrink-0 shadow-2xs">
-                                {u.fullName.charAt(0).toUpperCase()}
+                              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center border border-amber-200/60 group-hover:scale-105 transition-transform shrink-0 shadow-2xs overflow-hidden">
+                                {resolvedAvatarUrl ? (
+                                  <img
+                                    src={resolvedAvatarUrl}
+                                    alt={u.fullName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  u.fullName.charAt(0).toUpperCase()
+                                )}
                               </div>
                               <div>
                                 <p className="font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
@@ -533,7 +557,7 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={handleCancelEdit}
                                   title="Cancel"
-                                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all active:scale-95 cursor-pointer border border-slate-200/60 shadow-2xs"
+                                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all active:scale-95 cursor-pointer border border-emerald-200/60 shadow-2xs"
                                 >
                                   <X className="w-4 h-4" />
                                 </button>

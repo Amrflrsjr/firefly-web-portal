@@ -21,6 +21,12 @@ interface Props {
   onDeleteInvoice: (invoiceId: number) => void;
 }
 
+const currency = (value: number) =>
+  `₱${(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export const InvoiceDetailsModal: React.FC<Props> = ({
   invoice,
   onClose,
@@ -183,7 +189,7 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
                       </div>
                     </div>
                     <div className="font-mono font-black text-emerald-700 bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-100 text-xs self-start sm:self-auto shadow-2xs">
-                      + ₱{(p.amountPaid ?? 0).toFixed(2)}
+                      + {currency(p.amountPaid ?? 0)}
                     </div>
                   </div>
                 ))}
@@ -202,11 +208,8 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
               </p>
             </div>
             <div className="text-left sm:text-right font-mono">
-              <span className="text-xs text-slate-400 mr-1.5 font-bold">
-                PHP
-              </span>
               <span className="text-2xl font-black text-rose-400">
-                {(invoice.balanceDue ?? 0).toFixed(2)}
+                {currency(invoice.balanceDue ?? 0)}
               </span>
             </div>
           </div>

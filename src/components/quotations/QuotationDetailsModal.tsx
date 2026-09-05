@@ -21,6 +21,12 @@ interface QuotationDetailView extends QuotationResponseDto {
   noteToCustomer?: string | null;
 }
 
+const currency = (value: number) =>
+  `₱${(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
   quotation,
   onClose,
@@ -215,10 +221,10 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                           {qty}
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono text-slate-600 font-medium">
-                          ₱{price.toFixed(2)}
+                          {currency(price)}
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900">
-                          ₱{total.toFixed(2)}
+                          {currency(total)}
                         </td>
                       </tr>
                     );
@@ -250,7 +256,7 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal:</span>
                 <span className="font-mono font-bold text-slate-900">
-                  ₱{subtotal.toFixed(2)}
+                  {currency(subtotal)}
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
@@ -259,13 +265,13 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                   Calculation ({vatType}):
                 </span>
                 <span className="font-mono font-bold text-slate-900">
-                  ₱{taxAmount.toFixed(2)}
+                  {currency(taxAmount)}
                 </span>
               </div>
               <div className="flex justify-between text-sm sm:text-base font-black text-slate-900 pt-3 border-t border-slate-200">
                 <span>Grand Total:</span>
                 <span className="font-mono text-amber-600 text-lg">
-                  ₱{grandTotal.toFixed(2)}
+                  {currency(grandTotal)}
                 </span>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import type { InvoiceResponseDto } from "../../types/invoice";
 import api from "../../api/axios";
 import {
@@ -31,6 +31,12 @@ interface InvoicesTableProps {
   onDeleteInvoice: (invoiceId: number) => void;
 }
 
+const currency = (value: number) =>
+  `₱${(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   loading,
   invoices,
@@ -44,9 +50,39 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   onUpdateStatus,
   onDeleteInvoice,
 }) => {
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  const processedInvoices = useMemo(() => {
+    if (!invoices) return [];
+
+    const sorted = [...invoices];
+    sorted.sort((a, b) => {
+      if (sortBy?.toLowerCase() === "createdat" || !sortBy) {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        if (timeA !== timeB) {
+          return ascending ? timeA - timeB : timeB - timeA;
+        }
+        return ascending
+          ? a.invoiceId - b.invoiceId
+          : b.invoiceId - a.invoiceId;
+      }
+
+      const valA = a[sortBy as keyof InvoiceResponseDto];
+      const valB = b[sortBy as keyof InvoiceResponseDto];
+
+      if (typeof valA === "string" && typeof valB === "string") {
+        return ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+
+      const numA = Number(valA || 0);
+      const numB = Number(valB || 0);
+      return ascending ? numA - numB : numB - numA;
+    });
+
+    return sorted;
+  }, [invoices, sortBy, ascending]);
 
   if (loading) {
     return (
@@ -59,7 +95,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     );
   }
 
-  if (invoices.length === 0) {
+  if (processedInvoices.length === 0) {
     return (
       <div className="p-12 text-center text-slate-400 text-sm font-medium">
         No invoices found. Convert an existing quotation to generate an invoice.
@@ -67,9 +103,12 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     );
   }
 
-  const totalPages = Math.ceil(invoices.length / pageSize);
+  const totalPages = Math.ceil(processedInvoices.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const currentInvoices = invoices.slice(startIndex, startIndex + pageSize);
+  const currentInvoices = processedInvoices.slice(
+    startIndex,
+    startIndex + pageSize,
+  );
 
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -79,7 +118,6 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  // Dynamic badge styling helper for invoice status options
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case "paid":
@@ -157,17 +195,15 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
-                  Customer
-                  {renderSortIcon("customer")}
+                  Customer {renderSortIcon("customer")}
                 </div>
               </th>
               <th
-                onClick={() => onSort("issuedate")}
+                onClick={() => onSort("createdat")}
                 className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
-                  Issue Date
-                  {renderSortIcon("issuedate")}
+                  Date Created {renderSortIcon("createdat")}
                 </div>
               </th>
               <th
@@ -175,17 +211,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
-                  Status
-                  {renderSortIcon("status")}
-                </div>
-              </th>
-              <th
-                onClick={() => onSort("balancedue")}
-                className="py-3.5 px-6 text-right cursor-pointer hover:text-slate-700 transition-colors"
-              >
-                <div className="flex items-center justify-end gap-1.5">
-                  Balance Due
-                  {renderSortIcon("balancedue")}
+                  Status {renderSortIcon("status")}
                 </div>
               </th>
               <th
@@ -193,8 +219,15 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 className="py-3.5 px-6 text-right cursor-pointer hover:text-slate-700 transition-colors"
               >
                 <div className="flex items-center justify-end gap-1.5">
-                  Total Amount
-                  {renderSortIcon("totalamount")}
+                  Total Amount {renderSortIcon("totalamount")}
+                </div>
+              </th>
+              <th
+                onClick={() => onSort("balancedue")}
+                className="py-3.5 px-6 text-right cursor-pointer hover:text-slate-700 transition-colors"
+              >
+                <div className="flex items-center justify-end gap-1.5">
+                  Balance Due {renderSortIcon("balancedue")}
                 </div>
               </th>
               <th className="py-3.5 px-6 text-right">Actions</th>
@@ -229,12 +262,9 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                   </td>
 
                   <td className="py-4 px-6 text-xs text-slate-600 font-mono">
-                    {new Date(
-                      inv.issueDate || inv.createdAt,
-                    ).toLocaleDateString()}
+                    {new Date(inv.createdAt).toLocaleDateString()}
                   </td>
 
-                  {/* Direct Dropdown Status Badge */}
                   <td
                     className="py-4 px-6"
                     onClick={(e) => e.stopPropagation()}
@@ -276,15 +306,14 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                     </div>
                   </td>
 
-                  <td className="py-4 px-6 text-right font-bold text-rose-600 font-mono text-xs">
-                    PHP {(inv.balanceDue ?? 0).toFixed(2)}
-                  </td>
-
                   <td className="py-4 px-6 text-right font-bold text-slate-900 font-mono text-xs">
-                    PHP {(inv.totalAmount ?? 0).toFixed(2)}
+                    {currency(inv.totalAmount ?? 0)}
                   </td>
 
-                  {/* Redesigned Modern Action Buttons */}
+                  <td className="py-4 px-6 text-right font-bold text-rose-600 font-mono text-xs">
+                    {currency(inv.balanceDue ?? 0)}
+                  </td>
+
                   <td className="py-4 px-6 text-right">
                     <div
                       className="flex items-center justify-end gap-1.5"
@@ -347,10 +376,12 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
             <span className="font-bold text-slate-700">{startIndex + 1}</span>{" "}
             to{" "}
             <span className="font-bold text-slate-700">
-              {Math.min(startIndex + pageSize, invoices.length)}
+              {Math.min(startIndex + pageSize, processedInvoices.length)}
             </span>{" "}
             of{" "}
-            <span className="font-bold text-slate-700">{invoices.length}</span>{" "}
+            <span className="font-bold text-slate-700">
+              {processedInvoices.length}
+            </span>{" "}
             results
           </p>
 

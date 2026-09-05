@@ -31,6 +31,12 @@ interface QuotationTableProps {
   onEdit: (quotation: QuotationResponseDto) => void;
 }
 
+const currency = (value: number) =>
+  `₱${(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export const QuotationTable: React.FC<QuotationTableProps> = ({
   loading,
   quotations,
@@ -44,25 +50,41 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   onDeleteQuotation,
   onEdit,
 }) => {
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // Client-side fallback sorting: defaults to newest first if no external sort field is provided
+  // Enforce default descending sort for createdAt/quotationId so new items always appear first
   const processedQuotations = useMemo(() => {
     if (!quotations) return [];
 
-    // If external sorting is already handling "createdat", retain passed order
-    if (sortBy?.toLowerCase() === "createdat") {
-      return quotations;
-    }
+    const sorted = [...quotations];
+    sorted.sort((a, b) => {
+      if (sortBy?.toLowerCase() === "createdat" || !sortBy) {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        if (timeA !== timeB) {
+          return ascending ? timeA - timeB : timeB - timeA;
+        }
+        return ascending
+          ? a.quotationId - b.quotationId
+          : b.quotationId - a.quotationId;
+      }
 
-    // Default fallback: Sort newest to oldest by createdAt date
-    return [...quotations].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-  }, [quotations, sortBy]);
+      // Handle sorting for other active columns safely without 'any' or 'let'
+      const valA = a[sortBy as keyof QuotationResponseDto];
+      const valB = b[sortBy as keyof QuotationResponseDto];
+
+      if (typeof valA === "string" && typeof valB === "string") {
+        return ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+
+      const numA = Number(valA || 0);
+      const numB = Number(valB || 0);
+      return ascending ? numA - numB : numB - numA;
+    });
+
+    return sorted;
+  }, [quotations, sortBy, ascending]);
 
   if (loading) {
     return (
@@ -100,7 +122,6 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  // Dynamic badge status styling helper
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case "approved":
@@ -240,7 +261,6 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                     {new Date(q.createdAt).toLocaleDateString()}
                   </td>
 
-                  {/* Direct Dropdown Status Badge */}
                   <td
                     className="py-4 px-6"
                     onClick={(e) => e.stopPropagation()}
@@ -289,10 +309,9 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                   </td>
 
                   <td className="py-4 px-6 text-right font-bold text-slate-900 font-mono text-xs">
-                    PHP {q.totalAmount.toFixed(2)}
+                    {currency(q.totalAmount)}
                   </td>
 
-                  {/* Modern Action Buttons */}
                   <td className="py-4 px-6 text-right">
                     <div
                       className="flex items-center justify-end gap-1.5"

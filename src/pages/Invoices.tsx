@@ -39,7 +39,7 @@ export const Invoices: React.FC = () => {
   const startDateFilter = searchParams.get("startDate") || "";
   const endDateFilter = searchParams.get("endDate") || "";
   const sortBy = searchParams.get("sortBy") || "createdat";
-  const ascending = searchParams.get("ascending") !== "false";
+  const ascending = searchParams.get("ascending") === "true";
 
   const [invoices, setInvoices] = useState<InvoiceResponseDto[]>([]);
   const [quotations, setQuotations] = useState<QuotationResponseDto[]>([]);
