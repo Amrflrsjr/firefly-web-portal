@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminRoute } from "./components/AdminRoute";
 import { Layout } from "./components/Layout";
@@ -17,58 +18,62 @@ import { Profile } from "./pages/Profile";
 
 export function App() {
   return (
-    <AuthProvider>
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            fontSize: "14px",
-            borderRadius: "10px",
-            background: "#1e293b",
-            color: "#fff",
-          },
-          success: {
-            iconTheme: {
-              primary: "#FFCB62",
-              secondary: "#1e293b",
+    <ThemeProvider>
+      <AuthProvider>
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              fontSize: "14px",
+              borderRadius: "10px",
+              background: "#1e293b",
+              color: "#fff",
             },
-          },
-          error: {
-            iconTheme: {
-              primary: "#ef4444",
-              secondary: "#fff",
+            success: {
+              iconTheme: {
+                primary: "#FFCB62",
+                secondary: "#1e293b",
+              },
             },
-          },
-        }}
-      />
-      <BrowserRouter>
-        <Routes>
-          {/* Public Route */}
-          <Route path="/login" element={<Login />} />
+            error: {
+              iconTheme: {
+                primary: "#ef4444",
+                secondary: "#fff",
+              },
+            },
+          }}
+        />
+        <BrowserRouter>
+          <Routes>
+            {/* Public Route */}
+            <Route path="/login" element={<Login />} />
 
-          {/* Authenticated Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/quotations" element={<Quotations />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/trash" element={<Trash />} />
-              <Route path="/dashboard" element={<Dashboard />} />{" "}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              {/* Admin-Only Route */}
-              <Route element={<AdminRoute />}>
-                <Route path="/users" element={<Users />} />
+            {/* Authenticated Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route
+                  path="/"
+                  element={<Navigate to="/dashboard" replace />}
+                />
+                <Route path="/quotations" element={<Quotations />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/invoices" element={<Invoices />} />
+                <Route path="/trash" element={<Trash />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                {/* Admin-Only Route */}
+                <Route element={<AdminRoute />}>
+                  <Route path="/users" element={<Users />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
               </Route>
-              <Route path="*" element={<NotFound />} />
             </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

@@ -37,14 +37,14 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
     switch (status?.toLowerCase()) {
       case "approved":
       case "accepted":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200/60";
+        return "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-900/60";
       case "sent":
-        return "bg-blue-50 text-blue-700 border-blue-200/60";
+        return "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-900/60";
       case "cancelled":
       case "declined":
-        return "bg-rose-50 text-rose-700 border-rose-200/60";
+        return "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/60 dark:border-rose-900/60";
       default:
-        return "bg-amber-50 text-amber-800 border-amber-200/60";
+        return "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200/60 dark:border-amber-900/60";
     }
   };
 
@@ -77,19 +77,19 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl shadow-slate-900/10 border border-slate-100 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-900/10 border border-slate-100 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
         {/* Top Accent Gradient Bar */}
         <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 bg-white shrink-0">
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-[#F9B53F] shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-xs">
               <FileText className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <span className="font-mono text-xs font-black text-slate-400 uppercase tracking-wider">
+                <span className="font-mono text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   {quotation.quotationNumber}
                 </span>
                 <span
@@ -100,51 +100,51 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                   {quotation.status || "Created"}
                 </span>
               </div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight mt-0.5">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
                 Quotation Overview
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/80 transition-all cursor-pointer shadow-2xs active:scale-95"
+            className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/50">
+        <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/50 dark:bg-slate-950/40">
           {/* Info Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-xs space-y-1.5">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider">
+            <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
                 <Building2 className="w-3.5 h-3.5 text-[#F9B53F]" /> Customer
                 Entity
               </div>
-              <p className="font-extrabold text-slate-800 text-sm truncate">
+              <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm truncate">
                 {quotation.companyName || "N/A"}
               </p>
             </div>
 
-            <div className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-xs space-y-1.5">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider">
+            <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
                 <User className="w-3.5 h-3.5 text-[#F9B53F]" /> Contact Person
               </div>
-              <p className="font-extrabold text-slate-800 text-sm truncate">
+              <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm truncate">
                 {quotation.contactNameSnapshot || "N/A"}
               </p>
-              <p className="text-xs text-slate-400 truncate font-medium">
+              <p className="text-xs text-slate-400 dark:text-slate-500 truncate font-medium">
                 {quotation.contactEmailSnapshot || "No email provided"}
               </p>
             </div>
 
-            <div className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-xs space-y-1.5">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider">
+            <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
                 <Calendar className="w-3.5 h-3.5 text-[#F9B53F]" /> Date
                 Generated
               </div>
-              <p className="font-extrabold text-slate-800 text-sm font-mono">
+              <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm font-mono">
                 {quotation.createdAt
                   ? new Date(quotation.createdAt).toLocaleDateString(
                       undefined,
@@ -162,16 +162,16 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
           {/* Line Items Table Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">
+              <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Item Breakdown
               </h3>
-              <span className="text-xs font-bold text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200/70 shadow-2xs">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-200/70 dark:border-slate-800 shadow-2xs">
                 {quotation.items?.length || 0} item(s)
               </span>
             </div>
-            <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50/80 text-slate-500 font-extrabold border-b border-slate-200/80 uppercase tracking-wider text-[10px]">
+                <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold border-b border-slate-200/80 dark:border-slate-800 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3.5 px-4">SKU / Item</th>
                     <th className="py-3.5 px-4">Variant</th>
@@ -180,7 +180,7 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                     <th className="py-3.5 px-4 text-right">Line Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {quotation.items?.map((item, idx) => {
                     const qty = item.quantity ?? 1;
                     const price = item.unitPrice ?? 0;
@@ -198,32 +198,32 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                     return (
                       <tr
                         key={item.quotationItemId || idx}
-                        className="hover:bg-slate-50/60 transition-colors"
+                        className="hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors"
                       >
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2.5">
                             {item.sku && (
-                              <span className="font-mono text-[10px] font-bold text-amber-900 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md shadow-2xs">
+                              <span className="font-mono text-[10px] font-bold text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 px-2 py-0.5 rounded-md shadow-2xs">
                                 {item.sku}
                               </span>
                             )}
-                            <span className="font-bold text-slate-800">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">
                               {item.productName ||
                                 item.description ||
                                 "Custom Item"}
                             </span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-500 font-medium">
+                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
                           {variantText}
                         </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700 dark:text-slate-300">
                           {qty}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-slate-600 font-medium">
+                        <td className="py-3.5 px-4 text-right font-mono text-slate-600 dark:text-slate-400 font-medium">
                           {currency(price)}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900">
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 dark:text-white">
                           {currency(total)}
                         </td>
                       </tr>
@@ -236,41 +236,41 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
 
           {/* Financial Totals & Tax Computation Summary Box */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-            <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-2 shadow-xs flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl space-y-2 shadow-xs flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#F9B53F]" /> Note /
                   Payment Terms
                 </span>
-                <p className="text-xs text-slate-600 italic mt-2 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-2 leading-relaxed">
                   {detail.noteToCustomer ||
                     "No specific terms provided for this quotation."}
                 </p>
               </div>
-              <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400 font-medium">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
                 Valid until review acceptance.
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-2.5 text-xs font-semibold shadow-xs">
-              <div className="flex justify-between text-slate-600">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl space-y-2.5 text-xs font-semibold shadow-xs">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Subtotal:</span>
-                <span className="font-mono font-bold text-slate-900">
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                   {currency(subtotal)}
                 </span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span className="inline-flex items-center gap-1">
                   <Receipt className="w-3.5 h-3.5 text-amber-500" /> VAT
                   Calculation ({vatType}):
                 </span>
-                <span className="font-mono font-bold text-slate-900">
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                   {currency(taxAmount)}
                 </span>
               </div>
-              <div className="flex justify-between text-sm sm:text-base font-black text-slate-900 pt-3 border-t border-slate-200">
+              <div className="flex justify-between text-sm sm:text-base font-black text-slate-900 dark:text-white pt-3 border-t border-slate-200 dark:border-slate-800">
                 <span>Grand Total:</span>
-                <span className="font-mono text-amber-600 text-lg">
+                <span className="font-mono text-amber-600 dark:text-amber-400 text-lg">
                   {currency(grandTotal)}
                 </span>
               </div>
@@ -279,11 +279,11 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="flex items-center justify-end px-6 sm:px-8 py-4 border-t border-slate-100 bg-white shrink-0 shadow-sm">
+        <div className="flex items-center justify-end px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-sm">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 rounded-2xl border border-slate-200 text-slate-700 text-xs font-extrabold hover:bg-slate-100 transition-all cursor-pointer active:scale-95 shadow-2xs"
+            className="px-6 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-extrabold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 shadow-2xs"
           >
             Close Overview
           </button>

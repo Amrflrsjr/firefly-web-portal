@@ -6,26 +6,26 @@ export const NotFound: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-4 sm:px-0 bg-slate-50/50 animate-in fade-in duration-300">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-100/80 p-8 sm:p-10 text-center space-y-6 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center px-4 sm:px-0 bg-slate-50/50 dark:bg-slate-950 animate-in fade-in duration-300">
+      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-100/80 dark:shadow-none p-8 sm:p-10 text-center space-y-6 relative overflow-hidden">
         {/* Subtle background glow accent */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 dark:bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
 
         {/* Icon Badge */}
-        <div className="relative z-10 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] border border-amber-200/60 shadow-inner mx-auto">
+        <div className="relative z-10 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 dark:from-[#FFCB62]/20 dark:to-[#F4D158]/20 text-[#F9B53F] border border-amber-200/60 dark:border-amber-800/60 shadow-inner mx-auto">
           <FileQuestion className="w-8 h-8" />
         </div>
 
         {/* Header Text */}
         <div className="space-y-2 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-extrabold border border-amber-200/60">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-xs font-extrabold border border-amber-200/60 dark:border-amber-800/60">
             <Sparkles className="w-3.5 h-3.5 text-[#F9B53F]" />
             <span>Error 404</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
             Page Not Found
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
             The page you are looking for doesn't exist, has been removed, or is
             temporarily unavailable.
           </p>
@@ -36,7 +36,7 @@ export const NotFound: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 border border-slate-200/80 shadow-2xs"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 border border-slate-200/80 dark:border-slate-700 shadow-2xs"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Go Back</span>
@@ -45,7 +45,7 @@ export const NotFound: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 dark:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <Home className="w-4 h-4" />
             <span>Dashboard</span>

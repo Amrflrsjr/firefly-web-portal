@@ -159,18 +159,18 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-[#F9B53F] shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-2xs">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-black text-slate-900 tracking-tight">
+              <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
                 Add New Customer
               </h2>
-              <p className="text-xs text-slate-400 font-medium">
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">
                 Register a corporate business or a personal client account
               </p>
             </div>
@@ -179,7 +179,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/80 transition-colors cursor-pointer shadow-2xs"
+            className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
           >
             <X className="w-4 h-4" />
           </button>
@@ -189,11 +189,11 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
         <form
           id="create-customer-form"
           onSubmit={handleSubmit}
-          className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/40"
+          className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/40 dark:bg-slate-950/40"
         >
           {/* Account Classification Toggle */}
           <div className="space-y-2">
-            <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">
+            <label className="text-[11px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider">
               Account Classification
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -208,15 +208,15 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                 }}
                 className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all cursor-pointer shadow-2xs ${
                   !isPersonal
-                    ? "bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/20 text-amber-950"
-                    : "bg-white border-slate-200/80 hover:bg-slate-50 text-slate-600"
+                    ? "bg-amber-50/70 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 ring-2 ring-amber-400/20 text-amber-950 dark:text-amber-200"
+                    : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-400"
                 }`}
               >
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                     !isPersonal
-                      ? "bg-amber-100 text-amber-800 border-amber-200"
-                      : "bg-slate-100 text-slate-500 border-slate-200"
+                      ? "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   <Building2 className="w-4 h-4" />
@@ -250,15 +250,15 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                 }}
                 className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all cursor-pointer shadow-2xs ${
                   isPersonal
-                    ? "bg-blue-50/70 border-blue-300 ring-2 ring-blue-400/20 text-blue-950"
-                    : "bg-white border-slate-200/80 hover:bg-slate-50 text-slate-600"
+                    ? "bg-blue-50/70 dark:bg-blue-950/50 border-blue-300 dark:border-blue-800 ring-2 ring-blue-400/20 text-blue-950 dark:text-blue-200"
+                    : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-400"
                 }`}
               >
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                     isPersonal
-                      ? "bg-blue-100 text-blue-700 border-blue-200"
-                      : "bg-slate-100 text-slate-500 border-slate-200"
+                      ? "bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   <User className="w-4 h-4" />
@@ -276,21 +276,21 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
           </div>
 
           {/* Profile Details */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
               {isPersonal ? (
-                <User className="w-4 h-4 text-blue-500" />
+                <User className="w-4 h-4 text-blue-500 dark:text-blue-400" />
               ) : (
                 <Building2 className="w-4 h-4 text-[#F9B53F]" />
               )}
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+              <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                 {isPersonal ? "Customer Information" : "Company Profile"}
               </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 flex items-center justify-between">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <span>
                     {isPersonal ? "Customer Full Name" : "Company Name"}{" "}
                     <span className="text-rose-500">*</span>
@@ -306,15 +306,15 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                       ? "e.g. Juan Dela Cruz"
                       : "e.g. Sample Corporation Inc."
                   }
-                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                  className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                 />
               </div>
 
               {!isPersonal && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-slate-400" /> Tax ID
-                    (TIN)
+                  <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />{" "}
+                    Tax ID (TIN)
                   </label>
                   <input
                     type="text"
@@ -323,7 +323,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                       setFormData({ ...formData, tin: e.target.value })
                     }
                     placeholder="000-000-000-000"
-                    className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                    className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                   />
                 </div>
               )}
@@ -331,8 +331,8 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
               <div
                 className={`${isPersonal ? "sm:col-span-2" : ""} space-y-1.5`}
               >
-                <label className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />{" "}
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />{" "}
                   {isPersonal
                     ? "Residential / Shipping Address"
                     : "Business Address"}
@@ -347,7 +347,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                     })
                   }
                   placeholder="Street, City, Province"
-                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                  className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                 />
               </div>
             </div>
@@ -356,7 +356,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
           {/* Contact Details Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">
+              <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 {isPersonal
                   ? "Contact Information (Email & Phone)"
                   : "Assigned Contact Persons"}
@@ -365,7 +365,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                 <button
                   type="button"
                   onClick={addContactField}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60 shadow-2xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60 dark:border-amber-800/60 shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Contact
                 </button>
@@ -377,20 +377,20 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                 (contact: CustomerContact, index: number) => (
                   <div
                     key={index}
-                    className="bg-white border border-slate-200/80 p-4 rounded-3xl space-y-3 relative group shadow-2xs"
+                    className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-3xl space-y-3 relative group shadow-2xs"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-bold text-xs flex items-center justify-center">
+                        <span className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold text-xs flex items-center justify-center">
                           {index + 1}
                         </span>
-                        <span className="text-xs font-extrabold text-slate-700">
+                        <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
                           {isPersonal
                             ? "Client Details"
                             : `Contact Person #${index + 1}`}
                         </span>
                         {contact.isPrimary && !isPersonal && (
-                          <span className="bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          <span className="bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                             Primary
                           </span>
                         )}
@@ -400,7 +400,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                         <button
                           type="button"
                           onClick={() => removeContactField(index)}
-                          className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
+                          className="text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 p-1 transition-colors cursor-pointer"
                           title="Remove Contact"
                         >
                           <X className="w-4 h-4" />
@@ -412,8 +412,8 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                     {!isPersonal && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide flex items-center gap-1">
-                            <UserCheck className="w-3 h-3 text-slate-400" />{" "}
+                          <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                            <UserCheck className="w-3 h-3 text-slate-400 dark:text-slate-500" />{" "}
                             Contact Name{" "}
                             <span className="text-rose-500">*</span>
                           </label>
@@ -425,13 +425,13 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                               handleContactChange(index, "name", e.target.value)
                             }
                             placeholder="Enter full name..."
-                            className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                            className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide flex items-center gap-1">
-                            <Briefcase className="w-3 h-3 text-slate-400" />{" "}
+                          <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                            <Briefcase className="w-3 h-3 text-slate-400 dark:text-slate-500" />{" "}
                             Position / Role
                           </label>
                           <input
@@ -445,7 +445,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                               )
                             }
                             placeholder="e.g. Procurement Manager"
-                            className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                            className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                           />
                         </div>
                       </div>
@@ -453,9 +453,9 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-slate-400" /> Email
-                          Address
+                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-slate-400 dark:text-slate-500" />{" "}
+                          Email Address
                         </label>
                         <input
                           type="email"
@@ -464,14 +464,14 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                             handleContactChange(index, "email", e.target.value)
                           }
                           placeholder="name@company.com"
-                          className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                          className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                         />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide flex items-center gap-1">
-                          <Phone className="w-3 h-3 text-slate-400" /> Phone
-                          Number
+                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-slate-400 dark:text-slate-500" />{" "}
+                          Phone Number
                         </label>
                         <input
                           type="text"
@@ -480,7 +480,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                             handleContactChange(index, "phone", e.target.value)
                           }
                           placeholder="+63 912 345 6789"
-                          className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all"
+                          className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                         />
                       </div>
                     </div>
@@ -498,10 +498,10 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                                 e.target.checked,
                               )
                             }
-                            className="w-4 h-4 rounded-md border-slate-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
+                            className="w-4 h-4 rounded-md border-slate-300 dark:border-slate-700 text-amber-500 focus:ring-amber-400 cursor-pointer"
                           />
-                          <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                            <UserCheck className="w-3.5 h-3.5 text-amber-600" />{" "}
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <UserCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />{" "}
                             Set as Primary Contact
                           </span>
                         </label>
@@ -515,8 +515,8 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
         </form>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white shrink-0 shadow-sm">
-          <div className="text-[11px] font-mono text-slate-400">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-sm">
+          <div className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
             Fields marked with{" "}
             <span className="text-rose-500 font-bold">*</span> are required
           </div>
@@ -525,7 +525,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>

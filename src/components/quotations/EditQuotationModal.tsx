@@ -317,27 +317,27 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-5xl overflow-hidden my-8 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-5xl overflow-hidden my-8 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
           <div>
-            <h2 className="text-lg font-black text-slate-900 tracking-tight">
+            <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
               Edit Quotation #{quotation.quotationNumber}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Modify proposal parameters and itemized product selections
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/80 transition-colors cursor-pointer shadow-2xs"
+            className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {loadingDetails ? (
-          <div className="p-12 text-center text-slate-400 text-sm font-medium">
+          <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-medium">
             Loading quotation #{quotation.quotationNumber} details...
           </div>
         ) : (
@@ -346,8 +346,8 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             className="p-6 overflow-y-auto space-y-6 flex-1"
           >
             {error && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl flex items-center gap-3 text-sm">
-                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-4 rounded-2xl flex items-center gap-3 text-sm">
+                <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
@@ -355,13 +355,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             {/* Top Fields Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Customer <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={customerId}
                   onChange={(e) => handleCustomerChange(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                 >
                   {customers.map((c) => (
                     <option key={c.customerId} value={c.customerId}>
@@ -372,7 +372,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Contact Person
                 </label>
                 <select
@@ -382,7 +382,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                 >
                   <option value="">Select Contact</option>
                   {contacts.map((con) => (
@@ -394,25 +394,25 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Valid Until <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="date"
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   VAT Computation
                 </label>
                 <select
                   value={vatType}
                   onChange={(e) => setVatType(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                 >
                   <option value="Exclusive">VAT Exclusive (12%)</option>
                   <option value="Inclusive">VAT Inclusive (12%)</option>
@@ -424,13 +424,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             {/* Line Items Section */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
                   Line Items
                 </h3>
                 <button
                   type="button"
                   onClick={handleAddItem}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60 dark:border-amber-800/60"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Item
                 </button>
@@ -447,11 +447,11 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                   return (
                     <div
                       key={index}
-                      className="bg-slate-50/75 border border-slate-200/80 p-4 rounded-2xl grid grid-cols-1 md:grid-cols-12 gap-3 items-end relative group"
+                      className="bg-slate-50/75 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 p-4 rounded-2xl grid grid-cols-1 md:grid-cols-12 gap-3 items-end relative group"
                     >
                       {/* 1. Select Product */}
                       <div className="md:col-span-3 space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase">
                           1. Select Product
                         </label>
                         <select
@@ -459,7 +459,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                           onChange={(e) =>
                             handleProductChange(index, e.target.value)
                           }
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                         >
                           <option value="">Search / Select product...</option>
                           {products.map((p) => (
@@ -472,7 +472,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
                       {/* 2. Select Variant */}
                       <div className="md:col-span-3 space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase">
                           2. Select Variant
                         </label>
                         <select
@@ -481,7 +481,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                             handleVariantChange(index, e.target.value)
                           }
                           disabled={!item.productId}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] disabled:bg-slate-100 disabled:text-slate-400"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] disabled:bg-slate-100 dark:disabled:bg-slate-850 disabled:text-slate-400"
                         >
                           <option value="">
                             {!item.productId
@@ -502,7 +502,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
                       {/* Description */}
                       <div className="md:col-span-3 space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase">
                           Description <span className="text-rose-500">*</span>
                         </label>
                         <input
@@ -516,13 +516,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               e.target.value,
                             )
                           }
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                         />
                       </div>
 
                       {/* Qty */}
                       <div className="md:col-span-1 space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase">
                           Qty
                         </label>
                         <input
@@ -536,13 +536,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               Number(e.target.value),
                             )
                           }
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                         />
                       </div>
 
                       {/* Price */}
                       <div className="md:col-span-1 space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase">
                           Price (₱)
                         </label>
                         <input
@@ -557,7 +557,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               Number(e.target.value),
                             )
                           }
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                         />
                       </div>
 
@@ -566,7 +566,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(index)}
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors cursor-pointer"
+                          className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
                           title="Remove Item"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -579,9 +579,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             </div>
 
             {/* Notes & Calculations Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Note to Customer
                 </label>
                 <textarea
@@ -589,26 +589,26 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                   placeholder="Payment instructions, bank details, or delivery terms..."
                   value={noteToCustomer}
                   onChange={(e) => setNoteToCustomer(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F]"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
                 />
               </div>
 
-              <div className="bg-slate-50/80 border border-slate-200/80 p-4 rounded-2xl space-y-2 text-xs font-semibold">
-                <div className="flex justify-between text-slate-600">
+              <div className="bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 p-4 rounded-2xl space-y-2 text-xs font-semibold">
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Subtotal:</span>
-                  <span className="font-mono font-bold text-slate-900">
+                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                     ₱{calculatedSubtotal.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>VAT ({vatType}):</span>
-                  <span className="font-mono font-bold text-slate-900">
+                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                     ₱{calculatedVat.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
+                <div className="flex justify-between text-sm font-black text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-700">
                   <span>Total Amount:</span>
-                  <span className="font-mono text-amber-600">
+                  <span className="font-mono text-amber-600 dark:text-amber-400">
                     ₱{calculatedTotal.toFixed(2)}
                   </span>
                 </div>
@@ -616,12 +616,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             </div>
 
             {/* Footer Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Cancel
               </button>

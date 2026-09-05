@@ -306,7 +306,7 @@ export const Invoices: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
       {/* Executive Header Banner matching Dashboard style */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
+      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
         <div
@@ -332,7 +332,7 @@ export const Invoices: React.FC = () => {
                 {today}
               </div>
             </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
               Invoices &amp; Payments
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
@@ -374,9 +374,9 @@ export const Invoices: React.FC = () => {
       </div>
 
       {apiError && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl flex items-center justify-between shadow-xs">
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-4 rounded-2xl flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+            <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
@@ -390,7 +390,7 @@ export const Invoices: React.FC = () => {
                 ascending,
               )
             }
-            className="text-xs font-bold bg-white border border-rose-200 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 transition-colors cursor-pointer"
+            className="text-xs font-bold bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
           >
             Retry
           </button>
@@ -398,18 +398,18 @@ export const Invoices: React.FC = () => {
       )}
 
       {/* Professional UI/UX Filter & Search Toolbar */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 space-y-4">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none space-y-4">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
           {/* Enhanced Search Input & Mobile Filter Toggle Button */}
           <div className="flex items-center gap-2 flex-1 max-w-lg">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Search by invoice number, customer name or quotation number..."
                 value={searchQuery}
                 onChange={(e) => updateQueryParams({ search: e.target.value })}
-                className="w-full bg-slate-50/80 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all shadow-2xs"
+                className="w-full bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all shadow-2xs"
               />
             </div>
 
@@ -418,8 +418,8 @@ export const Invoices: React.FC = () => {
               onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
               className={`lg:hidden flex items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
                 isMobileFiltersOpen || hasActiveFilters
-                  ? "bg-amber-50 border-amber-300 text-amber-800"
-                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                  : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750"
               }`}
               title="Toggle Filters"
             >
@@ -445,7 +445,7 @@ export const Invoices: React.FC = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => updateQueryParams({ status: e.target.value })}
-                className="w-full sm:w-auto bg-slate-50/80 border border-slate-200/80 rounded-2xl px-3 py-2.5 lg:py-1 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#F9B53F] focus:bg-white transition-all cursor-pointer shadow-2xs"
+                className="w-full sm:w-auto bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3 py-2.5 lg:py-1 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer shadow-2xs"
               >
                 <option value="all">All Statuses</option>
                 <option value="Unpaid">Unpaid</option>
@@ -456,7 +456,7 @@ export const Invoices: React.FC = () => {
             </div>
 
             {/* Start Date (From) */}
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 border border-slate-200/80 rounded-2xl px-3.5 py-2 shadow-2xs">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3.5 py-2 shadow-2xs">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 From
               </span>
@@ -466,12 +466,12 @@ export const Invoices: React.FC = () => {
                 onChange={(e) =>
                   updateQueryParams({ startDate: e.target.value })
                 }
-                className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
               />
             </div>
 
             {/* End Date (To) */}
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 border border-slate-200/80 rounded-2xl px-3.5 py-2 shadow-2xs">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3.5 py-2 shadow-2xs">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 To
               </span>
@@ -479,7 +479,7 @@ export const Invoices: React.FC = () => {
                 type="date"
                 value={endDateFilter}
                 onChange={(e) => updateQueryParams({ endDate: e.target.value })}
-                className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
               />
             </div>
 
@@ -490,7 +490,7 @@ export const Invoices: React.FC = () => {
                   setSearchParams({}, { replace: true });
                   setIsMobileFiltersOpen(false);
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 border border-amber-200/60 px-4 py-3 lg:py-2.5 rounded-2xl transition-all cursor-pointer shadow-2xs"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 hover:text-amber-900 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 px-4 py-3 lg:py-2.5 rounded-2xl transition-all cursor-pointer shadow-2xs"
               >
                 <X className="w-3.5 h-3.5" /> Clear Filters
               </button>
@@ -499,7 +499,7 @@ export const Invoices: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none overflow-hidden">
         <InvoicesTable
           invoices={invoices}
           loading={loading}

@@ -225,7 +225,9 @@ export const Users: React.FC = () => {
 
   const renderSortIcon = (field: string) => {
     if (sortBy !== field) {
-      return <ArrowUpDown className="w-3 h-3 text-slate-400" />;
+      return (
+        <ArrowUpDown className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+      );
     }
     return ascending ? (
       <ArrowUp className="w-3 h-3 text-[#F9B53F]" />
@@ -274,7 +276,7 @@ export const Users: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
       {/* Executive Header Banner */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
+      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
         <div
@@ -300,7 +302,7 @@ export const Users: React.FC = () => {
                 {today}
               </div>
             </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
               User Management
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
@@ -328,29 +330,29 @@ export const Users: React.FC = () => {
       </div>
 
       {/* Users Table Card */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl shadow-xl shadow-slate-100/60 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xl shadow-slate-100/60 dark:shadow-none overflow-hidden">
         {loading ? (
-          <div className="p-16 text-center text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white">
+          <div className="p-16 text-center text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900">
             <div className="w-6 h-6 border-2 border-[#F9B53F] border-t-transparent rounded-full animate-spin" />
-            <span className="font-semibold text-slate-600 text-sm">
+            <span className="font-semibold text-slate-600 dark:text-slate-300 text-sm">
               Loading users directory...
             </span>
           </div>
         ) : sortedUsers.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm font-medium">
+          <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-medium">
             No other users found. Click{" "}
-            <b className="text-slate-700">"Add New User"</b> above to create
-            one.
+            <b className="text-slate-700 dark:text-slate-300">"Add New User"</b>{" "}
+            above to create one.
           </div>
         ) : (
           <div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                  <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
                     <th
                       onClick={() => handleSort("fullname")}
-                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors"
+                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                     >
                       <div className="flex items-center gap-1.5">
                         User
@@ -359,7 +361,7 @@ export const Users: React.FC = () => {
                     </th>
                     <th
                       onClick={() => handleSort("role")}
-                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors"
+                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                     >
                       <div className="flex items-center gap-1.5">
                         Role
@@ -368,7 +370,7 @@ export const Users: React.FC = () => {
                     </th>
                     <th
                       onClick={() => handleSort("status")}
-                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 transition-colors"
+                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                     >
                       <div className="flex items-center gap-1.5">
                         Status
@@ -379,7 +381,7 @@ export const Users: React.FC = () => {
                     <th className="py-3.5 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
                   {currentUsers.map((u) => {
                     const isEditing = editingUserId === u.id;
                     const resolvedAvatarUrl = getImageUrl(u.profilePictureUrl);
@@ -389,11 +391,11 @@ export const Users: React.FC = () => {
                         key={u.id}
                         className={`transition-colors ${
                           isEditing
-                            ? "bg-amber-50/70 ring-1 ring-inset ring-amber-300/60"
-                            : "hover:bg-[#FCFDFF] group"
+                            ? "bg-amber-50/70 dark:bg-amber-950/30 ring-1 ring-inset ring-amber-300/60 dark:ring-amber-500/30"
+                            : "hover:bg-[#FCFDFF] dark:hover:bg-slate-850 group"
                         }`}
                       >
-                        <td className="py-4 px-6 text-slate-800">
+                        <td className="py-4 px-6 text-slate-800 dark:text-slate-100">
                           {isEditing ? (
                             <div
                               className="space-y-1.5"
@@ -411,7 +413,7 @@ export const Users: React.FC = () => {
                                     fullName: e.target.value,
                                   })
                                 }
-                                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
                               />
                               <span className="text-[10px] font-bold text-slate-400 uppercase block pt-1">
                                 Email Address
@@ -425,12 +427,12 @@ export const Users: React.FC = () => {
                                     email: e.target.value,
                                   })
                                 }
-                                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
                               />
                             </div>
                           ) : (
                             <div className="flex items-center gap-3.5">
-                              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center border border-amber-200/60 group-hover:scale-105 transition-transform shrink-0 shadow-2xs overflow-hidden">
+                              <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-black text-xs flex items-center justify-center border border-amber-200/60 dark:border-amber-800/50 group-hover:scale-105 transition-transform shrink-0 shadow-2xs overflow-hidden">
                                 {resolvedAvatarUrl ? (
                                   <img
                                     src={resolvedAvatarUrl}
@@ -442,10 +444,10 @@ export const Users: React.FC = () => {
                                 )}
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
+                                <p className="font-bold text-slate-900 dark:text-white group-hover:text-amber-900 dark:group-hover:text-amber-300 transition-colors">
                                   {u.fullName}
                                 </p>
-                                <p className="text-xs text-slate-400 font-normal">
+                                <p className="text-xs text-slate-400 dark:text-slate-400 font-normal">
                                   @{u.username} • {u.email}
                                 </p>
                               </div>
@@ -470,7 +472,7 @@ export const Users: React.FC = () => {
                                     role: e.target.value,
                                   })
                                 }
-                                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
                               >
                                 <option value="Admin">Admin</option>
                                 <option value="Staff">Staff</option>
@@ -480,8 +482,8 @@ export const Users: React.FC = () => {
                             <span
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs ${
                                 u.roles.includes("Admin")
-                                  ? "bg-purple-50 text-purple-700 border-purple-200/80"
-                                  : "bg-slate-100 text-slate-700 border-slate-200/80"
+                                  ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/80 dark:border-purple-800/60"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700"
                               }`}
                             >
                               <Shield className="w-3.5 h-3.5" />
@@ -509,9 +511,9 @@ export const Users: React.FC = () => {
                                       isActive: e.target.checked,
                                     })
                                   }
-                                  className="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-400"
+                                  className="w-4 h-4 text-amber-500 rounded border-slate-300 dark:border-slate-700 focus:ring-amber-400 bg-white dark:bg-slate-800"
                                 />
-                                <span className="text-xs font-bold text-slate-700">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                                   {editForm.isActive ? "Active" : "Inactive"}
                                 </span>
                               </label>
@@ -520,8 +522,8 @@ export const Users: React.FC = () => {
                             <span
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs ${
                                 u.isActive
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
-                                  : "bg-rose-50 text-rose-700 border-rose-200/80"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
+                                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60"
                               }`}
                             >
                               <span
@@ -534,7 +536,7 @@ export const Users: React.FC = () => {
                           )}
                         </td>
 
-                        <td className="py-4 px-6 text-slate-500 text-xs font-normal">
+                        <td className="py-4 px-6 text-slate-500 dark:text-slate-400 text-xs font-normal">
                           {new Date(u.createdAt).toLocaleDateString()}
                         </td>
 
@@ -549,7 +551,7 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={(e) => handleSaveEdit(e, u)}
                                   title="Save Changes"
-                                  className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all active:scale-95 cursor-pointer border border-emerald-200/60 shadow-2xs"
+                                  className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 transition-all active:scale-95 cursor-pointer border border-emerald-200/60 dark:border-emerald-800/60 shadow-2xs"
                                 >
                                   <Check className="w-4 h-4" />
                                 </button>
@@ -557,7 +559,7 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={handleCancelEdit}
                                   title="Cancel"
-                                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all active:scale-95 cursor-pointer border border-emerald-200/60 shadow-2xs"
+                                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all active:scale-95 cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
@@ -568,7 +570,7 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={(e) => handleStartEdit(e, u)}
                                   title="Quick Edit User"
-                                  className="p-2 bg-amber-50 hover:bg-amber-100/80 text-amber-700 border border-amber-200/60 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                                  className="p-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/80 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </button>
@@ -576,7 +578,7 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={() => setResetPasswordUser(u)}
                                   title="Reset Password"
-                                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/60 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                                  className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
                                 >
                                   <Key className="w-4 h-4" />
                                 </button>
@@ -584,7 +586,7 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={() => setDeactivateId(u.id)}
                                   title="Deactivate User"
-                                  className="p-2 bg-rose-50 hover:bg-rose-100/80 text-rose-600 border border-rose-200/60 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                                  className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/80 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/50 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -601,18 +603,18 @@ export const Users: React.FC = () => {
 
             {/* Pagination footer */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 bg-white">
-                <p className="text-xs text-slate-500 font-medium">
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Showing{" "}
-                  <span className="font-bold text-slate-700">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
                     {startIndex + 1}
                   </span>{" "}
                   to{" "}
-                  <span className="font-bold text-slate-700">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
                     {Math.min(startIndex + pageSize, sortedUsers.length)}
                   </span>{" "}
                   of{" "}
-                  <span className="font-bold text-slate-700">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
                     {sortedUsers.length}
                   </span>{" "}
                   results
@@ -624,12 +626,12 @@ export const Users: React.FC = () => {
                       setCurrentPage((prev) => Math.max(prev - 1, 1))
                     }
                     disabled={currentPage === 1}
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     aria-label="Previous Page"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="text-xs font-bold text-slate-700 px-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
@@ -637,7 +639,7 @@ export const Users: React.FC = () => {
                       setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                     }
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     aria-label="Next Page"
                   >
                     <ChevronRight className="w-4 h-4" />
