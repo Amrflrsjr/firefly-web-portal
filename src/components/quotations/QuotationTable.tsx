@@ -14,6 +14,7 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronDown,
+  Receipt,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -29,6 +30,7 @@ interface QuotationTableProps {
   onUpdateStatus: (quotationId: number, newStatus: string) => void;
   onDeleteQuotation: (quotationId: number) => void;
   onEdit: (quotation: QuotationResponseDto) => void;
+  onConvertToInvoice?: (quotation: QuotationResponseDto) => void;
 }
 
 const currency = (value: number) =>
@@ -49,6 +51,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   onUpdateStatus,
   onDeleteQuotation,
   onEdit,
+  onConvertToInvoice,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -321,6 +324,16 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                       className="flex items-center justify-end gap-1.5"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      {onConvertToInvoice && (
+                        <button
+                          onClick={() => onConvertToInvoice(q)}
+                          title="Convert to Invoice"
+                          className="p-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </button>
+                      )}
+
                       <button
                         onClick={() =>
                           onViewPdf(q.quotationId, q.quotationNumber)

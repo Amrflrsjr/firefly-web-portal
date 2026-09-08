@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import type {
   QuotationResponseDto,
@@ -35,6 +35,7 @@ import { QuotationTable } from "../components/quotations/QuotationTable";
 import { QuotationDetailsModal } from "../components/quotations/QuotationDetailsModal";
 import { CreateQuotationModal } from "../components/quotations/CreateQuotationModal";
 import { EmailQuotationModal } from "../components/quotations/EmailQuotationModal";
+import { ConvertQuotationModal } from "../components/invoice/ConvertQuotationModal";
 import { AddContactModal } from "../components/customers/AddContactModal";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { PdfPreviewModal } from "../components/common/PdfPreviewModal";
@@ -44,6 +45,7 @@ import { quotationApi } from "../api/quotations";
 
 export const Quotations: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const searchQuery = searchParams.get("search") || "";
   const statusFilter = searchParams.get("status") || "all";
   const startDateFilter = searchParams.get("startDate") || "";
@@ -62,6 +64,7 @@ export const Quotations: React.FC = () => {
     useState<QuotationResponseDto | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isConvertOpen, setIsConvertOpen] = useState(false);
 
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
@@ -606,6 +609,37 @@ export const Quotations: React.FC = () => {
           onUpdateStatus={handleUpdateStatus}
           onDeleteQuotation={handleDeleteQuotation}
           onEdit={(q) => setEditingQuotation(q)}
+          onConvertToInvoice={async (q) => {
+            try {
+              const defaultDueDate = new Date();
+              defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+
+              await api.post("/invoices/from-quotation", {
+                quotationId: q.quotationId,
+                dueDate: defaultDueDate.toISOString(),
+                notes:
+                  "Thank you for your business. Please remit payment by the due date.",
+              });
+
+              toast.success(
+                `Invoice successfully generated for quotation ${q.quotationNumber}!`,
+              );
+              navigate("/invoices");
+            } catch (err: unknown) {
+              if (axios.isAxiosError(err)) {
+                const errorMessage =
+                  typeof err.response?.data === "string"
+                    ? err.response.data
+                    : err.response?.data?.message ||
+                      "An active invoice has already been generated for this quotation.";
+                toast.error(errorMessage);
+              } else {
+                toast.error(
+                  "An unexpected error occurred while converting the quotation.",
+                );
+              }
+            }
+          }}
         />
       </div>
 
@@ -639,6 +673,23 @@ export const Quotations: React.FC = () => {
           }}
         />
       )}
+
+      <ConvertQuotationModal
+        isOpen={isConvertOpen}
+        onClose={() => setIsConvertOpen(false)}
+        quotations={quotations}
+        onSuccess={() => {
+          setIsConvertOpen(false);
+          loadQuotations(
+            searchQuery,
+            statusFilter,
+            startDateFilter,
+            endDateFilter,
+            sortBy,
+            ascending,
+          );
+        }}
+      />
 
       <PdfPreviewModal
         isOpen={previewPdfUrl !== null}
