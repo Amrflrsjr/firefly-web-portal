@@ -315,26 +315,28 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     setSelectedProducts(updatedProducts);
     setActiveProductSearchIndex(null);
     setProductSearchQueries({ ...productSearchQueries, [index]: product.name });
+
+    // Automatically set the description to the product name so it doesn't show "Custom Item"
+    const updated = [...items];
+    updated[index] = {
+      ...updated[index],
+      description: product.name,
+    };
+    setItems(updated);
+
     setActiveVariantSearchIndex(index);
   };
 
-  const handleSelectVariant = (
-    index: number,
-    product: Product,
-    variant: ProductVariant,
-  ) => {
+  const handleSelectVariant = (index: number, variant: ProductVariant) => {
     const variantLabel = formatVariantLabel(variant.color, variant.size);
     const skuLabel =
       variant.sku && variant.sku.trim() !== "" ? ` - SKU: ${variant.sku}` : "";
-    const descSuffix = variantLabel ? ` - ${variantLabel}` : "";
-    const skuSuffix =
-      variant.sku && variant.sku.trim() !== "" ? ` (${variant.sku})` : "";
 
     const updated = [...items];
     updated[index] = {
       ...updated[index],
       productVariantId: variant.productVariantId ?? null,
-      description: `${product.name}${descSuffix}${skuSuffix}`,
+      description: variantLabel ? `Variant: ${variantLabel}` : "Standard Item",
       unitPrice: variant.unitPrice,
     };
     setItems(updated);
@@ -360,11 +362,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         handleSelectProduct(quickProductTargetIndex, createdProd);
         const firstVariant = createdProd.variants?.[0];
         if (firstVariant) {
-          handleSelectVariant(
-            quickProductTargetIndex,
-            createdProd,
-            firstVariant,
-          );
+          handleSelectVariant(quickProductTargetIndex, firstVariant);
         }
       }
 
@@ -391,11 +389,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       if (refreshedProd && variantModalTargetIndex !== null) {
         const latestVariant =
           refreshedProd.variants[refreshedProd.variants.length - 1];
-        handleSelectVariant(
-          variantModalTargetIndex,
-          refreshedProd,
-          latestVariant,
-        );
+        handleSelectVariant(variantModalTargetIndex, latestVariant);
       }
 
       setIsVariantModalOpen(false);
@@ -988,11 +982,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                           <div
                                             key={variant.productVariantId}
                                             onClick={() =>
-                                              handleSelectVariant(
-                                                idx,
-                                                selectedProd,
-                                                variant,
-                                              )
+                                              handleSelectVariant(idx, variant)
                                             }
                                             className="px-3.5 py-2.5 text-xs hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer flex items-center justify-between border-b border-slate-50 dark:border-slate-800 last:border-none"
                                           >
