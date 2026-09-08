@@ -501,12 +501,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       setLocalError("Please select a customer.");
       return;
     }
-    if (
-      items.some((i) => !i.description || i.quantity <= 0 || i.unitPrice < 0)
-    ) {
-      setLocalError(
-        "Please ensure all items have a description, valid quantity, and price.",
-      );
+    if (items.some((i) => i.quantity <= 0 || i.unitPrice < 0)) {
+      setLocalError("Please ensure all items have a valid quantity and price.");
       return;
     }
 
@@ -1030,12 +1026,10 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                           {/* Description */}
                           <div className="sm:col-span-2 lg:col-span-4 space-y-1">
                             <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
-                              Description{" "}
-                              <span className="text-rose-500">*</span>
+                              Description
                             </label>
                             <input
                               type="text"
-                              required
                               placeholder="Item specification..."
                               value={item.description}
                               onChange={(e) =>

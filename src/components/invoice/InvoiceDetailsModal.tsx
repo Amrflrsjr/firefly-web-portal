@@ -8,6 +8,10 @@ import {
   Trash2,
   Eye,
   Receipt,
+  Calendar,
+  User,
+  Building2,
+  ShieldCheck,
 } from "lucide-react";
 import type { InvoiceResponseDto } from "../../types/invoice";
 
@@ -19,6 +23,27 @@ interface Props {
   onOpenEmail: (inv: InvoiceResponseDto) => void;
   onOpenPayment: (inv: InvoiceResponseDto) => void;
   onDeleteInvoice: (invoiceId: number) => void;
+}
+
+interface InvoiceDetailView extends Omit<
+  InvoiceResponseDto,
+  "vatType" | "VATType"
+> {
+  vatType?: string;
+  VATType?: string;
+  noteToCustomer?: string | null;
+}
+
+interface ExtendedInvoiceItem {
+  invoiceItemId?: number;
+  quantity?: number;
+  unitPrice?: number;
+  totalAmount?: number;
+  color?: string;
+  size?: string;
+  sku?: string;
+  productName?: string;
+  description?: string;
 }
 
 const currency = (value: number) =>
@@ -38,6 +63,8 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
 }) => {
   if (!invoice) return null;
 
+  const detail = invoice as InvoiceDetailView;
+
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case "paid":
@@ -53,9 +80,38 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
     }
   };
 
+  const rawSubtotal =
+    invoice.items?.reduce(
+      (acc, item) =>
+        acc + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0),
+      0,
+    ) ??
+    invoice.totalAmount ??
+    0;
+
+  const vatType = detail.vatType || detail.VATType || "Exclusive";
+
+  let subtotal: number;
+  let taxAmount: number;
+  let grandTotal: number;
+
+  if (vatType === "Inclusive" || vatType === "VAT Inclusive") {
+    grandTotal = rawSubtotal;
+    subtotal = Math.round((rawSubtotal / 1.12) * 100) / 100;
+    taxAmount = Math.round((grandTotal - subtotal) * 100) / 100;
+  } else if (vatType === "Exclusive" || vatType === "VAT Exclusive") {
+    subtotal = rawSubtotal;
+    taxAmount = Math.round(rawSubtotal * 0.12 * 100) / 100;
+    grandTotal = Math.round((subtotal + taxAmount) * 100) / 100;
+  } else {
+    subtotal = rawSubtotal;
+    taxAmount = 0;
+    grandTotal = rawSubtotal;
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-900/15 border border-slate-100 dark:border-slate-800 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-900/15 border border-slate-100 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
         {/* Top Accent Gradient Bar */}
         <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
 
@@ -70,6 +126,11 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
                 <span className="font-mono text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   {invoice.invoiceNumber}
                 </span>
+                {invoice.quotationNumber && (
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md font-mono">
+                    Quote #{invoice.quotationNumber}
+                  </span>
+                )}
                 <span
                   className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border capitalize shadow-2xs ${getStatusBadgeStyle(
                     invoice.status,
@@ -154,6 +215,166 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
               <Trash2 className="w-4 h-4" />
               <span className="inline sm:hidden">Cancel Invoice</span>
             </button>
+          </div>
+
+          {/* Info Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
+                <Building2 className="w-3.5 h-3.5 text-[#F9B53F]" /> Customer
+                Entity
+              </div>
+              <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm truncate">
+                {invoice.companyName || "N/A"}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
+                <User className="w-3.5 h-3.5 text-[#F9B53F]" /> Contact Person
+              </div>
+              <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm truncate">
+                {invoice.contactNameSnapshot || "N/A"}
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 truncate font-medium">
+                {invoice.contactEmailSnapshot || "No email provided"}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
+                <Calendar className="w-3.5 h-3.5 text-[#F9B53F]" /> Date
+                Generated
+              </div>
+              <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm font-mono">
+                {invoice.createdAt
+                  ? new Date(invoice.createdAt).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Line Items Table Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Item Breakdown
+              </h3>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-200/70 dark:border-slate-800 shadow-2xs">
+                {invoice.items?.length || 0} item(s)
+              </span>
+            </div>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold border-b border-slate-200/80 dark:border-slate-800 uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="py-3.5 px-4">SKU / Item</th>
+                    <th className="py-3.5 px-4">Variant</th>
+                    <th className="py-3.5 px-4 text-center">Qty</th>
+                    <th className="py-3.5 px-4 text-right">Unit Price</th>
+                    <th className="py-3.5 px-4 text-right">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {invoice.items?.map((rawItem, idx) => {
+                    const item = rawItem as ExtendedInvoiceItem;
+                    const qty = item.quantity ?? 1;
+                    const price = item.unitPrice ?? 0;
+                    const total = item.totalAmount ?? qty * price;
+
+                    let variantText = "—";
+                    if (item.color && item.size) {
+                      variantText = `${item.color} / ${item.size}`;
+                    } else if (item.color) {
+                      variantText = item.color;
+                    } else if (item.size) {
+                      variantText = item.size;
+                    }
+
+                    return (
+                      <tr
+                        key={item.invoiceItemId || idx}
+                        className="hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors"
+                      >
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2.5">
+                            {item.sku && (
+                              <span className="font-mono text-[10px] font-bold text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 px-2 py-0.5 rounded-md shadow-2xs">
+                                {item.sku}
+                              </span>
+                            )}
+                            <span className="font-bold text-slate-800 dark:text-slate-200">
+                              {item.productName ||
+                                item.description ||
+                                "Custom Item"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
+                          {variantText}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700 dark:text-slate-300">
+                          {qty}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono text-slate-600 dark:text-slate-400 font-medium">
+                          {currency(price)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 dark:text-white">
+                          {currency(total)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Financial Totals & Tax Computation Summary Box */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl space-y-2 shadow-xs flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#F9B53F]" /> Note /
+                  Payment Terms
+                </span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-2 leading-relaxed">
+                  {detail.noteToCustomer ||
+                    "No specific terms provided for this invoice."}
+                </p>
+              </div>
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                Standard payment terms apply.
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl space-y-2.5 text-xs font-semibold shadow-xs">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <span>Subtotal:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                  {currency(subtotal)}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <span className="inline-flex items-center gap-1">
+                  <Receipt className="w-3.5 h-3.5 text-amber-500" /> VAT
+                  Calculation ({vatType}):
+                </span>
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                  {currency(taxAmount)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm sm:text-base font-black text-slate-900 dark:text-white pt-3 border-t border-slate-200 dark:border-slate-800">
+                <span>Grand Total:</span>
+                <span className="font-mono text-amber-600 dark:text-amber-400 text-lg">
+                  {currency(grandTotal)}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Payment History Section */}

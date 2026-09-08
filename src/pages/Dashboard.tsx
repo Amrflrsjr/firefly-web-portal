@@ -19,6 +19,7 @@ import {
   Percent,
   User,
   RefreshCw,
+  X,
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
@@ -51,6 +52,15 @@ interface DashboardMetrics {
 }
 
 type ChartTimeRange = "7d" | "30d" | "90d" | "all";
+type ModalType =
+  | "revenue"
+  | "unpaid"
+  | "activeQuotes"
+  | "acceptedQuotes"
+  | "customers"
+  | "performance"
+  | "demographics"
+  | null;
 
 const currency = (value: number) =>
   `₱${(value || 0).toLocaleString(undefined, {
@@ -74,6 +84,7 @@ export const Dashboard: React.FC = () => {
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [chartTimeRange, setChartTimeRange] = useState<ChartTimeRange>("30d");
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   // Fetch pre-aggregated server-side metrics
   useEffect(() => {
@@ -167,9 +178,7 @@ export const Dashboard: React.FC = () => {
     day: "numeric",
   });
 
-  // ---------------------------------------------------------------------
-  // Loading skeleton — mirrors the final layout so nothing "jumps" in
-  // ---------------------------------------------------------------------
+  // Loading skeleton
   if (loading && !metrics) {
     return (
       <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0">
@@ -204,7 +213,7 @@ export const Dashboard: React.FC = () => {
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="text-xs font-bold bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-800 shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60 focus-visible:ring-offset-2 text-slate-700 dark:text-slate-200"
+          className="text-xs font-bold bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-800 shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
         >
           Retry
         </button>
@@ -214,6 +223,7 @@ export const Dashboard: React.FC = () => {
 
   const kpis = [
     {
+      id: "revenue" as ModalType,
       label: "Paid Revenue",
       value: currency(metrics?.totalRevenue || 0),
       caption: "Fully settled collections",
@@ -225,6 +235,7 @@ export const Dashboard: React.FC = () => {
       wide: true,
     },
     {
+      id: "unpaid" as ModalType,
       label: "Unpaid Invoices",
       value: metrics?.unpaidCount || 0,
       caption: "Pending remittances",
@@ -235,6 +246,7 @@ export const Dashboard: React.FC = () => {
       accent: "from-amber-400 to-amber-300",
     },
     {
+      id: "activeQuotes" as ModalType,
       label: "Active Estimates",
       value: metrics?.activeQuotesCount || 0,
       caption: "Sent or draft quotes",
@@ -245,6 +257,7 @@ export const Dashboard: React.FC = () => {
       accent: "from-blue-400 to-blue-300",
     },
     {
+      id: "acceptedQuotes" as ModalType,
       label: "Accepted Estimates",
       value: metrics?.acceptedQuotesCount || 0,
       caption: "Ready for invoice",
@@ -255,6 +268,7 @@ export const Dashboard: React.FC = () => {
       accent: "from-emerald-400 to-emerald-300",
     },
     {
+      id: "customers" as ModalType,
       label: "Active Clients",
       value: totalCustomers,
       caption: "Registered accounts",
@@ -349,7 +363,8 @@ export const Dashboard: React.FC = () => {
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
               Here is your real-time business health metrics, financial
-              overview, and quick catalog shortcuts for today.
+              overview, and quick catalog shortcuts for today. Click any metric
+              card or chart block to inspect detailed analytics.
             </p>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
@@ -371,12 +386,13 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Top Key Performance Indicators Grid */}
+      {/* Top Key Performance Indicators Grid (Clickable) */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
         {kpis.map((kpi) => (
           <div
             key={kpi.label}
-            className={`relative overflow-hidden bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none hover:shadow-2xl hover:-translate-y-0.5 transition-all flex flex-col justify-between group ${
+            onClick={() => setActiveModal(kpi.id)}
+            className={`relative overflow-hidden bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none hover:shadow-2xl hover:-translate-y-0.5 transition-all flex flex-col justify-between group cursor-pointer ${
               kpi.wide ? "col-span-2 xl:col-span-1" : ""
             }`}
           >
@@ -398,25 +414,36 @@ export const Dashboard: React.FC = () => {
                 {kpi.value}
               </h3>
               <p
-                className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 sm:mt-1 ${kpi.captionClass}`}
+                className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 sm:mt-1 flex items-center justify-between ${kpi.captionClass}`}
               >
-                {kpi.caption}
+                <span>{kpi.caption}</span>
+                <span className="text-[10px] opacity-0 group-hover:opacity-100 text-amber-500 font-bold transition-opacity">
+                  View &rarr;
+                </span>
               </p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Main Grid: Area Chart (Left 2 Cols) & Analytics Cards Stack (Right Col) */}
+      {/* Main Grid: Area Chart & Analytics Cards Stack */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Interactive Income Trend Area Chart (Spans 2 columns) */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between">
+        {/* Interactive Income Trend Area Chart (Clickable) */}
+        <div
+          onClick={() => setActiveModal("revenue")}
+          className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 transition-all"
+        >
           <div className="space-y-4 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  Income &amp; Collection Trend
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
+                    Income &amp; Collection Trend
+                  </h2>
+                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 font-bold transition-opacity">
+                    Inspect Report &rarr;
+                  </span>
+                </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
                   <p className="text-xs text-slate-400 dark:text-slate-400">
                     Collected:{" "}
@@ -434,7 +461,10 @@ export const Dashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto">
+              <div
+                className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {(
                   [
                     { id: "7d", label: "7D" },
@@ -557,13 +587,21 @@ export const Dashboard: React.FC = () => {
 
         {/* Right Column Stack: Performance Health & Client Demographics */}
         <div className="space-y-6 flex flex-col justify-between">
-          {/* Performance Health Ratios Card */}
-          <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between">
+          {/* Performance Health Ratios Card (Clickable) */}
+          <div
+            onClick={() => setActiveModal("performance")}
+            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 transition-all"
+          >
             <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  Performance Health
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
+                    Performance Health
+                  </h2>
+                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 font-bold transition-opacity">
+                    Details &rarr;
+                  </span>
+                </div>
                 <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-[#DB9A28] dark:text-amber-400 flex items-center justify-center">
                   <Activity className="w-4 h-4" />
                 </div>
@@ -635,13 +673,21 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Client Demographics Card */}
-          <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between">
+          {/* Client Demographics Card (Clickable) */}
+          <div
+            onClick={() => setActiveModal("demographics")}
+            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 transition-all"
+          >
             <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  Client Demographics
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
+                    Client Demographics
+                  </h2>
+                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 font-bold transition-opacity">
+                    Details &rarr;
+                  </span>
+                </div>
                 <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                   <Users className="w-4 h-4" />
                 </div>
@@ -753,6 +799,271 @@ export const Dashboard: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* DETAILS MODAL OVERLAY                                            */}
+      {/* ----------------------------------------------------------------- */}
+      {activeModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-6">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-[#DB9A28] dark:text-amber-400 flex items-center justify-center font-bold">
+                  {activeModal === "revenue" && (
+                    <TrendingUp className="w-5 h-5" />
+                  )}
+                  {activeModal === "unpaid" && <Clock className="w-5 h-5" />}
+                  {activeModal === "activeQuotes" && (
+                    <FileText className="w-5 h-5" />
+                  )}
+                  {activeModal === "acceptedQuotes" && (
+                    <CheckCircle2 className="w-5 h-5" />
+                  )}
+                  {activeModal === "customers" && <Users className="w-5 h-5" />}
+                  {activeModal === "performance" && (
+                    <Activity className="w-5 h-5" />
+                  )}
+                  {activeModal === "demographics" && (
+                    <Building2 className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                    {activeModal === "revenue" && "Paid Revenue Breakdown"}
+                    {activeModal === "unpaid" && "Unpaid Invoices Breakdown"}
+                    {activeModal === "activeQuotes" &&
+                      "Active Estimates Breakdown"}
+                    {activeModal === "acceptedQuotes" &&
+                      "Accepted Estimates Breakdown"}
+                    {activeModal === "customers" &&
+                      "Customer Accounts Breakdown"}
+                    {activeModal === "performance" &&
+                      "Performance Health Metrics"}
+                    {activeModal === "demographics" &&
+                      "Client Demographics Analysis"}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                    Detailed statistics and records summary
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="w-9 h-9 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Content depending on selection */}
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {activeModal === "revenue" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                        Total Settled Amount
+                      </span>
+                      <p className="text-2xl font-black font-mono text-emerald-900 dark:text-emerald-100 mt-1">
+                        {currency(metrics?.totalRevenue || 0)}
+                      </p>
+                    </div>
+                    <TrendingUp className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    This figure represents all successfully collected payments
+                    from completed invoices across your entire platform history.
+                    You can review individual paid billing statements inside the
+                    Invoices module.
+                  </p>
+                </div>
+              )}
+
+              {activeModal === "unpaid" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                        Pending Remittances
+                      </span>
+                      <p className="text-2xl font-black font-mono text-amber-900 dark:text-amber-100 mt-1">
+                        {metrics?.unpaidCount || 0} Invoices
+                      </p>
+                    </div>
+                    <Clock className="w-8 h-8 text-amber-500" />
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    These are invoices that have been dispatched to clients but
+                    are awaiting payment clearance. Follow up with your clients
+                    or check the Invoices page to update their statuses.
+                  </p>
+                </div>
+              )}
+
+              {activeModal === "activeQuotes" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                        Active Quotations
+                      </span>
+                      <p className="text-2xl font-black font-mono text-blue-900 dark:text-blue-100 mt-1">
+                        {metrics?.activeQuotesCount || 0} Draft/Sent
+                      </p>
+                    </div>
+                    <FileText className="w-8 h-8 text-blue-500" />
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Quotations currently in draft or sent status awaiting client
+                    approval. Navigate to the Quotations hub to edit line items
+                    or resend proposals.
+                  </p>
+                </div>
+              )}
+
+              {activeModal === "acceptedQuotes" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                        Accepted Proposals
+                      </span>
+                      <p className="text-2xl font-black font-mono text-emerald-900 dark:text-emerald-100 mt-1">
+                        {metrics?.acceptedQuotesCount || 0} Approved
+                      </p>
+                    </div>
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Quotations that have been approved by clients and are fully
+                    ready to be converted into binding billing invoices.
+                  </p>
+                </div>
+              )}
+
+              {activeModal === "customers" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
+                        Total Active Accounts
+                      </span>
+                      <p className="text-2xl font-black font-mono text-indigo-900 dark:text-indigo-100 mt-1">
+                        {totalCustomers} Clients
+                      </p>
+                    </div>
+                    <Users className="w-8 h-8 text-indigo-500" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        Corporate
+                      </span>
+                      <p className="text-lg font-black font-mono text-slate-800 dark:text-slate-100 mt-0.5">
+                        {corporateCount}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        Personal
+                      </span>
+                      <p className="text-lg font-black font-mono text-slate-800 dark:text-slate-100 mt-0.5">
+                        {personalCount}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeModal === "performance" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-slate-700 dark:text-slate-300">
+                        Collection Rate Efficiency
+                      </span>
+                      <span className="font-mono text-emerald-600">
+                        {collectionRate}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-slate-700 dark:text-slate-300">
+                        Estimate Acceptance Velocity
+                      </span>
+                      <span className="font-mono text-blue-600">
+                        {estimateAcceptanceRate}%
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Performance health scores measure how quickly estimates
+                    convert into paid revenue. Higher percentages indicate
+                    optimal cash flow and healthy closing rates.
+                  </p>
+                </div>
+              )}
+
+              {activeModal === "demographics" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-amber-500" />{" "}
+                        Corporate Accounts
+                      </span>
+                      <span className="font-mono">
+                        {corporateCount} ({Math.round(corporatePct)}%)
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <User className="w-4 h-4 text-indigo-500" /> Personal
+                        Accounts
+                      </span>
+                      <span className="font-mono">
+                        {personalCount} ({Math.round(personalPct)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Demographic distribution helps track whether your customer
+                    acquisition strategy leans more towards B2B corporate
+                    contracts or direct consumer accounts.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeModal === "revenue" || activeModal === "unpaid")
+                    navigate("/invoices");
+                  else if (
+                    activeModal === "activeQuotes" ||
+                    activeModal === "acceptedQuotes"
+                  )
+                    navigate("/quotations");
+                  else if (
+                    activeModal === "customers" ||
+                    activeModal === "demographics"
+                  )
+                    navigate("/customers");
+                  else setActiveModal(null);
+                }}
+                className="px-5 py-2.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+              >
+                <span>Go to Management Module</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

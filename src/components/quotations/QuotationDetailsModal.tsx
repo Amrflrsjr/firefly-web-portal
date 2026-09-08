@@ -8,11 +8,24 @@ import {
   Building2,
   Receipt,
   ShieldCheck,
+  Eye,
+  Download,
+  Mail,
+  Edit,
+  Trash2,
 } from "lucide-react";
 
 interface QuotationDetailsModalProps {
   quotation: QuotationResponseDto;
   onClose: () => void;
+  onViewPdf?: (quotationId: number, quotationNumber: string) => void;
+  onDownloadPdf?: (
+    e: React.MouseEvent,
+    quotation: QuotationResponseDto,
+  ) => void;
+  onOpenEmail?: (quotation: QuotationResponseDto) => void;
+  onEdit?: (quotation: QuotationResponseDto) => void;
+  onDeleteQuotation?: (quotationId: number) => void;
 }
 
 interface QuotationDetailView extends QuotationResponseDto {
@@ -30,8 +43,15 @@ const currency = (value: number) =>
 export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
   quotation,
   onClose,
+  onViewPdf,
+  onDownloadPdf,
+  onOpenEmail,
+  onEdit,
+  onDeleteQuotation,
 }) => {
   const detail = quotation as QuotationDetailView;
+  const isEditable =
+    quotation.status === "Created" || quotation.status === "Draft";
 
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -115,6 +135,72 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
 
         {/* Scrollable Content Body */}
         <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/50 dark:bg-slate-950/40">
+          {/* Action Toolbar Card (Matching InvoiceDetailsModal layout) */}
+          <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() =>
+                onViewPdf?.(quotation.quotationId, quotation.quotationNumber)
+              }
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+            >
+              <Eye className="w-4 h-4 text-blue-500 dark:text-blue-400" />{" "}
+              Preview
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => onDownloadPdf?.(e, quotation)}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+            >
+              <Download className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />{" "}
+              PDF
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenEmail?.(quotation);
+              }}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
+            >
+              <Mail className="w-4 h-4" /> Email
+            </button>
+
+            {isEditable ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit?.(quotation);
+                }}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-4 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 transition-all cursor-pointer shadow-2xs active:scale-95"
+              >
+                <Edit className="w-4 h-4" /> Edit
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Only Created or Draft status can be edited"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600 px-4 py-2.5 rounded-xl border border-slate-100 dark:border-slate-750 cursor-not-allowed"
+              >
+                <Edit className="w-4 h-4" /> Edit
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => onDeleteQuotation?.(quotation.quotationId)}
+              className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-4 py-2.5 rounded-xl border border-rose-200/80 dark:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="Delete Quotation"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="inline sm:hidden">Delete Quotation</span>
+            </button>
+          </div>
+
           {/* Info Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">

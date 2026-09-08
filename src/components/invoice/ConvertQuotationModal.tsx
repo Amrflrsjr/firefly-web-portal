@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import api from "../../api/axios";
 import axios from "axios";
 import { X, Search, FileText, CheckCircle2, AlertCircle } from "lucide-react";
@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  quotations: QuotationResponseDto[]; // Initial fallback list
+  quotations: QuotationResponseDto[];
   onSuccess: () => void;
 }
 
@@ -18,8 +18,9 @@ export const ConvertQuotationModal: React.FC<Props> = ({
   quotations: initialQuotations,
   onSuccess,
 }) => {
-  const [quotations, setQuotations] =
-    useState<QuotationResponseDto[]>(initialQuotations);
+  const [searchResults, setSearchResults] = useState<
+    QuotationResponseDto[] | null
+  >(null);
   const [selectedQuotationId, setSelectedQuotationId] = useState<number | null>(
     null,
   );
@@ -28,28 +29,65 @@ export const ConvertQuotationModal: React.FC<Props> = ({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // Fetch quotations from the backend whenever the search filter changes (with debounce)
-  useEffect(() => {
-    if (!isOpen) return;
+  const sortQuotationsNewestFirst = (data: QuotationResponseDto[]) => {
+    return [...data].sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      if (timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return b.quotationId - a.quotationId;
+    });
+  };
 
+  const sortedInitialQuotations = useMemo(() => {
+    return sortQuotationsNewestFirst(initialQuotations);
+  }, [initialQuotations]);
+
+  const handleModalClose = () => {
+    setSearchFilter("");
+    setSearchResults(null);
+    setSelectedQuotationId(null);
+    setFormError("");
+    onClose();
+  };
+
+  // Fetch backend filtered quotations when search filter changes without sync setState in effect guard
+  useEffect(() => {
+    if (!isOpen || !searchFilter.trim()) {
+      return;
+    }
+
+    let isCancelled = false;
     const timer = setTimeout(async () => {
       try {
         setLoading(true);
         const response = await api.get<QuotationResponseDto[]>("/quotations", {
           params: { search: searchFilter },
         });
-        setQuotations(response.data);
+        if (!isCancelled) {
+          setSearchResults(sortQuotationsNewestFirst(response.data));
+        }
       } catch (err) {
         console.error("Failed to fetch filtered quotations", err);
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [searchFilter, isOpen]);
 
   if (!isOpen) return null;
+
+  const displayedQuotations = !searchFilter.trim()
+    ? sortedInitialQuotations
+    : (searchResults ?? sortedInitialQuotations);
 
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +143,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleModalClose}
             className="w-9 h-9 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -122,7 +160,6 @@ export const ConvertQuotationModal: React.FC<Props> = ({
         )}
 
         <form onSubmit={handleConvert} className="space-y-4">
-          {/* Backend search filter input */}
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
             <input
@@ -134,19 +171,18 @@ export const ConvertQuotationModal: React.FC<Props> = ({
             />
           </div>
 
-          {/* Scrollable list of backend-filtered quotation cards */}
           <div className="max-h-60 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
             {loading ? (
               <div className="p-10 text-center text-slate-400 dark:text-slate-500 text-xs font-medium flex flex-col items-center justify-center gap-2">
                 <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
                 <span>Searching quotations...</span>
               </div>
-            ) : quotations.length === 0 ? (
+            ) : displayedQuotations.length === 0 ? (
               <div className="p-10 text-center text-slate-400 dark:text-slate-500 text-xs font-medium">
                 No matching quotations found.
               </div>
             ) : (
-              quotations.map((q) => {
+              displayedQuotations.map((q) => {
                 const isSelected = selectedQuotationId === q.quotationId;
                 return (
                   <div
@@ -206,7 +242,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleModalClose}
               className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
             >
               Cancel

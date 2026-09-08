@@ -40,6 +40,7 @@ import { ConfirmModal } from "../components/common/ConfirmModal";
 import { PdfPreviewModal } from "../components/common/PdfPreviewModal";
 import { EditQuotationModal } from "../components/quotations/EditQuotationModal";
 import { CreateCustomerModal } from "../components/customers/CreateCustomerModal";
+import { quotationApi } from "../api/quotations";
 
 export const Quotations: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -614,6 +615,27 @@ export const Quotations: React.FC = () => {
           onClose={() => {
             setSelectedQuotation(null);
             if (searchQuery) setSearchParams({}, { replace: true });
+          }}
+          onViewPdf={(id, number) => handlePreviewPdf(id, number)}
+          onDownloadPdf={async (_e, q) => {
+            try {
+              await quotationApi.downloadPdf(q.quotationId, q.quotationNumber);
+              toast.success("PDF downloaded successfully!");
+            } catch {
+              toast.error("Failed to download PDF document.");
+            }
+          }}
+          onOpenEmail={(q) => {
+            setSelectedQuotation(q);
+            setIsEmailOpen(true);
+          }}
+          onEdit={(q) => {
+            setSelectedQuotation(null);
+            setEditingQuotation(q);
+          }}
+          onDeleteQuotation={(id) => {
+            setSelectedQuotation(null);
+            handleDeleteQuotation(id);
           }}
         />
       )}
