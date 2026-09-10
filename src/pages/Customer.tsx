@@ -437,6 +437,7 @@ export const Customers: React.FC = () => {
           onClose={() => {
             setSelectedCustomer(null);
           }}
+          onEditCustomer={handleEditCustomer}
           onAddContact={() => {
             setFormError("");
             setIsAddContactOpen(true);

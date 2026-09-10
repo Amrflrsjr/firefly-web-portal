@@ -64,16 +64,23 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
   const [invoices, setInvoices] = useState<InvoiceResponseDto[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Initialize state directly from props without an effect
+  const [currentCustomer, setCurrentCustomer] = useState<Customer>(customer);
+
   // Inline Editing States
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
-    companyName: customer.companyName,
-    tin: customer.tin || "",
-    companyAddress: customer.companyAddress || "",
-    notes: customer.notes || "",
+    companyName: currentCustomer.companyName,
+    tin:
+      currentCustomer.customerType === "Individual"
+        ? ""
+        : currentCustomer.tin || "",
+    companyAddress: currentCustomer.companyAddress || "",
+    notes: currentCustomer.notes || "",
   });
 
-  // States to handle viewing quotation and invoice details
+  const isPersonal = currentCustomer.customerType === "Individual";
+
   const [selectedQuotation, setSelectedQuotation] =
     useState<QuotationResponseDto | null>(null);
   const [selectedInvoice, setSelectedInvoice] =
@@ -86,10 +93,10 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
       try {
         const [qRes, iRes] = await Promise.all([
           api.get<QuotationResponseDto[]>("api/quotations", {
-            params: { customerId: customer.customerId },
+            params: { customerId: currentCustomer.customerId },
           }),
           api.get<InvoiceResponseDto[]>("/invoices", {
-            params: { customerId: customer.customerId },
+            params: { customerId: currentCustomer.customerId },
           }),
         ]);
 
@@ -117,18 +124,31 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [customer.customerId]);
+  }, [currentCustomer.customerId]);
 
   const handleSaveProfile = () => {
     if (!editForm.companyName.trim()) {
-      toast.error("Customer / Company name is required.");
+      toast.error("Customer name is required.");
       return;
     }
 
+    const payload = {
+      ...editForm,
+      tin: isPersonal ? "" : editForm.tin,
+    };
+
     if (onEditCustomer) {
-      onEditCustomer(customer, editForm);
-      toast.success("Customer profile updated successfully!");
+      onEditCustomer(currentCustomer, payload);
     }
+
+    // Immediately update local modal view without waiting for page refresh
+    setCurrentCustomer((prev) => ({
+      ...prev,
+      companyName: editForm.companyName,
+      companyAddress: editForm.companyAddress,
+      tin: isPersonal ? "" : editForm.tin,
+    }));
+
     setIsEditingProfile(false);
   };
 
@@ -242,7 +262,15 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                   {!isEditingProfile && (
                     <button
                       type="button"
-                      onClick={() => setIsEditingProfile(true)}
+                      onClick={() => {
+                        setEditForm({
+                          companyName: currentCustomer.companyName,
+                          tin: currentCustomer.tin || "",
+                          companyAddress: currentCustomer.companyAddress || "",
+                          notes: currentCustomer.notes || "",
+                        });
+                        setIsEditingProfile(true);
+                      }}
                       className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300 hover:text-amber-800 font-extrabold cursor-pointer px-2 py-0.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-all"
                     >
                       <Pencil className="w-3 h-3" /> Edit Profile
@@ -283,7 +311,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                   </div>
                 ) : (
                   <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
-                    {customer.companyName}
+                    {currentCustomer.companyName}
                   </h2>
                 )}
               </div>
@@ -300,7 +328,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
           {/* Modal Scrollable Body */}
           <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 bg-slate-50/50 dark:bg-slate-950/40">
-            {/* Info Cards Grid (With Inline Editing for TIN and Address) */}
+            {/* Info Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Tax ID Card */}
               <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
@@ -309,10 +337,18 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     <FileText className="w-3.5 h-3.5 text-[#F9B53F]" /> Tax ID
                     (TIN)
                   </span>
-                  {!isEditingProfile && (
+                  {!isEditingProfile && !isPersonal && (
                     <button
                       type="button"
-                      onClick={() => setIsEditingProfile(true)}
+                      onClick={() => {
+                        setEditForm({
+                          companyName: currentCustomer.companyName,
+                          tin: currentCustomer.tin || "",
+                          companyAddress: currentCustomer.companyAddress || "",
+                          notes: currentCustomer.notes || "",
+                        });
+                        setIsEditingProfile(true);
+                      }}
                       className="text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:underline cursor-pointer"
                     >
                       Edit
@@ -321,18 +357,26 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                 </div>
 
                 {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={editForm.tin}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, tin: e.target.value })
-                    }
-                    placeholder="000-000-000-000"
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                  />
+                  isPersonal ? (
+                    <div className="text-slate-400 dark:text-slate-500 italic text-xs bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                      Not applicable
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editForm.tin}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, tin: e.target.value })
+                      }
+                      placeholder="000-000-000-000"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                    />
+                  )
                 ) : (
                   <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200">
-                    {customer.tin || "N/A"}
+                    {isPersonal
+                      ? "Not applicable"
+                      : currentCustomer.tin || "N/A"}
                   </p>
                 )}
               </div>
@@ -347,7 +391,15 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                   {!isEditingProfile && (
                     <button
                       type="button"
-                      onClick={() => setIsEditingProfile(true)}
+                      onClick={() => {
+                        setEditForm({
+                          companyName: currentCustomer.companyName,
+                          tin: currentCustomer.tin || "",
+                          companyAddress: currentCustomer.companyAddress || "",
+                          notes: currentCustomer.notes || "",
+                        });
+                        setIsEditingProfile(true);
+                      }}
                       className="text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:underline cursor-pointer"
                     >
                       Edit
@@ -370,7 +422,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                   />
                 ) : (
                   <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
-                    {customer.companyAddress || "N/A"}
+                    {currentCustomer.companyAddress || "N/A"}
                   </p>
                 )}
               </div>
@@ -387,7 +439,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
                 }`}
               >
-                Contacts ({customer.contacts?.length || 0})
+                Contacts ({currentCustomer.contacts?.length || 0})
               </button>
               <button
                 type="button"
@@ -433,12 +485,13 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                 </div>
 
                 <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                  {customer.contacts?.length === 0 || !customer.contacts ? (
+                  {currentCustomer.contacts?.length === 0 ||
+                  !currentCustomer.contacts ? (
                     <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs italic shadow-xs">
                       No contacts added yet.
                     </div>
                   ) : (
-                    customer.contacts?.map((contact, idx) => (
+                    currentCustomer.contacts?.map((contact, idx) => (
                       <div
                         key={idx}
                         className="p-4.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -615,7 +668,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
         </div>
       </div>
 
-      {/* Pop up Quotation Details Modal */}
       {selectedQuotation && (
         <QuotationDetailsModal
           quotation={selectedQuotation}
@@ -636,7 +688,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
         />
       )}
 
-      {/* Pop up Invoice Details Modal */}
       {selectedInvoice && (
         <InvoiceDetailsModal
           invoice={selectedInvoice}
