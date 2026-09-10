@@ -12,6 +12,7 @@ import {
   User,
   Building2,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import type { InvoiceResponseDto } from "../../types/invoice";
 
@@ -23,6 +24,8 @@ interface Props {
   onOpenEmail: (inv: InvoiceResponseDto) => void;
   onOpenPayment: (inv: InvoiceResponseDto) => void;
   onDeleteInvoice: (invoiceId: number) => void;
+  loadingPdfId?: number | null;
+  downloadingPdfId?: number | null;
 }
 
 interface InvoiceDetailView extends Omit<
@@ -60,10 +63,14 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
   onOpenEmail,
   onOpenPayment,
   onDeleteInvoice,
+  loadingPdfId,
+  downloadingPdfId,
 }) => {
   if (!invoice) return null;
 
   const detail = invoice as InvoiceDetailView;
+  const isPdfLoading = loadingPdfId === invoice.invoiceId;
+  const isDownloading = downloadingPdfId === invoice.invoiceId;
 
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -162,23 +169,33 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
           <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5">
             <button
               type="button"
+              disabled={isPdfLoading}
               onClick={() =>
                 onPreviewPdf(invoice.invoiceId, invoice.invoiceNumber)
               }
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Eye className="w-4 h-4 text-blue-500 dark:text-blue-400" />{" "}
+              {isPdfLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500 dark:text-blue-400" />
+              ) : (
+                <Eye className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+              )}{" "}
               Preview
             </button>
 
             <button
               type="button"
+              disabled={isDownloading}
               onClick={() =>
                 onDownloadPdf(invoice.invoiceId, invoice.invoiceNumber)
               }
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />{" "}
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-500 dark:text-emerald-400" />
+              ) : (
+                <Download className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              )}{" "}
               PDF
             </button>
 

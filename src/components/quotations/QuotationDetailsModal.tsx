@@ -13,6 +13,7 @@ import {
   Mail,
   Edit,
   Trash2,
+  Loader2,
 } from "lucide-react";
 
 interface QuotationDetailsModalProps {
@@ -26,6 +27,8 @@ interface QuotationDetailsModalProps {
   onOpenEmail?: (quotation: QuotationResponseDto) => void;
   onEdit?: (quotation: QuotationResponseDto) => void;
   onDeleteQuotation?: (quotationId: number) => void;
+  loadingPdfId?: number | null;
+  downloadingPdfId?: number | null;
 }
 
 interface QuotationDetailView extends QuotationResponseDto {
@@ -48,10 +51,14 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
   onOpenEmail,
   onEdit,
   onDeleteQuotation,
+  loadingPdfId,
+  downloadingPdfId,
 }) => {
   const detail = quotation as QuotationDetailView;
   const isEditable =
     quotation.status === "Created" || quotation.status === "Draft";
+  const isPdfLoading = loadingPdfId === quotation.quotationId;
+  const isDownloading = downloadingPdfId === quotation.quotationId;
 
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -135,25 +142,35 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
 
         {/* Scrollable Content Body */}
         <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/50 dark:bg-slate-950/40">
-          {/* Action Toolbar Card (Matching InvoiceDetailsModal layout) */}
+          {/* Action Toolbar Card */}
           <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5">
             <button
               type="button"
+              disabled={isPdfLoading}
               onClick={() =>
                 onViewPdf?.(quotation.quotationId, quotation.quotationNumber)
               }
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Eye className="w-4 h-4 text-blue-500 dark:text-blue-400" />{" "}
+              {isPdfLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500 dark:text-blue-400" />
+              ) : (
+                <Eye className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+              )}{" "}
               Preview
             </button>
 
             <button
               type="button"
+              disabled={isDownloading}
               onClick={(e) => onDownloadPdf?.(e, quotation)}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />{" "}
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-500 dark:text-emerald-400" />
+              ) : (
+                <Download className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              )}{" "}
               PDF
             </button>
 

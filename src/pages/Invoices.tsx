@@ -61,6 +61,8 @@ export const Invoices: React.FC = () => {
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
   const [previewFilename, setPreviewFilename] = useState("");
+  const [loadingPdfId, setLoadingPdfId] = useState<number | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
 
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -204,6 +206,7 @@ export const Invoices: React.FC = () => {
     invoiceNumber: string,
   ) => {
     try {
+      setDownloadingPdfId(invoiceId);
       const response = await api.get(`/invoices/${invoiceId}/pdf`, {
         responseType: "blob",
       });
@@ -215,9 +218,12 @@ export const Invoices: React.FC = () => {
       link.click();
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
+      toast.success("PDF downloaded successfully!");
     } catch (err) {
       console.error("Failed to download PDF", err);
-      setApiError("Failed to download PDF document.");
+      toast.error("Failed to download PDF document.");
+    } finally {
+      setDownloadingPdfId(null);
     }
   };
 
@@ -279,6 +285,7 @@ export const Invoices: React.FC = () => {
 
   const handlePreviewPdf = async (invoiceId: number, invoiceNumber: string) => {
     try {
+      setLoadingPdfId(invoiceId);
       const response = await api.get(`/invoices/${invoiceId}/pdf`, {
         responseType: "blob",
       });
@@ -290,6 +297,8 @@ export const Invoices: React.FC = () => {
     } catch (err) {
       console.error("Failed to generate PDF preview", err);
       toast.error("Failed to generate PDF preview");
+    } finally {
+      setLoadingPdfId(null);
     }
   };
 
@@ -508,10 +517,13 @@ export const Invoices: React.FC = () => {
           onSort={handleSortChange}
           onViewDetails={setSelectedInvoice}
           onViewPdf={handlePreviewPdf}
+          onDownloadPdf={handleDownloadPdf}
           onOpenEmail={setEmailInvoice}
           onUpdateStatus={handleUpdateStatus}
           onDeleteInvoice={handleDeleteInvoice}
           onRecordPayment={setPaymentInvoice}
+          loadingPdfId={loadingPdfId}
+          downloadingPdfId={downloadingPdfId}
         />
       </div>
 
@@ -562,6 +574,8 @@ export const Invoices: React.FC = () => {
         onOpenEmail={setEmailInvoice}
         onOpenPayment={setPaymentInvoice}
         onDeleteInvoice={handleDeleteInvoice}
+        loadingPdfId={loadingPdfId}
+        downloadingPdfId={downloadingPdfId}
       />
 
       <PdfPreviewModal

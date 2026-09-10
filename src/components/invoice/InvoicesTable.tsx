@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import type { InvoiceResponseDto } from "../../types/invoice";
-import api from "../../api/axios";
 import {
   Receipt,
   Eye,
@@ -14,8 +13,8 @@ import {
   ArrowDown,
   CreditCard,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
-import toast from "react-hot-toast";
 
 interface InvoicesTableProps {
   loading: boolean;
@@ -25,10 +24,13 @@ interface InvoicesTableProps {
   onSort: (field: string) => void;
   onViewDetails: (inv: InvoiceResponseDto) => void;
   onViewPdf: (invoiceId: number, invoiceNumber: string) => void;
+  onDownloadPdf: (invoiceId: number, invoiceNumber: string) => void;
   onOpenEmail: (invoice: InvoiceResponseDto) => void;
   onRecordPayment: (invoice: InvoiceResponseDto) => void;
   onUpdateStatus: (invoiceId: number, newStatus: string) => void;
   onDeleteInvoice: (invoiceId: number) => void;
+  loadingPdfId?: number | null;
+  downloadingPdfId?: number | null;
 }
 
 const currency = (value: number) =>
@@ -45,10 +47,13 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   onSort,
   onViewDetails,
   onViewPdf,
+  onDownloadPdf,
   onOpenEmail,
   onRecordPayment,
   onUpdateStatus,
   onDeleteInvoice,
+  loadingPdfId,
+  downloadingPdfId,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -133,29 +138,6 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     }
   };
 
-  const handlePdfDownload = async (
-    e: React.MouseEvent,
-    inv: InvoiceResponseDto,
-  ) => {
-    e.stopPropagation();
-    try {
-      const response = await api.get(`/invoices/${inv.invoiceId}/pdf`, {
-        responseType: "blob",
-      });
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `Invoice_${inv.invoiceNumber}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Failed to download PDF document.");
-    }
-  };
-
   const handleStatusChange = (
     e: React.ChangeEvent<HTMLSelectElement>,
     invoiceId: number,
@@ -237,6 +219,9 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
             {currentInvoices.map((inv) => {
+              const isPdfLoading = loadingPdfId === inv.invoiceId;
+              const isDownloading = downloadingPdfId === inv.invoiceId;
+
               return (
                 <tr
                   key={inv.invoiceId}
@@ -333,18 +318,31 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                         onClick={() =>
                           onViewPdf(inv.invoiceId, inv.invoiceNumber)
                         }
+                        disabled={isPdfLoading}
                         title="Preview PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
+                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Eye className="w-4 h-4" />
+                        {isPdfLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
 
                       <button
-                        onClick={(e) => handlePdfDownload(e, inv)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDownloadPdf(inv.invoiceId, inv.invoiceNumber);
+                        }}
+                        disabled={isDownloading}
                         title="Download PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
+                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Download className="w-4 h-4" />
+                        {isDownloading ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
                       </button>
 
                       <button

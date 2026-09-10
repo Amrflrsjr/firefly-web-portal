@@ -69,6 +69,8 @@ export const Quotations: React.FC = () => {
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
   const [previewFilename, setPreviewFilename] = useState("");
+  const [loadingPdfId, setLoadingPdfId] = useState<number | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
 
   const [quotationToDelete, setQuotationToDelete] = useState<number | null>(
     null,
@@ -188,13 +190,15 @@ export const Quotations: React.FC = () => {
   const totalCount = quotations.length;
   const approvedCount = useMemo(
     () =>
-      quotations.filter((q) => q.status?.toLowerCase() === "approved").length,
+      quotations.filter(
+        (q: QuotationResponseDto) => q.status?.toLowerCase() === "approved",
+      ).length,
     [quotations],
   );
   const activeCount = useMemo(
     () =>
       quotations.filter(
-        (q) =>
+        (q: QuotationResponseDto) =>
           q.status?.toLowerCase() === "created" ||
           q.status?.toLowerCase() === "sent" ||
           q.status?.toLowerCase() === "draft",
@@ -204,7 +208,8 @@ export const Quotations: React.FC = () => {
 
   const exactMatchQuotation = searchQuery
     ? quotations.find(
-        (q) => q.quotationNumber.toLowerCase() === searchQuery.toLowerCase(),
+        (q: QuotationResponseDto) =>
+          q.quotationNumber.toLowerCase() === searchQuery.toLowerCase(),
       )
     : null;
 
@@ -373,6 +378,7 @@ export const Quotations: React.FC = () => {
     quotationNumber: string,
   ) => {
     try {
+      setLoadingPdfId(quotationId);
       const response = await api.get(`/quotations/${quotationId}/pdf`, {
         responseType: "blob",
       });
@@ -386,6 +392,23 @@ export const Quotations: React.FC = () => {
     } catch (err) {
       console.error("Failed to generate PDF preview", err);
       toast.error("Failed to generate PDF preview");
+    } finally {
+      setLoadingPdfId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (
+    quotationId: number,
+    quotationNumber: string,
+  ) => {
+    try {
+      setDownloadingPdfId(quotationId);
+      await quotationApi.downloadPdf(quotationId, quotationNumber);
+      toast.success("PDF downloaded successfully!");
+    } catch {
+      toast.error("Failed to download PDF document.");
+    } finally {
+      setDownloadingPdfId(null);
     }
   };
 
@@ -600,16 +623,21 @@ export const Quotations: React.FC = () => {
           sortBy={sortBy}
           ascending={ascending}
           onSort={handleSortChange}
-          onView={(q) => setSelectedQuotation(q)}
+          onView={(q: QuotationResponseDto) => setSelectedQuotation(q)}
           onViewPdf={handlePreviewPdf}
-          onOpenEmail={(q) => {
+          onDownloadPdf={(id: number, num: string) =>
+            handleDownloadPdf(id, num)
+          }
+          onOpenEmail={(q: QuotationResponseDto) => {
             setSelectedQuotation(q);
             setIsEmailOpen(true);
           }}
           onUpdateStatus={handleUpdateStatus}
           onDeleteQuotation={handleDeleteQuotation}
-          onEdit={(q) => setEditingQuotation(q)}
-          onConvertToInvoice={async (q) => {
+          onEdit={(q: QuotationResponseDto) => setEditingQuotation(q)}
+          loadingPdfId={loadingPdfId}
+          downloadingPdfId={downloadingPdfId}
+          onConvertToInvoice={async (q: QuotationResponseDto) => {
             try {
               const defaultDueDate = new Date();
               defaultDueDate.setDate(defaultDueDate.getDate() + 30);
@@ -652,12 +680,7 @@ export const Quotations: React.FC = () => {
           }}
           onViewPdf={(id, number) => handlePreviewPdf(id, number)}
           onDownloadPdf={async (_e, q) => {
-            try {
-              await quotationApi.downloadPdf(q.quotationId, q.quotationNumber);
-              toast.success("PDF downloaded successfully!");
-            } catch {
-              toast.error("Failed to download PDF document.");
-            }
+            await handleDownloadPdf(q.quotationId, q.quotationNumber);
           }}
           onOpenEmail={(q) => {
             setSelectedQuotation(q);
@@ -671,6 +694,8 @@ export const Quotations: React.FC = () => {
             setSelectedQuotation(null);
             handleDeleteQuotation(id);
           }}
+          loadingPdfId={loadingPdfId}
+          downloadingPdfId={downloadingPdfId}
         />
       )}
 

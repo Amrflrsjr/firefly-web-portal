@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import type { QuotationResponseDto } from "../../types/quotation";
-import { quotationApi } from "../../api/quotations";
 import {
   FileText,
   Eye,
@@ -15,8 +14,8 @@ import {
   ArrowDown,
   ChevronDown,
   Receipt,
+  Loader2,
 } from "lucide-react";
-import toast from "react-hot-toast";
 
 interface QuotationTableProps {
   loading: boolean;
@@ -26,11 +25,14 @@ interface QuotationTableProps {
   onSort: (field: string) => void;
   onView: (quotation: QuotationResponseDto) => void;
   onViewPdf: (quotationId: number, quotationNumber: string) => void;
+  onDownloadPdf: (quotationId: number, quotationNumber: string) => void;
   onOpenEmail: (quotation: QuotationResponseDto) => void;
   onUpdateStatus: (quotationId: number, newStatus: string) => void;
   onDeleteQuotation: (quotationId: number) => void;
   onEdit: (quotation: QuotationResponseDto) => void;
   onConvertToInvoice?: (quotation: QuotationResponseDto) => void;
+  loadingPdfId?: number | null;
+  downloadingPdfId?: number | null;
 }
 
 const currency = (value: number) =>
@@ -47,11 +49,14 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   onSort,
   onView,
   onViewPdf,
+  onDownloadPdf,
   onOpenEmail,
   onUpdateStatus,
   onDeleteQuotation,
   onEdit,
   onConvertToInvoice,
+  loadingPdfId,
+  downloadingPdfId,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -142,18 +147,6 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     }
   };
 
-  const handlePdfDownload = async (
-    e: React.MouseEvent,
-    q: QuotationResponseDto,
-  ) => {
-    e.stopPropagation();
-    try {
-      await quotationApi.downloadPdf(q.quotationId, q.quotationNumber);
-    } catch {
-      toast.error("Failed to download PDF document.");
-    }
-  };
-
   const handleStatusChange = (
     e: React.ChangeEvent<HTMLSelectElement>,
     quotationId: number,
@@ -233,6 +226,8 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
             {currentQuotations.map((q) => {
               const isEditable = q.status === "Created" || q.status === "Draft";
+              const isPdfLoading = loadingPdfId === q.quotationId;
+              const isDownloading = downloadingPdfId === q.quotationId;
 
               return (
                 <tr
@@ -338,18 +333,31 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                         onClick={() =>
                           onViewPdf(q.quotationId, q.quotationNumber)
                         }
+                        disabled={isPdfLoading}
                         title="Preview PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
+                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Eye className="w-4 h-4" />
+                        {isPdfLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
 
                       <button
-                        onClick={(e) => handlePdfDownload(e, q)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDownloadPdf(q.quotationId, q.quotationNumber);
+                        }}
+                        disabled={isDownloading}
                         title="Download PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
+                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Download className="w-4 h-4" />
+                        {isDownloading ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
                       </button>
 
                       <button
