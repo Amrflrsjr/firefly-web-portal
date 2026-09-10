@@ -59,7 +59,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
   const [selectedInvoice, setSelectedInvoice] =
     useState<InvoiceResponseDto | null>(null);
 
-  // Fetch quotations and invoices related to this customer on modal open
+  // Fetch quotations and invoices related to this customer on modal open with strict type safety
   useEffect(() => {
     let isMounted = true;
     const fetchCustomerHistory = async () => {
@@ -75,14 +75,32 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
         ]);
 
         if (isMounted) {
+          const targetName = customer.companyName.trim().toLowerCase();
+
+          // Strictly filter quotations belonging to this customer by matching name
+          const filteredQuotations = (qRes.data || []).filter(
+            (q: QuotationResponseDto) => {
+              const qName = (q.companyName || "").trim().toLowerCase();
+              return qName === targetName;
+            },
+          );
+
+          // Strictly filter invoices belonging to this customer by matching name
+          const filteredInvoices = (iRes.data || []).filter(
+            (inv: InvoiceResponseDto) => {
+              const invName = (inv.companyName || "").trim().toLowerCase();
+              return invName === targetName;
+            },
+          );
+
           // Sort quotations by newest date first
-          const sortedQuotations = (qRes.data || []).sort(
+          const sortedQuotations = filteredQuotations.sort(
             (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
 
           // Sort invoices by newest date first
-          const sortedInvoices = (iRes.data || []).sort(
+          const sortedInvoices = filteredInvoices.sort(
             (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
@@ -101,7 +119,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [customer.customerId]);
+  }, [customer.customerId, customer.companyName]);
 
   // Quotation Action Handlers
   const handleViewQuotationPdf = async (id: number) => {
