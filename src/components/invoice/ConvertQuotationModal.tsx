@@ -1,7 +1,14 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import api from "../../api/axios";
 import axios from "axios";
-import { X, Search, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  X,
+  Search,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import type { QuotationResponseDto } from "../../types/quotation";
 import toast from "react-hot-toast";
 
@@ -15,12 +22,11 @@ interface Props {
 export const ConvertQuotationModal: React.FC<Props> = ({
   isOpen,
   onClose,
-  quotations: initialQuotations,
   onSuccess,
 }) => {
-  const [searchResults, setSearchResults] = useState<
-    QuotationResponseDto[] | null
-  >(null);
+  const [availableQuotations, setAvailableQuotations] = useState<
+    QuotationResponseDto[]
+  >([]);
   const [selectedQuotationId, setSelectedQuotationId] = useState<number | null>(
     null,
   );
@@ -40,40 +46,32 @@ export const ConvertQuotationModal: React.FC<Props> = ({
     });
   };
 
-  const sortedInitialQuotations = useMemo(() => {
-    return sortQuotationsNewestFirst(initialQuotations);
-  }, [initialQuotations]);
+  // Fetch unbilled quotations directly from backend using the unbilledOnly parameter
+  const fetchUnbilledQuotations = useCallback(async (query = "") => {
+    try {
+      setLoading(true);
+      setFormError("");
 
-  const handleModalClose = () => {
-    setSearchFilter("");
-    setSearchResults(null);
-    setSelectedQuotationId(null);
-    setFormError("");
-    onClose();
-  };
+      const response = await api.get<QuotationResponseDto[]>("/quotations", {
+        params: { search: query, unbilledOnly: true },
+      });
 
-  // Fetch backend filtered quotations when search filter changes without sync setState in effect guard
-  useEffect(() => {
-    if (!isOpen || !searchFilter.trim()) {
-      return;
+      setAvailableQuotations(sortQuotationsNewestFirst(response.data));
+    } catch (err) {
+      console.error("Failed to load eligible quotations", err);
+      setFormError("Failed to fetch unbilled quotations from server.");
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
 
     let isCancelled = false;
     const timer = setTimeout(async () => {
-      try {
-        setLoading(true);
-        const response = await api.get<QuotationResponseDto[]>("/quotations", {
-          params: { search: searchFilter },
-        });
-        if (!isCancelled) {
-          setSearchResults(sortQuotationsNewestFirst(response.data));
-        }
-      } catch (err) {
-        console.error("Failed to fetch filtered quotations", err);
-      } finally {
-        if (!isCancelled) {
-          setLoading(false);
-        }
+      if (!isCancelled) {
+        await fetchUnbilledQuotations(searchFilter);
       }
     }, 300);
 
@@ -81,13 +79,17 @@ export const ConvertQuotationModal: React.FC<Props> = ({
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [searchFilter, isOpen]);
+  }, [searchFilter, isOpen, fetchUnbilledQuotations]);
+
+  const handleModalClose = () => {
+    setSearchFilter("");
+    setAvailableQuotations([]);
+    setSelectedQuotationId(null);
+    setFormError("");
+    onClose();
+  };
 
   if (!isOpen) return null;
-
-  const displayedQuotations = !searchFilter.trim()
-    ? sortedInitialQuotations
-    : (searchResults ?? sortedInitialQuotations);
 
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +106,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
         quotationId: selectedQuotationId,
         dueDate: defaultDueDate.toISOString(),
         notes:
-          "Thank you for your business. Please remit payment by the due date.",
+          "Thank you for choosing us! We appreciate your business and kindly ask that you settle this invoice by the due date.",
       });
 
       setSelectedQuotationId(null);
@@ -117,7 +119,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
           typeof err.response?.data === "string"
             ? err.response.data
             : err.response?.data?.message ||
-              "An active invoice has already been generated for this quotation. Please cancel the existing invoice before generating a new one.";
+              "An active invoice has already been generated for this quotation.";
         setFormError(errorMessage);
       } else {
         setFormError(
@@ -138,7 +140,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
               Convert Quotation to Invoice
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              Select an approved proposal to generate a billing statement
+              Select an approved proposal without an existing billing statement
             </p>
           </div>
           <button
@@ -174,15 +176,15 @@ export const ConvertQuotationModal: React.FC<Props> = ({
           <div className="max-h-60 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
             {loading ? (
               <div className="p-10 text-center text-slate-400 dark:text-slate-500 text-xs font-medium flex flex-col items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                <span>Searching quotations...</span>
+                <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                <span>Loading eligible quotations...</span>
               </div>
-            ) : displayedQuotations.length === 0 ? (
+            ) : availableQuotations.length === 0 ? (
               <div className="p-10 text-center text-slate-400 dark:text-slate-500 text-xs font-medium">
-                No matching quotations found.
+                No available quotations found for conversion.
               </div>
             ) : (
-              displayedQuotations.map((q) => {
+              availableQuotations.map((q) => {
                 const isSelected = selectedQuotationId === q.quotationId;
                 return (
                   <div
@@ -220,7 +222,9 @@ export const ConvertQuotationModal: React.FC<Props> = ({
                           PHP {(q.totalAmount ?? 0).toFixed(2)}
                         </div>
                         <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                          {new Date(q.createdAt).toLocaleDateString()}
+                          {q.createdAt
+                            ? new Date(q.createdAt).toLocaleDateString()
+                            : "N/A"}
                         </div>
                       </div>
                       <div
@@ -250,8 +254,9 @@ export const ConvertQuotationModal: React.FC<Props> = ({
             <button
               type="submit"
               disabled={saving || !selectedQuotationId}
-              className="px-5 py-2.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-5 py-2.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
+              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {saving ? "Generating..." : "Generate Invoice"}
             </button>
           </div>

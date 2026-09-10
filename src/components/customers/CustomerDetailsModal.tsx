@@ -17,6 +17,7 @@ import {
   Users,
   Receipt,
   ChevronRight,
+  Check,
 } from "lucide-react";
 
 interface CustomerDetailsModalProps {
@@ -26,6 +27,15 @@ interface CustomerDetailsModalProps {
   onAddContact: () => void;
   onEditContact: (contact: CustomerContact) => void;
   onDeleteContact: (contactId?: number) => void;
+  onEditCustomer?: (
+    customer: Customer,
+    updatedData: {
+      companyName: string;
+      companyAddress: string;
+      tin: string;
+      notes: string;
+    },
+  ) => void;
   onEditQuotation?: (quotation: QuotationResponseDto) => void;
   onOpenEmailQuotation?: (quotation: QuotationResponseDto) => void;
 }
@@ -43,6 +53,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
   onAddContact,
   onEditContact,
   onDeleteContact,
+  onEditCustomer,
   onEditQuotation,
   onOpenEmailQuotation,
 }) => {
@@ -53,20 +64,28 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
   const [invoices, setInvoices] = useState<InvoiceResponseDto[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Inline Editing States
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editForm, setEditForm] = useState({
+    companyName: customer.companyName,
+    tin: customer.tin || "",
+    companyAddress: customer.companyAddress || "",
+    notes: customer.notes || "",
+  });
+
   // States to handle viewing quotation and invoice details
   const [selectedQuotation, setSelectedQuotation] =
     useState<QuotationResponseDto | null>(null);
   const [selectedInvoice, setSelectedInvoice] =
     useState<InvoiceResponseDto | null>(null);
 
-  // Fetch quotations and invoices related to this customer on modal open with strict type safety
   useEffect(() => {
     let isMounted = true;
     const fetchCustomerHistory = async () => {
       setLoadingHistory(true);
       try {
         const [qRes, iRes] = await Promise.all([
-          api.get<QuotationResponseDto[]>("/quotations", {
+          api.get<QuotationResponseDto[]>("api/quotations", {
             params: { customerId: customer.customerId },
           }),
           api.get<InvoiceResponseDto[]>("/invoices", {
@@ -75,32 +94,11 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
         ]);
 
         if (isMounted) {
-          const targetName = customer.companyName.trim().toLowerCase();
-
-          // Strictly filter quotations belonging to this customer by matching name
-          const filteredQuotations = (qRes.data || []).filter(
-            (q: QuotationResponseDto) => {
-              const qName = (q.companyName || "").trim().toLowerCase();
-              return qName === targetName;
-            },
-          );
-
-          // Strictly filter invoices belonging to this customer by matching name
-          const filteredInvoices = (iRes.data || []).filter(
-            (inv: InvoiceResponseDto) => {
-              const invName = (inv.companyName || "").trim().toLowerCase();
-              return invName === targetName;
-            },
-          );
-
-          // Sort quotations by newest date first
-          const sortedQuotations = filteredQuotations.sort(
+          const sortedQuotations = (qRes.data || []).sort(
             (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
-
-          // Sort invoices by newest date first
-          const sortedInvoices = filteredInvoices.sort(
+          const sortedInvoices = (iRes.data || []).sort(
             (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
@@ -119,9 +117,21 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [customer.customerId, customer.companyName]);
+  }, [customer.customerId]);
 
-  // Quotation Action Handlers
+  const handleSaveProfile = () => {
+    if (!editForm.companyName.trim()) {
+      toast.error("Customer / Company name is required.");
+      return;
+    }
+
+    if (onEditCustomer) {
+      onEditCustomer(customer, editForm);
+      toast.success("Customer profile updated successfully!");
+    }
+    setIsEditingProfile(false);
+  };
+
   const handleViewQuotationPdf = async (id: number) => {
     try {
       const res = await api.get(`/quotations/${id}/pdf`, {
@@ -169,7 +179,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     }
   };
 
-  // Invoice Action Handlers
   const handleDownloadPdf = async (id: number, number: string) => {
     try {
       const res = await api.get(`/invoices/${id}/pdf`, {
@@ -214,24 +223,69 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-900/15 border border-slate-100 dark:border-slate-800 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-950/20 border border-slate-100 dark:border-slate-800 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
           {/* Top Accent Gradient Bar */}
-          <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
+          <div className="h-1.5 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
 
           {/* Modal Header */}
           <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-            <div className="flex items-center gap-3.5 min-w-0">
+            <div className="flex items-center gap-4 min-w-0">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-xs shrink-0">
                 <Building className="w-6 h-6" />
               </div>
-              <div className="min-w-0">
-                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                  Customer Profile & History
-                </span>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
-                  {customer.companyName}
-                </h2>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Customer Profile & History
+                  </span>
+                  {!isEditingProfile && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(true)}
+                      className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300 hover:text-amber-800 font-extrabold cursor-pointer px-2 py-0.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-all"
+                    >
+                      <Pencil className="w-3 h-3" /> Edit Profile
+                    </button>
+                  )}
+                </div>
+
+                {isEditingProfile ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="text"
+                      value={editForm.companyName}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          companyName: e.target.value,
+                        })
+                      }
+                      className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1 text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                      placeholder="Company Name"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      className="p-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
+                      title="Save"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(false)}
+                      className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 transition-colors cursor-pointer"
+                      title="Cancel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+                    {customer.companyName}
+                  </h2>
+                )}
               </div>
             </div>
             <button
@@ -246,26 +300,79 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
           {/* Modal Scrollable Body */}
           <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 bg-slate-50/50 dark:bg-slate-950/40">
-            {/* Info Cards Grid */}
+            {/* Info Cards Grid (With Inline Editing for TIN and Address) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
-                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
-                  <FileText className="w-3.5 h-3.5 text-[#F9B53F]" /> Tax ID
-                  (TIN)
+              {/* Tax ID Card */}
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
+                    <FileText className="w-3.5 h-3.5 text-[#F9B53F]" /> Tax ID
+                    (TIN)
+                  </span>
+                  {!isEditingProfile && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(true)}
+                      className="text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:underline cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
-                <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {customer.tin || "N/A"}
-                </p>
+
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={editForm.tin}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, tin: e.target.value })
+                    }
+                    placeholder="000-000-000-000"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                  />
+                ) : (
+                  <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200">
+                    {customer.tin || "N/A"}
+                  </p>
+                )}
               </div>
 
-              <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
-                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
-                  <MapPin className="w-3.5 h-3.5 text-[#F9B53F]" /> Business
-                  Address
+              {/* Business Address Card */}
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5 text-[#F9B53F]" /> Business
+                    Address
+                  </span>
+                  {!isEditingProfile && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(true)}
+                      className="text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:underline cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
-                  {customer.companyAddress || "N/A"}
-                </p>
+
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={editForm.companyAddress}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        companyAddress: e.target.value,
+                      })
+                    }
+                    placeholder="Street, City, Province"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                  />
+                ) : (
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
+                    {customer.companyAddress || "N/A"}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -334,7 +441,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     customer.contacts?.map((contact, idx) => (
                       <div
                         key={idx}
-                        className="p-4.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="p-4.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div className="space-y-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -385,7 +492,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
               </div>
             )}
 
-            {/* TAB 2: QUOTATIONS HISTORY (CLICKABLE & SORTED) */}
+            {/* TAB 2: QUOTATIONS HISTORY */}
             {activeTab === "quotations" && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -409,7 +516,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                       <div
                         key={q.quotationId}
                         onClick={() => setSelectedQuotation(q)}
-                        className="p-4 bg-white dark:bg-slate-900 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between text-xs cursor-pointer transition-all group"
+                        className="p-4 bg-white dark:bg-slate-900 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center justify-between text-xs cursor-pointer transition-all group"
                       >
                         <div className="space-y-1">
                           <span className="font-mono font-bold text-slate-900 dark:text-white text-sm group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
@@ -437,7 +544,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
               </div>
             )}
 
-            {/* TAB 3: INVOICES HISTORY (CLICKABLE & SORTED) */}
+            {/* TAB 3: INVOICES HISTORY */}
             {activeTab === "invoices" && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -461,7 +568,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                       <div
                         key={inv.invoiceId}
                         onClick={() => setSelectedInvoice(inv)}
-                        className="p-4 bg-white dark:bg-slate-900 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between text-xs cursor-pointer transition-all group"
+                        className="p-4 bg-white dark:bg-slate-900 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center justify-between text-xs cursor-pointer transition-all group"
                       >
                         <div className="space-y-1">
                           <span className="font-mono font-bold text-slate-900 dark:text-white text-sm group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
@@ -496,7 +603,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
           </div>
 
           {/* Modal Footer Actions */}
-          <div className="flex items-center justify-end px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-sm">
+          <div className="flex items-center justify-end px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-xs">
             <button
               type="button"
               onClick={onClose}
@@ -508,7 +615,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
         </div>
       </div>
 
-      {/* Pop up Quotation Details Modal with Wired Handlers */}
+      {/* Pop up Quotation Details Modal */}
       {selectedQuotation && (
         <QuotationDetailsModal
           quotation={selectedQuotation}

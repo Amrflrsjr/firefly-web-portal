@@ -239,7 +239,6 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
             <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
               <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
                 <Building2 className="w-3.5 h-3.5 text-[#F9B53F]" /> Customer
-                Entity
               </div>
               <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm truncate">
                 {invoice.companyName || "N/A"}
@@ -289,9 +288,9 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold border-b border-slate-200/80 dark:border-slate-800 uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="py-3.5 px-4">SKU / Item</th>
+                    <th className="py-3.5 px-4">Item</th>
                     <th className="py-3.5 px-4">Variant</th>
-                    <th className="py-3.5 px-4 text-center">Qty</th>
+                    <th className="py-3.5 px-4 text-center">Quantity</th>
                     <th className="py-3.5 px-4 text-right">Unit Price</th>
                     <th className="py-3.5 px-4 text-right">Line Total</th>
                   </tr>

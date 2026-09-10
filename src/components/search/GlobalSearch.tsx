@@ -9,6 +9,7 @@ import {
   Loader2,
   FolderSearch,
   LayoutDashboard,
+  Package,
 } from "lucide-react";
 import type {
   GlobalSearchResponseDto,
@@ -167,7 +168,8 @@ export const GlobalSearch: React.FC = () => {
     results &&
     (results.customers.length > 0 ||
       results.invoices.length > 0 ||
-      results.quotations.length > 0);
+      results.quotations.length > 0 ||
+      results.products.length > 0);
 
   const hasResults = filteredPages.length > 0 || hasApiResults;
 
@@ -176,7 +178,8 @@ export const GlobalSearch: React.FC = () => {
     filteredPages.length === 0 &&
     results.customers.length === 0 &&
     results.invoices.length === 0 &&
-    results.quotations.length === 0;
+    results.quotations.length === 0 &&
+    results.products.length === 0;
 
   return (
     <div ref={wrapperRef} className="relative w-full max-w-md z-50">
@@ -210,9 +213,15 @@ export const GlobalSearch: React.FC = () => {
               {results && (
                 <>
                   <ResultSection
-                    title="Customers"
+                    title="Customers & Contacts"
                     items={results.customers}
                     icon={User}
+                    onSelect={handleSelect}
+                  />
+                  <ResultSection
+                    title="Products & Variants"
+                    items={results.products}
+                    icon={Package}
                     onSelect={handleSelect}
                   />
                   <ResultSection

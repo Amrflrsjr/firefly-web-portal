@@ -21,6 +21,7 @@ interface InvoicesTableProps {
   invoices: InvoiceResponseDto[];
   sortBy: string;
   ascending: boolean;
+  searchQuery?: string;
   onSort: (field: string) => void;
   onViewDetails: (inv: InvoiceResponseDto) => void;
   onViewPdf: (invoiceId: number, invoiceNumber: string) => void;
@@ -44,6 +45,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   invoices,
   sortBy,
   ascending,
+  searchQuery,
   onSort,
   onViewDetails,
   onViewPdf,
@@ -62,7 +64,25 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     if (!invoices) return [];
 
     const sorted = [...invoices];
+    const query = searchQuery?.trim().toLowerCase() || "";
+
     sorted.sort((a, b) => {
+      if (query) {
+        const matchA =
+          a.invoiceNumber.toLowerCase().includes(query) ||
+          (a.companyName && a.companyName.toLowerCase().includes(query)) ||
+          (a.quotationNumber &&
+            a.quotationNumber.toLowerCase().includes(query));
+        const matchB =
+          b.invoiceNumber.toLowerCase().includes(query) ||
+          (b.companyName && b.companyName.toLowerCase().includes(query)) ||
+          (b.quotationNumber &&
+            b.quotationNumber.toLowerCase().includes(query));
+
+        if (matchA && !matchB) return -1;
+        if (!matchA && matchB) return 1;
+      }
+
       if (sortBy?.toLowerCase() === "createdat" || !sortBy) {
         const timeA = new Date(a.createdAt || 0).getTime();
         const timeB = new Date(b.createdAt || 0).getTime();
@@ -87,7 +107,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     });
 
     return sorted;
-  }, [invoices, sortBy, ascending]);
+  }, [invoices, sortBy, ascending, searchQuery]);
 
   if (loading) {
     return (

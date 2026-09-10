@@ -172,13 +172,7 @@ export const Invoices: React.FC = () => {
     [invoices],
   );
 
-  const exactMatchInvoice = searchQuery
-    ? invoices.find(
-        (i) => i.invoiceNumber.toLowerCase() === searchQuery.toLowerCase(),
-      )
-    : null;
-
-  const activeInvoice = (selectedInvoice || exactMatchInvoice) ?? null;
+  const activeInvoice = selectedInvoice;
 
   const updateQueryParams = (updates: Record<string, string>) => {
     const params: Record<string, string> = {
@@ -514,6 +508,7 @@ export const Invoices: React.FC = () => {
           loading={loading}
           sortBy={sortBy}
           ascending={ascending}
+          searchQuery={searchQuery}
           onSort={handleSortChange}
           onViewDetails={setSelectedInvoice}
           onViewPdf={handlePreviewPdf}

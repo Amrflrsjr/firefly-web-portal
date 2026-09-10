@@ -316,8 +316,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     setActiveProductSearchIndex(null);
     setProductSearchQueries({ ...productSearchQueries, [index]: product.name });
 
-    // Automatically set the description to the product name so it doesn't show "Custom Item"
     const updated = [...items];
+    // Keep or initialize description with product name
     updated[index] = {
       ...updated[index],
       description: product.name,
@@ -332,11 +332,22 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     const skuLabel =
       variant.sku && variant.sku.trim() !== "" ? ` - SKU: ${variant.sku}` : "";
 
+    const currentProd = selectedProducts[index];
+    const baseName = currentProd ? currentProd.name : "";
+
+    // Combine product name and variant description cleanly
+    const combinedDescription = [
+      baseName,
+      variantLabel ? `(${variantLabel})` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     const updated = [...items];
     updated[index] = {
       ...updated[index],
       productVariantId: variant.productVariantId ?? null,
-      description: variantLabel ? `Variant: ${variantLabel}` : "Standard Item",
+      description: combinedDescription || "Standard Item",
       unitPrice: variant.unitPrice,
     };
     setItems(updated);

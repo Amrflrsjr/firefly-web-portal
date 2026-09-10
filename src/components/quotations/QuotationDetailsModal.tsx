@@ -223,7 +223,6 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
             <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-1.5">
               <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
                 <Building2 className="w-3.5 h-3.5 text-[#F9B53F]" /> Customer
-                Entity
               </div>
               <p className="font-extrabold text-slate-800 dark:text-slate-200 text-sm truncate">
                 {quotation.companyName || "N/A"}
@@ -276,9 +275,9 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold border-b border-slate-200/80 dark:border-slate-800 uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="py-3.5 px-4">SKU / Item</th>
+                    <th className="py-3.5 px-4">Item</th>
                     <th className="py-3.5 px-4">Variant</th>
-                    <th className="py-3.5 px-4 text-center">Qty</th>
+                    <th className="py-3.5 px-4 text-center">Quantity</th>
                     <th className="py-3.5 px-4 text-right">Unit Price</th>
                     <th className="py-3.5 px-4 text-right">Line Total</th>
                   </tr>
@@ -304,17 +303,25 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                         className="hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors"
                       >
                         <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2.5">
-                            {item.sku && (
-                              <span className="font-mono text-[10px] font-bold text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 px-2 py-0.5 rounded-md shadow-2xs">
-                                {item.sku}
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2.5">
+                              {item.sku && (
+                                <span className="font-mono text-[10px] font-bold text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 px-2 py-0.5 rounded-md shadow-2xs">
+                                  {item.sku}
+                                </span>
+                              )}
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                                {item.productName || "Custom Item"}
                               </span>
-                            )}
-                            <span className="font-bold text-slate-800 dark:text-slate-200">
-                              {item.productName ||
-                                item.description ||
-                                "Custom Item"}
-                            </span>
+                            </div>
+                            {/* Display custom description / notes below product name if present and distinct */}
+                            {item.description &&
+                              item.description !== item.productName &&
+                              !item.description.startsWith("Variant:") && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                  {item.description}
+                                </p>
+                              )}
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">

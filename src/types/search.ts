@@ -10,4 +10,5 @@ export interface GlobalSearchResponseDto {
   customers: SearchItemDto[];
   quotations: SearchItemDto[];
   invoices: SearchItemDto[];
+  products: SearchItemDto[];
 }

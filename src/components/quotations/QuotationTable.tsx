@@ -22,6 +22,7 @@ interface QuotationTableProps {
   quotations: QuotationResponseDto[];
   sortBy: string;
   ascending: boolean;
+  searchQuery?: string;
   onSort: (field: string) => void;
   onView: (quotation: QuotationResponseDto) => void;
   onViewPdf: (quotationId: number, quotationNumber: string) => void;
@@ -46,6 +47,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   quotations,
   sortBy,
   ascending,
+  searchQuery,
   onSort,
   onView,
   onViewPdf,
@@ -61,12 +63,26 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // Enforce default descending sort for createdAt/quotationId so new items always appear first
+  // Prioritize matching search query items to the top while preserving sorting rules
   const processedQuotations = useMemo(() => {
     if (!quotations) return [];
 
     const sorted = [...quotations];
+    const query = searchQuery?.trim().toLowerCase() || "";
+
     sorted.sort((a, b) => {
+      if (query) {
+        const matchA =
+          a.quotationNumber.toLowerCase().includes(query) ||
+          (a.companyName && a.companyName.toLowerCase().includes(query));
+        const matchB =
+          b.quotationNumber.toLowerCase().includes(query) ||
+          (b.companyName && b.companyName.toLowerCase().includes(query));
+
+        if (matchA && !matchB) return -1;
+        if (!matchA && matchB) return 1;
+      }
+
       if (sortBy?.toLowerCase() === "createdat" || !sortBy) {
         const timeA = new Date(a.createdAt || 0).getTime();
         const timeB = new Date(b.createdAt || 0).getTime();
@@ -78,7 +94,6 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
           : b.quotationId - a.quotationId;
       }
 
-      // Handle sorting for other active columns safely without 'any' or 'let'
       const valA = a[sortBy as keyof QuotationResponseDto];
       const valB = b[sortBy as keyof QuotationResponseDto];
 
@@ -92,7 +107,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     });
 
     return sorted;
-  }, [quotations, sortBy, ascending]);
+  }, [quotations, sortBy, ascending, searchQuery]);
 
   if (loading) {
     return (

@@ -206,14 +206,7 @@ export const Quotations: React.FC = () => {
     [quotations],
   );
 
-  const exactMatchQuotation = searchQuery
-    ? quotations.find(
-        (q: QuotationResponseDto) =>
-          q.quotationNumber.toLowerCase() === searchQuery.toLowerCase(),
-      )
-    : null;
-
-  const activeQuotation = (selectedQuotation || exactMatchQuotation) ?? null;
+  const activeQuotation = selectedQuotation;
 
   const updateQueryParams = (updates: Record<string, string>) => {
     const params: Record<string, string> = {
@@ -622,6 +615,7 @@ export const Quotations: React.FC = () => {
           quotations={quotations}
           sortBy={sortBy}
           ascending={ascending}
+          searchQuery={searchQuery}
           onSort={handleSortChange}
           onView={(q: QuotationResponseDto) => setSelectedQuotation(q)}
           onViewPdf={handlePreviewPdf}
