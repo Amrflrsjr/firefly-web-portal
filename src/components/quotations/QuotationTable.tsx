@@ -157,6 +157,9 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
       case "declined":
       case "cancelled":
         return "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60 hover:bg-rose-100/80 dark:hover:bg-rose-900/50";
+      case "draft":
+      case "created":
+        return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200/80 dark:hover:bg-slate-750";
       default:
         return "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100/80 dark:hover:bg-amber-900/50";
     }
