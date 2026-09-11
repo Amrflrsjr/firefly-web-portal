@@ -640,7 +640,7 @@ export const Quotations: React.FC = () => {
                 quotationId: q.quotationId,
                 dueDate: defaultDueDate.toISOString(),
                 notes:
-                  "Thank you for your business. Please remit payment by the due date.",
+                  "We truly appreciate your partnership! Kindly process your payment at your earliest convenience before the due date.",
               });
 
               toast.success(
