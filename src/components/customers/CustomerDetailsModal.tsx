@@ -4,6 +4,7 @@ import type { QuotationResponseDto } from "../../types/quotation";
 import type { InvoiceResponseDto } from "../../types/invoice";
 import { QuotationDetailsModal } from "../quotations/QuotationDetailsModal";
 import { InvoiceDetailsModal } from "../invoice/InvoiceDetailsModal";
+import { PdfPreviewModal } from "../common/PdfPreviewModal"; // Import the modal
 import api from "../../api/axios";
 import toast from "react-hot-toast";
 import {
@@ -64,6 +65,15 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
   const [invoices, setInvoices] = useState<InvoiceResponseDto[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // PDF action loading states matching QuotationTable
+  const [loadingPdfId, setLoadingPdfId] = useState<number | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
+
+  // PdfPreviewModal states
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [previewPdfTitle, setPreviewPdfTitle] = useState("");
+  const [previewPdfFilename, setPreviewPdfFilename] = useState("");
+
   // Initialize state directly from props without an effect
   const [currentCustomer, setCurrentCustomer] = useState<Customer>(customer);
 
@@ -95,10 +105,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
           api.get<QuotationResponseDto[]>("quotations"),
           api.get<InvoiceResponseDto[]>("invoices"),
         ]);
-
-        console.log("Quotations data:", qRes.data);
-        console.log("Invoices data:", iRes.data);
-        console.log("Current customer:", currentCustomer);
 
         if (isMounted) {
           const targetName = currentCustomer.companyName.toLowerCase().trim();
@@ -188,24 +194,31 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     setIsEditingProfile(false);
   };
 
-  const handleViewQuotationPdf = async (id: number) => {
+  const handleViewQuotationPdf = async (id: number, number: string) => {
     try {
+      setLoadingPdfId(id);
       const res = await api.get(`/quotations/${id}/pdf`, {
         responseType: "blob",
       });
       const blob = new Blob([res.data], { type: "application/pdf" });
       const fileURL = window.URL.createObjectURL(blob);
-      window.open(fileURL, "_blank");
+
+      setPreviewPdfUrl(fileURL);
+      setPreviewPdfTitle(`Quotation #${number}`);
+      setPreviewPdfFilename(`Quotation_${number}.pdf`);
     } catch {
       toast.error("Failed to preview quotation PDF.");
+    } finally {
+      setLoadingPdfId(null);
     }
   };
 
   const handleDownloadQuotationPdf = async (
-    _e: React.MouseEvent,
+    _e: React.MouseEvent | null,
     q: QuotationResponseDto,
   ) => {
     try {
+      setDownloadingPdfId(q.quotationId);
       const res = await api.get(`/quotations/${q.quotationId}/pdf`, {
         responseType: "blob",
       });
@@ -217,6 +230,8 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
       toast.success("PDF downloaded successfully!");
     } catch {
       toast.error("Failed to download PDF document.");
+    } finally {
+      setDownloadingPdfId(null);
     }
   };
 
@@ -251,14 +266,17 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     }
   };
 
-  const handlePreviewPdf = async (id: number) => {
+  const handlePreviewPdf = async (id: number, number: string) => {
     try {
       const res = await api.get(`/invoices/${id}/pdf`, {
         responseType: "blob",
       });
       const blob = new Blob([res.data], { type: "application/pdf" });
       const fileURL = window.URL.createObjectURL(blob);
-      window.open(fileURL, "_blank");
+
+      setPreviewPdfUrl(fileURL);
+      setPreviewPdfTitle(`Invoice #${number}`);
+      setPreviewPdfFilename(`Invoice_${number}.pdf`);
     } catch {
       toast.error("Failed to preview PDF.");
     }
@@ -707,8 +725,10 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
       {selectedQuotation && (
         <QuotationDetailsModal
           quotation={selectedQuotation}
+          loadingPdfId={loadingPdfId}
+          downloadingPdfId={downloadingPdfId}
           onClose={() => setSelectedQuotation(null)}
-          onViewPdf={(id) => handleViewQuotationPdf(id)}
+          onViewPdf={(id, num) => handleViewQuotationPdf(id, num)}
           onDownloadPdf={(e, q) => handleDownloadQuotationPdf(e, q)}
           onOpenEmail={(q) => {
             onClose();
@@ -729,12 +749,21 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
           invoice={selectedInvoice}
           onClose={() => setSelectedInvoice(null)}
           onDownloadPdf={handleDownloadPdf}
-          onPreviewPdf={handlePreviewPdf}
+          onPreviewPdf={(id, num) => handlePreviewPdf(id, num)}
           onOpenEmail={() => {}}
           onOpenPayment={() => {}}
           onDeleteInvoice={handleDeleteInvoice}
         />
       )}
+
+      {/* Embedded PdfPreviewModal component */}
+      <PdfPreviewModal
+        isOpen={Boolean(previewPdfUrl)}
+        pdfUrl={previewPdfUrl}
+        title={previewPdfTitle}
+        filename={previewPdfFilename}
+        onClose={() => setPreviewPdfUrl(null)}
+      />
     </>
   );
 };
