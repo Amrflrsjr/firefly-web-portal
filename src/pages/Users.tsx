@@ -56,8 +56,9 @@ export const Users: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [resetPasswordUser, setResetPasswordUser] =
     useState<UserResponse | null>(null);
-  const [deactivateId, setDeactivateId] = useState<string | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   // Pagination & Sorting states
   const [currentPage, setCurrentPage] = useState(1);
@@ -158,12 +159,18 @@ export const Users: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await api.put(`/users/${u.id}`, {
-        fullName: editForm.fullName,
-        email: editForm.email,
-        role: editForm.role,
-        isActive: editForm.isActive,
+      const formData = new FormData();
+      formData.append("fullName", editForm.fullName);
+      formData.append("email", editForm.email);
+      formData.append("role", editForm.role);
+      formData.append("isActive", String(editForm.isActive));
+
+      await api.put(`/users/${u.id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
+
       toast.success("User updated successfully");
       setEditingUserId(null);
       fetchUsers(true);
@@ -202,15 +209,15 @@ export const Users: React.FC = () => {
     }
   };
 
-  const handleDeactivate = async () => {
-    if (!deactivateId) return;
+  const handleDeleteUser = async () => {
+    if (!deleteUserId) return;
     try {
-      await api.delete(`/users/${deactivateId}`);
-      toast.success("User deactivated successfully");
-      setDeactivateId(null);
+      await api.delete(`/users/${deleteUserId}`);
+      toast.success("User permanently deleted successfully");
+      setDeleteUserId(null);
       fetchUsers(true);
     } catch {
-      toast.error("Failed to deactivate user");
+      toast.error("Failed to delete user");
     }
   };
 
@@ -433,11 +440,17 @@ export const Users: React.FC = () => {
                           ) : (
                             <div className="flex items-center gap-3.5">
                               <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-black text-xs flex items-center justify-center border border-amber-200/60 dark:border-amber-800/50 group-hover:scale-105 transition-transform shrink-0 shadow-2xs overflow-hidden">
-                                {resolvedAvatarUrl ? (
+                                {resolvedAvatarUrl && !failedImages[u.id] ? (
                                   <img
                                     src={resolvedAvatarUrl}
                                     alt={u.fullName}
                                     className="w-full h-full object-cover"
+                                    onError={() =>
+                                      setFailedImages((prev) => ({
+                                        ...prev,
+                                        [u.id]: true,
+                                      }))
+                                    }
                                   />
                                 ) : (
                                   u.fullName.charAt(0).toUpperCase()
@@ -584,8 +597,8 @@ export const Users: React.FC = () => {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setDeactivateId(u.id)}
-                                  title="Deactivate User"
+                                  onClick={() => setDeleteUserId(u.id)}
+                                  title="Permanently Delete User"
                                   className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/80 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/50 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -673,16 +686,16 @@ export const Users: React.FC = () => {
         />
       )}
 
-      {/* Deactivate Confirmation Modal */}
+      {/* Permanent Delete Confirmation Modal */}
       <ConfirmModal
-        isOpen={!!deactivateId}
-        title="Deactivate User Account"
-        message="Are you sure you want to deactivate this user? They will no longer be able to log in to the portal."
-        confirmText="Yes, Deactivate"
+        isOpen={!!deleteUserId}
+        title="Permanently Delete User Account"
+        message="Are you sure you want to permanently delete this user? This action cannot be undone and will remove all associated database records and avatars."
+        confirmText="Yes, Permanently Delete"
         cancelText="Cancel"
         isDanger={true}
-        onConfirm={handleDeactivate}
-        onClose={() => setDeactivateId(null)}
+        onConfirm={handleDeleteUser}
+        onClose={() => setDeleteUserId(null)}
       />
     </div>
   );
