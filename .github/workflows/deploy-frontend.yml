@@ -38,8 +38,8 @@ jobs:
 
       - name: Deploy to S3
         run: |
-          aws s3 sync dist/ s3://fireflycraftsph-portal --delete
+          aws s3 sync dist/ s3://fireflycraftsph-portal --delete --exclude "avatars/*"
 
       - name: Invalidate Cloudfront Cache
         run: |
-            aws cloudfront create-invalidation --distribution-id E20FVXS173MK9K --paths "/*"
+          aws cloudfront create-invalidation --distribution-id E20FVXS173MK9K --paths "/*"[cite: 11]
