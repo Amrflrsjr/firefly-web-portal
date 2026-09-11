@@ -92,26 +92,62 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
       setLoadingHistory(true);
       try {
         const [qRes, iRes] = await Promise.all([
-          api.get<QuotationResponseDto[]>("api/quotations", {
-            params: { customerId: currentCustomer.customerId },
-          }),
-          api.get<InvoiceResponseDto[]>("/invoices", {
-            params: { customerId: currentCustomer.customerId },
-          }),
+          api.get<QuotationResponseDto[]>("quotations"),
+          api.get<InvoiceResponseDto[]>("invoices"),
         ]);
 
+        console.log("Quotations data:", qRes.data);
+        console.log("Invoices data:", iRes.data);
+        console.log("Current customer:", currentCustomer);
+
         if (isMounted) {
-          const sortedQuotations = (qRes.data || []).sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          );
-          const sortedInvoices = (iRes.data || []).sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          const targetName = currentCustomer.companyName.toLowerCase().trim();
+
+          const matchedQuotations = (qRes.data || []).filter(
+            (q: QuotationResponseDto) => {
+              const rawQ = q as unknown as Record<string, unknown>;
+              const matchesId = rawQ.customerId === currentCustomer.customerId;
+              const qName =
+                (rawQ.customerName as string) ||
+                (rawQ.clientName as string) ||
+                (rawQ.companyName as string);
+              return (
+                matchesId ||
+                (qName && qName.toLowerCase().trim() === targetName)
+              );
+            },
           );
 
-          setQuotations(sortedQuotations);
-          setInvoices(sortedInvoices);
+          const matchedInvoices = (iRes.data || []).filter(
+            (inv: InvoiceResponseDto) => {
+              const rawInv = inv as unknown as Record<string, unknown>;
+              const matchesId =
+                rawInv.customerId === currentCustomer.customerId;
+              const invName =
+                (rawInv.customerName as string) ||
+                (rawInv.clientName as string) ||
+                (rawInv.companyName as string);
+              return (
+                matchesId ||
+                (invName && invName.toLowerCase().trim() === targetName)
+              );
+            },
+          );
+
+          setQuotations(
+            matchedQuotations.sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            ),
+          );
+          setInvoices(
+            matchedInvoices.sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            ),
+          );
         }
       } catch (err) {
         console.error("Failed to fetch customer history", err);
@@ -124,7 +160,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [currentCustomer.customerId]);
+  }, [currentCustomer]);
 
   const handleSaveProfile = () => {
     if (!editForm.companyName.trim()) {

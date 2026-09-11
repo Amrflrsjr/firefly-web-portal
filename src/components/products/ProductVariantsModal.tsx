@@ -451,7 +451,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
 
             <div className="space-y-3.5 flex-1 overflow-y-auto pr-1">
               {visibleVariants.length === 0 ? (
-                <div className="p-16 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
+                <div className="p-16 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
                   <Package className="w-8 h-8 opacity-40 text-slate-400" />
                   <p className="font-semibold">
                     No variant configurations added yet.
@@ -596,7 +596,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                   return (
                     <div
                       key={v.productVariantId ?? idx}
-                      className="p-4 bg-slate-50/60 dark:bg-slate-850/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm hover:border-amber-300/60 dark:hover:border-amber-600/40 transition-all hover:bg-white dark:hover:bg-slate-850 group"
+                      className="p-4 bg-slate-50/60 dark:bg-slate-900/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm hover:border-amber-300/60 dark:hover:border-amber-600/40 transition-all hover:bg-white dark:hover:bg-slate-800 group"
                     >
                       <div className="space-y-1.5 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
