@@ -38,6 +38,7 @@ const getImageUrl = (url?: string) => {
 };
 
 export const Layout: React.FC = () => {
+  const [imageFailed, setImageFailed] = useState(false);
   const { username, roles, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ export const Layout: React.FC = () => {
         profilePictureUrl?: string;
         fullName?: string;
       }>;
+      setImageFailed(false); // Reset error state on profile update
       if (customEvent.detail) {
         setUserProfile((prev) => ({
           ...prev,
@@ -119,11 +121,12 @@ export const Layout: React.FC = () => {
       <div
         className={`${sizeClass} rounded-xl overflow-hidden bg-linear-to-br from-amber-400 to-[#F9B53F] text-slate-950 font-black flex items-center justify-center border border-amber-300 shadow-2xs shrink-0`}
       >
-        {resolvedUrl ? (
+        {resolvedUrl && !imageFailed ? (
           <img
             src={resolvedUrl}
             alt="Profile"
             className="w-full h-full object-cover"
+            onError={() => setImageFailed(true)}
           />
         ) : (
           (userProfile?.fullName || username || "A").charAt(0).toUpperCase()
