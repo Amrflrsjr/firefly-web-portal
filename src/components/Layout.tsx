@@ -229,25 +229,6 @@ export const Layout: React.FC = () => {
 
               {/* Bottom Utility & Admin Section */}
               <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
-                <NavLink
-                  to="/trash"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) => getNavLinkClass(isActive)}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Trash2
-                        className={`w-4 h-4 transition-colors ${
-                          isActive
-                            ? "text-amber-700 dark:text-amber-400"
-                            : "text-slate-400 dark:text-slate-500"
-                        }`}
-                      />
-                      <span>Archive</span>
-                    </>
-                  )}
-                </NavLink>
-
                 {isAdmin && (
                   <NavLink
                     to="/users"
@@ -268,6 +249,24 @@ export const Layout: React.FC = () => {
                     )}
                   </NavLink>
                 )}
+                <NavLink
+                  to="/trash"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={({ isActive }) => getNavLinkClass(isActive)}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Trash2
+                        className={`w-4 h-4 transition-colors ${
+                          isActive
+                            ? "text-amber-700 dark:text-amber-400"
+                            : "text-slate-400 dark:text-slate-500"
+                        }`}
+                      />
+                      <span>Archive</span>
+                    </>
+                  )}
+                </NavLink>
               </div>
             </nav>
           </div>
@@ -361,24 +360,6 @@ export const Layout: React.FC = () => {
 
             {/* Bottom Utility & Admin Section */}
             <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
-              <NavLink
-                to="/trash"
-                className={({ isActive }) => getNavLinkClass(isActive)}
-              >
-                {({ isActive }) => (
-                  <>
-                    <Trash2
-                      className={`w-4 h-4 transition-colors ${
-                        isActive
-                          ? "text-amber-700 dark:text-amber-400"
-                          : "text-slate-400 dark:text-slate-500"
-                      }`}
-                    />
-                    <span>Archive</span>
-                  </>
-                )}
-              </NavLink>
-
               {isAdmin && (
                 <NavLink
                   to="/users"
@@ -398,6 +379,23 @@ export const Layout: React.FC = () => {
                   )}
                 </NavLink>
               )}
+              <NavLink
+                to="/trash"
+                className={({ isActive }) => getNavLinkClass(isActive)}
+              >
+                {({ isActive }) => (
+                  <>
+                    <Trash2
+                      className={`w-4 h-4 transition-colors ${
+                        isActive
+                          ? "text-amber-700 dark:text-amber-400"
+                          : "text-slate-400 dark:text-slate-500"
+                      }`}
+                    />
+                    <span>Archive</span>
+                  </>
+                )}
+              </NavLink>
             </div>
           </nav>
         </div>
