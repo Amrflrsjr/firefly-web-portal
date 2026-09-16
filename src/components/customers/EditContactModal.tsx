@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { CustomerContact } from "../../types/customer";
-import { X, User, Briefcase, Mail, Phone } from "lucide-react";
+import { X, User, Tag, Mail, Phone } from "lucide-react";
 
 interface EditContactModalProps {
   contact: CustomerContact;
@@ -94,7 +94,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
               Position / Role
             </label>
             <div className="relative">
-              <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 value={formData.position || ""}
@@ -143,7 +143,13 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          {/* Interactive Checkbox Row */}
+          <div
+            onClick={() =>
+              setFormData({ ...formData, isPrimary: !formData.isPrimary })
+            }
+            className="flex items-center gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer select-none"
+          >
             <input
               type="checkbox"
               id="editIsPrimary"
@@ -155,7 +161,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             />
             <label
               htmlFor="editIsPrimary"
-              className="text-xs font-extrabold text-slate-700 dark:text-slate-300 select-none cursor-pointer"
+              className="text-xs font-extrabold text-slate-700 dark:text-slate-300 cursor-pointer"
             >
               Set as Primary Contact
             </label>
@@ -168,7 +174,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs"
+            className="px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 text-xs font-bold rounded-xl transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -176,7 +182,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             form="edit-contact-form"
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 text-xs font-bold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
           >
             {saving ? "Updating..." : "Update Contact"}
           </button>

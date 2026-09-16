@@ -15,6 +15,8 @@ import {
   Search,
   Archive,
   Layers,
+  Info,
+  X,
 } from "lucide-react";
 import axios from "axios";
 import { ConfirmModal } from "../components/common/ConfirmModal";
@@ -72,7 +74,6 @@ export const Trash: React.FC = () => {
       setLoading(true);
       setApiError(null);
       try {
-        // Dynamic endpoint addressing for /products/variants/deleted or standard /tab/deleted
         const endpoint =
           targetTab === "variants"
             ? "/products/variants/deleted"
@@ -98,7 +99,6 @@ export const Trash: React.FC = () => {
     [],
   );
 
-  // Fetch data when activeTab or searchQuery changes (with 300ms debounce for typing)
   useEffect(() => {
     let isMounted = true;
 
@@ -116,7 +116,7 @@ export const Trash: React.FC = () => {
         });
         if (isMounted) {
           setItems(response.data);
-          setCurrentPage(1); // Reset to page 1 on search or tab change
+          setCurrentPage(1);
         }
       } catch (err: unknown) {
         if (isMounted) {
@@ -203,7 +203,7 @@ export const Trash: React.FC = () => {
     }
   };
 
-  // Pagination computed slices (10 rows per page)
+  // Pagination computed slices
   const totalPages = Math.ceil(items.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedItems = items.slice(startIndex, startIndex + pageSize);
@@ -278,7 +278,6 @@ export const Trash: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0 self-start md:self-auto">
-            {/* Real-time Summary Indicator */}
             <div className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-semibold">
               <div className="flex items-center gap-1.5 text-amber-300 font-bold">
                 <Archive className="w-4 h-4" />
@@ -289,6 +288,16 @@ export const Trash: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Retention Policy Guidance Banner */}
+      <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold shadow-2xs">
+        <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+        <span>
+          <strong>Data Lifecycle Notice:</strong> Soft-deleted items remain
+          securely stored in the archive. You can restore records anytime or
+          purge them permanently when no longer required.
+        </span>
       </div>
 
       {/* Tabs Toolbar & Backend Search Input Row */}
@@ -311,7 +320,7 @@ export const Trash: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setActiveTab(tab.key);
-                  setSearchQuery(""); // Clear search query when changing tabs
+                  setSearchQuery("");
                 }}
                 className={`flex items-center gap-2 px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
                   isActive
@@ -340,8 +349,18 @@ export const Trash: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Search deleted ${activeTab}...`}
-            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] transition-colors"
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl pl-10 pr-9 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] transition-colors"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              title="Clear Search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -371,9 +390,29 @@ export const Trash: React.FC = () => {
             </span>
           </div>
         ) : items.length === 0 ? (
-          <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-xs font-medium flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900">
-            <Trash2 className="w-8 h-8 text-slate-300 dark:text-slate-700" />
-            <span>No deleted {activeTab} matched your search criteria.</span>
+          <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-xs font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                No deleted {activeTab} matched your search criteria.
+              </p>
+              <p className="text-slate-400">
+                {searchQuery
+                  ? "Try adjusting your search query or clear the filter to view all archived records."
+                  : `There are currently no items in the ${activeTab} trash bin.`}
+              </p>
+            </div>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="mt-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 rounded-xl font-extrabold text-xs transition-all cursor-pointer border border-amber-200/60 dark:border-amber-800/60"
+              >
+                Clear Search Filter
+              </button>
+            )}
           </div>
         ) : (
           <>

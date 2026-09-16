@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { Customer } from "../../types/customer";
 import {
   Building2,
@@ -15,6 +15,8 @@ import {
   Mail,
   MapPin,
   Search,
+  MoreVertical,
+  Eye,
 } from "lucide-react";
 
 interface CustomerTableProps {
@@ -49,7 +51,13 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
   onDeleteCustomer,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [contactSearchQuery, setContactSearchQuery] = useState(""); // <-- Local contact search state
+  const [contactSearchQuery, setContactSearchQuery] = useState("");
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const pageSize = 10;
 
   const [editingCustomerId, setEditingCustomerId] = useState<number | null>(
@@ -61,6 +69,18 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
     companyAddress: "",
     notes: "",
   });
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenuId(null);
+        setMenuCoords(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (loading) {
     return (
@@ -104,8 +124,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
     startIndex + pageSize,
   );
 
-  const handleStartEdit = (e: React.MouseEvent, customer: Customer) => {
-    e.stopPropagation();
+  const handleStartEdit = (customer: Customer) => {
     setEditingCustomerId(customer.customerId);
     setEditForm({
       companyName: customer.companyName,
@@ -164,20 +183,20 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
             value={contactSearchQuery}
             onChange={(e) => {
               setContactSearchQuery(e.target.value);
-              setCurrentPage(1); // Reset to page 1 on search change
+              setCurrentPage(1);
             }}
             className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-[#F9B53F]"
           />
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="relative w-full">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
+            <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
               <th
                 onClick={() => onSort("companyname")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Customer
@@ -186,7 +205,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("customertype")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Type
@@ -195,16 +214,16 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("tin")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Tax ID (TIN)
                   {renderSortIcon("tin")}
                 </div>
               </th>
-              <th className="py-3.5 px-6">Primary Contact</th>
-              <th className="py-3.5 px-6">Address</th>
-              <th className="py-3.5 px-6 text-right">Actions</th>
+              <th className="py-4 px-6">Primary Contact</th>
+              <th className="py-4 px-6">Address</th>
+              <th className="py-4 px-6 text-right w-20">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
@@ -220,6 +239,8 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
             ) : (
               currentCustomers.map((customer) => {
                 const isEditing = editingCustomerId === customer.customerId;
+                const isMenuOpen = activeMenuId === customer.customerId;
+
                 const primaryContact =
                   customer.contacts?.find((c) => c.isPrimary) ||
                   customer.contacts?.[0];
@@ -233,7 +254,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                     className={`transition-colors ${
                       isEditing
                         ? "bg-amber-50/70 dark:bg-amber-950/40 ring-1 ring-inset ring-amber-300/60 dark:ring-amber-800/60"
-                        : "hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer group"
+                        : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer group"
                     }`}
                   >
                     <td className="py-4 px-6 text-slate-800 dark:text-slate-200">
@@ -272,7 +293,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                               <Building2 className="w-4 h-4" />
                             )}
                           </div>
-                          <span className="font-bold text-slate-900 dark:text-white group-hover:text-amber-900 dark:group-hover:text-amber-300 transition-colors truncate">
+                          <span className="font-bold text-slate-900 dark:text-white group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors truncate">
                             {customer.companyName}
                           </span>
                         </div>
@@ -385,13 +406,13 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                       )}
                     </td>
 
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-4 px-6 text-right relative">
                       <div
-                        className="flex items-center justify-end gap-1.5"
+                        className="flex items-center justify-end"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {isEditing ? (
-                          <>
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={(e) => handleSaveEdit(e, customer)}
@@ -408,29 +429,89 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                             >
                               <X className="w-4 h-4" />
                             </button>
-                          </>
+                          </div>
                         ) : (
                           <>
                             <button
-                              type="button"
-                              onClick={(e) => handleStartEdit(e, customer)}
-                              title="Quick Edit"
-                              className="p-2 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (activeMenuId === customer.customerId) {
+                                  setActiveMenuId(null);
+                                  setMenuCoords(null);
+                                } else {
+                                  const rect =
+                                    e.currentTarget.getBoundingClientRect();
+                                  const menuHeight = 160;
+                                  const showAbove =
+                                    window.innerHeight - rect.bottom <
+                                      menuHeight && rect.top > menuHeight;
+
+                                  setActiveMenuId(customer.customerId);
+                                  setMenuCoords({
+                                    top: showAbove
+                                      ? rect.top - menuHeight - 4
+                                      : rect.bottom + 4,
+                                    left: Math.max(12, rect.right - 192),
+                                  });
+                                }
+                              }}
+                              title="Actions"
+                              className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                             >
-                              <Edit className="w-4 h-4" />
+                              <MoreVertical className="w-4 h-4" />
                             </button>
 
-                            {isAdmin && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onDeleteCustomer(customer.customerId)
-                                }
-                                title="Delete Customer"
-                                className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/80 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                            {isMenuOpen && menuCoords && (
+                              <div
+                                ref={menuRef}
+                                style={{
+                                  position: "fixed",
+                                  top: `${menuCoords.top}px`,
+                                  left: `${menuCoords.left}px`,
+                                }}
+                                className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 py-1.5 text-left text-xs animate-in fade-in zoom-in-95 duration-100"
                               >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                                <button
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setMenuCoords(null);
+                                    onView(customer);
+                                  }}
+                                  className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>View Details</span>
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setMenuCoords(null);
+                                    handleStartEdit(customer);
+                                  }}
+                                  className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                >
+                                  <Edit className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Quick Edit</span>
+                                </button>
+
+                                {isAdmin && (
+                                  <>
+                                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+                                    <button
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        setMenuCoords(null);
+                                        onDeleteCustomer(customer.customerId);
+                                      }}
+                                      className="w-full px-4 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete Customer</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             )}
                           </>
                         )}
@@ -445,7 +526,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
       </div>
 
       {totalPages > 0 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-b-3xl">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Showing{" "}
             <span className="font-bold text-slate-700 dark:text-slate-200">

@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import type { QuotationResponseDto } from "../../types/quotation";
 import {
-  FileText,
   Eye,
   Download,
   Mail,
@@ -15,6 +14,7 @@ import {
   ChevronDown,
   Receipt,
   Loader2,
+  MoreVertical,
 } from "lucide-react";
 
 interface QuotationTableProps {
@@ -61,9 +61,26 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
   downloadingPdfId,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const pageSize = 10;
 
-  // Prioritize matching search query items to the top while preserving sorting rules
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenuId(null);
+        setMenuCoords(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const processedQuotations = useMemo(() => {
     if (!quotations) return [];
 
@@ -111,7 +128,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
 
   if (loading) {
     return (
-      <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+      <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
         <div className="w-6 h-6 border-2 border-[#F9B53F] border-t-transparent rounded-full animate-spin" />
         <span className="font-semibold text-slate-600 dark:text-slate-300">
           Loading quotations directory...
@@ -159,9 +176,8 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
         return "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60 hover:bg-rose-100/80 dark:hover:bg-rose-900/50";
       case "draft":
       case "created":
-        return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200/80 dark:hover:bg-slate-750";
       default:
-        return "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100/80 dark:hover:bg-amber-900/50";
+        return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200/80 dark:hover:bg-slate-750";
     }
   };
 
@@ -189,13 +205,13 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
 
   return (
     <div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
               <th
                 onClick={() => onSort("quotationnumber")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Quotation #{renderSortIcon("quotationnumber")}
@@ -203,17 +219,16 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("customer")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
-                  Customer
+                  Customer & Contact
                   {renderSortIcon("customer")}
                 </div>
               </th>
-              <th className="py-3.5 px-6">Contact</th>
               <th
                 onClick={() => onSort("createdat")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Date Created
@@ -222,7 +237,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("status")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Status
@@ -231,14 +246,14 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("totalamount")}
-                className="py-3.5 px-6 text-right cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 text-right cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center justify-end gap-1.5">
                   Total Amount
                   {renderSortIcon("totalamount")}
                 </div>
               </th>
-              <th className="py-3.5 px-6 text-right">Actions</th>
+              <th className="py-4 px-6 text-right w-20">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
@@ -246,34 +261,32 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
               const isEditable = q.status === "Created" || q.status === "Draft";
               const isPdfLoading = loadingPdfId === q.quotationId;
               const isDownloading = downloadingPdfId === q.quotationId;
+              const isMenuOpen = activeMenuId === q.quotationId;
 
               return (
                 <tr
                   key={q.quotationId}
                   onClick={() => onView(q)}
-                  className="hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
                 >
                   <td className="py-4 px-6 text-slate-800 dark:text-slate-200">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] dark:text-amber-400 font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                        {q.quotationNumber}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="py-4 px-6 font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-900 dark:group-hover:text-amber-300 transition-colors">
-                    {q.companyName || "N/A"}
+                    <span className="font-mono text-xs font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                      {q.quotationNumber}
+                    </span>
                   </td>
 
                   <td className="py-4 px-6">
-                    <div className="font-bold text-slate-800 dark:text-slate-200">
-                      {q.contactNameSnapshot || "N/A"}
+                    <div className="font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
+                      {q.companyName || "N/A"}
                     </div>
-                    <div className="text-xs text-slate-400 dark:text-slate-500 font-normal mt-0.5">
-                      {q.contactEmailSnapshot || "No email provided"}
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5 flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {q.contactNameSnapshot || "N/A"}
+                      </span>
+                      <span>•</span>
+                      <span className="truncate max-w-50">
+                        {q.contactEmailSnapshot || "No email provided"}
+                      </span>
                     </div>
                   </td>
 
@@ -289,7 +302,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                       <select
                         value={q.status || "Draft"}
                         onChange={(e) => handleStatusChange(e, q.quotationId)}
-                        className={`appearance-none cursor-pointer pl-3 pr-7 py-1 rounded-full text-xs font-bold border transition-all duration-200 outline-none focus:ring-2 focus:ring-amber-400/40 shadow-xs ${getStatusBadgeStyle(
+                        className={`appearance-none cursor-pointer pl-3 pr-7 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 outline-none focus:ring-2 focus:ring-amber-400/40 shadow-2xs ${getStatusBadgeStyle(
                           q.status,
                         )}`}
                       >
@@ -332,85 +345,159 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                     {currency(q.totalAmount)}
                   </td>
 
-                  <td className="py-4 px-6 text-right">
+                  <td className="py-4 px-6 text-right relative">
                     <div
-                      className="flex items-center justify-end gap-1.5"
+                      className="flex items-center justify-end"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {onConvertToInvoice && (
-                        <button
-                          onClick={() => onConvertToInvoice(q)}
-                          title="Convert to Invoice"
-                          className="p-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
-                        >
-                          <Receipt className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() =>
-                          onViewPdf(q.quotationId, q.quotationNumber)
-                        }
-                        disabled={isPdfLoading}
-                        title="Preview PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isPdfLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDownloadPdf(q.quotationId, q.quotationNumber);
+                          if (activeMenuId === q.quotationId) {
+                            setActiveMenuId(null);
+                            setMenuCoords(null);
+                          } else {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            const menuHeight = 280;
+                            const showAbove =
+                              window.innerHeight - rect.bottom < menuHeight &&
+                              rect.top > menuHeight;
+
+                            setActiveMenuId(q.quotationId);
+                            setMenuCoords({
+                              top: showAbove
+                                ? rect.top - menuHeight - 4
+                                : rect.bottom + 4,
+                              left: Math.max(12, rect.right - 192),
+                            });
+                          }
                         }}
-                        disabled={isDownloading}
-                        title="Download PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+                        title="Actions"
+                        className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
-                        {isDownloading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <Download className="w-4 h-4" />
-                        )}
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      <button
-                        onClick={() => onOpenEmail(q)}
-                        title="Send Email"
-                        className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-medium rounded-xl transition-all duration-150 shadow-2xs hover:shadow-amber-500/20 active:scale-95 cursor-pointer inline-flex items-center justify-center"
-                      >
-                        <Mail className="w-4 h-4" />
-                      </button>
+                      {isMenuOpen && menuCoords && (
+                        <div
+                          ref={menuRef}
+                          style={{
+                            position: "fixed",
+                            top: `${menuCoords.top}px`,
+                            left: `${menuCoords.left}px`,
+                          }}
+                          className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 py-1.5 text-left text-xs animate-in fade-in zoom-in-95 duration-100"
+                        >
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onView(q);
+                            }}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-slate-400" />
+                            <span>View Details</span>
+                          </button>
 
-                      {isEditable ? (
-                        <button
-                          onClick={() => onEdit(q)}
-                          title="Edit Quotation"
-                          className="p-2 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <button
-                          disabled
-                          title="Only Created or Draft status can be edited"
-                          className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600 border border-slate-100 dark:border-slate-750 rounded-xl cursor-not-allowed inline-flex items-center justify-center"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onViewPdf(q.quotationId, q.quotationNumber);
+                            }}
+                            disabled={isPdfLoading}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {isPdfLoading ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5 text-blue-500" />
+                            )}
+                            <span>Preview PDF</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onDownloadPdf(q.quotationId, q.quotationNumber);
+                            }}
+                            disabled={isDownloading}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {isDownloading ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                            ) : (
+                              <Download className="w-3.5 h-3.5 text-emerald-500" />
+                            )}
+                            <span>Download PDF</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onOpenEmail(q);
+                            }}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Send Email</span>
+                          </button>
+
+                          {onConvertToInvoice && (
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setMenuCoords(null);
+                                onConvertToInvoice(q);
+                              }}
+                              className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Convert to Invoice</span>
+                            </button>
+                          )}
+
+                          <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+
+                          {isEditable ? (
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setMenuCoords(null);
+                                onEdit(q);
+                              }}
+                              className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Edit Quotation</span>
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="w-full px-4 py-2 text-slate-300 dark:text-slate-600 flex items-center gap-2.5 cursor-not-allowed"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              <span>Edit (Locked)</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onDeleteQuotation(q.quotationId);
+                            }}
+                            className="w-full px-4 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Quotation</span>
+                          </button>
+                        </div>
                       )}
-
-                      <button
-                        onClick={() => onDeleteQuotation(q.quotationId)}
-                        title="Delete Quotation"
-                        className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/80 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -421,7 +508,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-b-3xl">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Showing{" "}
             <span className="font-bold text-slate-700 dark:text-slate-200">

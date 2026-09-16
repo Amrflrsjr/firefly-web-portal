@@ -11,6 +11,7 @@ import {
   X,
   Camera,
   Upload,
+  ShieldCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -349,7 +350,7 @@ export const Profile: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Side Avatar Circle Card with Upload Support */}
+            {/* Right Side Avatar Circle Card with Immersive Upload Overlay */}
             <div className="w-full lg:w-72 flex flex-col items-center justify-center p-6 bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-3xl shrink-0 self-center lg:self-start transition-transform hover:scale-[1.02]">
               <div className="relative group">
                 <div className="w-28 h-28 rounded-full bg-linear-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 text-amber-300 font-black text-2xl flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden transition-transform">
@@ -366,14 +367,15 @@ export const Profile: React.FC = () => {
                   )}
                 </div>
 
-                {/* Overlay upload button trigger */}
+                {/* Immersive Hover Overlay Trigger */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 rounded-full bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="absolute inset-0 rounded-full bg-slate-950/60 backdrop-blur-xs flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer shadow-inner"
+                  title="Change profile picture"
                 >
-                  <Camera className="w-6 h-6 mb-1 text-amber-300" />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider">
+                  <Camera className="w-6 h-6 mb-1 text-amber-300 animate-bounce" />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-200">
                     Change Photo
                   </span>
                 </button>
@@ -390,9 +392,9 @@ export const Profile: React.FC = () => {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold hover:bg-slate-300 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-2xs"
+                className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-linear-to-r from-amber-500/10 to-amber-500/20 hover:from-amber-500/20 hover:to-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs active:scale-95"
               >
-                <Upload className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <Upload className="w-3.5 h-3.5" />
                 <span>Upload New Photo</span>
               </button>
 
@@ -438,7 +440,7 @@ export const Profile: React.FC = () => {
         </form>
       </div>
 
-      {/* Password Reset Section with Smooth Accordion Motion */}
+      {/* Password Reset Section with Balanced Metadata & Smooth Accordion Motion */}
       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/60 dark:shadow-none space-y-6 transition-all duration-300 hover:shadow-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
@@ -446,11 +448,17 @@ export const Profile: React.FC = () => {
               <Key className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                Security &amp; Password
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  Security &amp; Password
+                </h2>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold">
+                  <ShieldCheck className="w-3 h-3" /> Account Secured
+                </span>
+              </div>
               <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">
-                Ensure your account is protected with a secure password.
+                Ensure your account is protected with a secure password and
+                credentials.
               </p>
             </div>
           </div>

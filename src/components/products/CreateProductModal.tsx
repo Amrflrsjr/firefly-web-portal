@@ -78,6 +78,10 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   };
 
   const removeVariantField = (index: number) => {
+    if (formData.variants.length === 1) {
+      toast.error("A product must keep at least one variant configuration.");
+      return;
+    }
     const updatedVariants = formData.variants.filter((_, i) => i !== index);
     setFormData({ ...formData, variants: updatedVariants });
     toast.success("Variant field removed.");
@@ -89,6 +93,26 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       toast.error("Product Name is required.");
       return;
     }
+
+    // Validate variants: Ensure every variant has at least Color or Size filled out and a valid price
+    for (let i = 0; i < formData.variants.length; i++) {
+      const v = formData.variants[i];
+      const hasOption =
+        (v.color && v.color.trim() !== "") || (v.size && v.size.trim() !== "");
+
+      if (!hasOption) {
+        toast.error(
+          `Variant #${i + 1}: Please fill out at least a Color or Size option.`,
+        );
+        return;
+      }
+
+      if (v.unitPrice <= 0) {
+        toast.error(`Variant #${i + 1}: Unit price must be greater than 0.`);
+        return;
+      }
+    }
+
     onSubmit(formData);
   };
 
@@ -171,7 +195,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    Variants & Pricing
+                    Variants &amp; Pricing
                   </h3>
                 </div>
                 <button
@@ -207,25 +231,11 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div className="space-y-1">
                         <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                          <Tag className="w-3 h-3 text-[#F9B53F]" /> SKU
-                        </label>
-                        <input
-                          type="text"
-                          value={variant.sku}
-                          onChange={(e) =>
-                            handleVariantChange(index, "sku", e.target.value)
-                          }
-                          placeholder="Optional"
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 uppercase focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                          <Palette className="w-3 h-3 text-[#F9B53F]" /> Color
+                          <Palette className="w-3 h-3 text-[#F9B53F]" /> Color /
+                          Option <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -241,7 +251,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                       <div className="space-y-1">
                         <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
                           <Sliders className="w-3 h-3 text-[#F9B53F]" /> Size /
-                          Option
+                          Format
                         </label>
                         <input
                           type="text"

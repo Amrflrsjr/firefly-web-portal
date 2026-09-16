@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import type { InvoiceResponseDto } from "../../types/invoice";
 import {
-  Receipt,
   Eye,
   Download,
   Mail,
@@ -14,6 +13,7 @@ import {
   CreditCard,
   ChevronDown,
   Loader2,
+  MoreVertical,
 } from "lucide-react";
 
 interface InvoicesTableProps {
@@ -58,7 +58,25 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   downloadingPdfId,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const pageSize = 10;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenuId(null);
+        setMenuCoords(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const processedInvoices = useMemo(() => {
     if (!invoices) return [];
@@ -182,13 +200,13 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
 
   return (
     <div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
               <th
                 onClick={() => onSort("invoicenumber")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Invoice #{renderSortIcon("invoicenumber")}
@@ -196,15 +214,15 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("customer")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
-                  Customer {renderSortIcon("customer")}
+                  Customer & Reference {renderSortIcon("customer")}
                 </div>
               </th>
               <th
                 onClick={() => onSort("createdat")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Date Created {renderSortIcon("createdat")}
@@ -212,7 +230,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("status")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
                   Status {renderSortIcon("status")}
@@ -220,7 +238,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("totalamount")}
-                className="py-3.5 px-6 text-right cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 text-right cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center justify-end gap-1.5">
                   Total Amount {renderSortIcon("totalamount")}
@@ -228,39 +246,35 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
               </th>
               <th
                 onClick={() => onSort("balancedue")}
-                className="py-3.5 px-6 text-right cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                className="py-4 px-6 text-right cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
                 <div className="flex items-center justify-end gap-1.5">
                   Balance Due {renderSortIcon("balancedue")}
                 </div>
               </th>
-              <th className="py-3.5 px-6 text-right">Actions</th>
+              <th className="py-4 px-6 text-right w-20">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
             {currentInvoices.map((inv) => {
               const isPdfLoading = loadingPdfId === inv.invoiceId;
               const isDownloading = downloadingPdfId === inv.invoiceId;
+              const isMenuOpen = activeMenuId === inv.invoiceId;
 
               return (
                 <tr
                   key={inv.invoiceId}
                   onClick={() => onViewDetails(inv)}
-                  className="hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
                 >
                   <td className="py-4 px-6 text-slate-800 dark:text-slate-200">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 text-[#F9B53F] dark:text-amber-400 font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform">
-                        <Receipt className="w-4 h-4" />
-                      </div>
-                      <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                        {inv.invoiceNumber}
-                      </span>
-                    </div>
+                    <span className="font-mono text-xs font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                      {inv.invoiceNumber}
+                    </span>
                   </td>
 
                   <td className="py-4 px-6">
-                    <div className="font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-900 dark:group-hover:text-amber-300 transition-colors">
+                    <div className="font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
                       {inv.companyName}
                     </div>
                     <div className="text-xs text-slate-400 dark:text-slate-500 font-normal mt-0.5">
@@ -280,7 +294,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                       <select
                         value={inv.status || "Unpaid"}
                         onChange={(e) => handleStatusChange(e, inv.invoiceId)}
-                        className={`appearance-none cursor-pointer pl-3 pr-7 py-1 rounded-full text-xs font-bold border transition-all duration-200 outline-none focus:ring-2 focus:ring-amber-400/40 shadow-xs ${getStatusBadgeStyle(
+                        className={`appearance-none cursor-pointer pl-3 pr-7 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 outline-none focus:ring-2 focus:ring-amber-400/40 shadow-xs ${getStatusBadgeStyle(
                           inv.status,
                         )}`}
                       >
@@ -321,65 +335,135 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                     {currency(inv.balanceDue ?? 0)}
                   </td>
 
-                  <td className="py-4 px-6 text-right">
+                  <td className="py-4 px-6 text-right relative">
                     <div
-                      className="flex items-center justify-end gap-1.5"
+                      className="flex items-center justify-end"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
-                        onClick={() => onRecordPayment(inv)}
-                        title="Record Payment"
-                        className="p-2 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          onViewPdf(inv.invoiceId, inv.invoiceNumber)
-                        }
-                        disabled={isPdfLoading}
-                        title="Preview PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isPdfLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-
-                      <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDownloadPdf(inv.invoiceId, inv.invoiceNumber);
+                          if (activeMenuId === inv.invoiceId) {
+                            setActiveMenuId(null);
+                            setMenuCoords(null);
+                          } else {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            const menuHeight = 240;
+                            const showAbove =
+                              window.innerHeight - rect.bottom < menuHeight &&
+                              rect.top > menuHeight;
+
+                            setActiveMenuId(inv.invoiceId);
+                            setMenuCoords({
+                              top: showAbove
+                                ? rect.top - menuHeight - 4
+                                : rect.bottom + 4,
+                              left: Math.max(12, rect.right - 192),
+                            });
+                          }
                         }}
-                        disabled={isDownloading}
-                        title="Download PDF"
-                        className="p-2 bg-white/80 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+                        title="Actions"
+                        className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
-                        {isDownloading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <Download className="w-4 h-4" />
-                        )}
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      <button
-                        onClick={() => onOpenEmail(inv)}
-                        title="Send Email"
-                        className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-medium rounded-xl transition-all duration-150 shadow-2xs hover:shadow-amber-500/20 active:scale-95 cursor-pointer inline-flex items-center justify-center"
-                      >
-                        <Mail className="w-4 h-4" />
-                      </button>
+                      {isMenuOpen && menuCoords && (
+                        <div
+                          ref={menuRef}
+                          style={{
+                            position: "fixed",
+                            top: `${menuCoords.top}px`,
+                            left: `${menuCoords.left}px`,
+                          }}
+                          className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 py-1.5 text-left text-xs animate-in fade-in zoom-in-95 duration-100"
+                        >
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onViewDetails(inv);
+                            }}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-slate-400" />
+                            <span>View Details</span>
+                          </button>
 
-                      <button
-                        onClick={() => onDeleteInvoice(inv.invoiceId)}
-                        title="Delete Invoice"
-                        className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/80 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60 rounded-xl transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onRecordPayment(inv);
+                            }}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Record Payment</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onViewPdf(inv.invoiceId, inv.invoiceNumber);
+                            }}
+                            disabled={isPdfLoading}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {isPdfLoading ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5 text-blue-500" />
+                            )}
+                            <span>Preview PDF</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onDownloadPdf(inv.invoiceId, inv.invoiceNumber);
+                            }}
+                            disabled={isDownloading}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {isDownloading ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                            ) : (
+                              <Download className="w-3.5 h-3.5 text-emerald-500" />
+                            )}
+                            <span>Download PDF</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onOpenEmail(inv);
+                            }}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Send Email</span>
+                          </button>
+
+                          <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onDeleteInvoice(inv.invoiceId);
+                            }}
+                            className="w-full px-4 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Invoice</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -390,7 +474,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-b-3xl">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Showing{" "}
             <span className="font-bold text-slate-700 dark:text-slate-200">

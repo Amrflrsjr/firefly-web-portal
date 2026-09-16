@@ -4,7 +4,7 @@ import type { QuotationResponseDto } from "../../types/quotation";
 import type { InvoiceResponseDto } from "../../types/invoice";
 import { QuotationDetailsModal } from "../quotations/QuotationDetailsModal";
 import { InvoiceDetailsModal } from "../invoice/InvoiceDetailsModal";
-import { PdfPreviewModal } from "../common/PdfPreviewModal"; // Import the modal
+import { PdfPreviewModal } from "../common/PdfPreviewModal";
 import api from "../../api/axios";
 import toast from "react-hot-toast";
 import {
@@ -183,7 +183,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
       onEditCustomer(currentCustomer, payload);
     }
 
-    // Immediately update local modal view without waiting for page refresh
     setCurrentCustomer((prev) => ({
       ...prev,
       companyName: editForm.companyName,
@@ -304,12 +303,12 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
           {/* Modal Header */}
           <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-            <div className="flex items-center gap-4 min-w-0">
+            <div className="flex items-center gap-4 min-w-0 flex-1">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-xs shrink-0">
                 <Building className="w-6 h-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
                   <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     Customer Profile & History
                   </span>
@@ -325,7 +324,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                         });
                         setIsEditingProfile(true);
                       }}
-                      className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300 hover:text-amber-800 font-extrabold cursor-pointer px-2 py-0.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-all"
+                      className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300 hover:text-amber-800 font-extrabold cursor-pointer px-2.5 py-1 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-all border border-amber-200/40 dark:border-amber-800/40 shadow-2xs"
                     >
                       <Pencil className="w-3 h-3" /> Edit Profile
                     </button>
@@ -343,13 +342,13 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                           companyName: e.target.value,
                         })
                       }
-                      className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1 text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                      className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1 text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] w-full max-w-sm"
                       placeholder="Company Name"
                     />
                     <button
                       type="button"
                       onClick={handleSaveProfile}
-                      className="p-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
+                      className="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer shrink-0 border border-emerald-200/60"
                       title="Save"
                     >
                       <Check className="w-4 h-4" />
@@ -357,7 +356,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsEditingProfile(false)}
-                      className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 transition-colors cursor-pointer"
+                      className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 transition-colors cursor-pointer shrink-0 border border-slate-200"
                       title="Cancel"
                     >
                       <X className="w-4 h-4" />
@@ -370,10 +369,11 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                 )}
               </div>
             </div>
+
             <button
               type="button"
               onClick={onClose}
-              className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+              className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 ml-4"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -382,7 +382,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
           {/* Modal Scrollable Body */}
           <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 bg-slate-50/50 dark:bg-slate-950/40">
-            {/* Info Cards Grid */}
+            {/* Info Cards Grid (Read-Only clean data blocks) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Tax ID Card */}
               <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
@@ -391,23 +391,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     <FileText className="w-3.5 h-3.5 text-[#F9B53F]" /> Tax ID
                     (TIN)
                   </span>
-                  {!isEditingProfile && !isPersonal && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditForm({
-                          companyName: currentCustomer.companyName,
-                          tin: currentCustomer.tin || "",
-                          companyAddress: currentCustomer.companyAddress || "",
-                          notes: currentCustomer.notes || "",
-                        });
-                        setIsEditingProfile(true);
-                      }}
-                      className="text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:underline cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                  )}
                 </div>
 
                 {isEditingProfile ? (
@@ -442,23 +425,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     <MapPin className="w-3.5 h-3.5 text-[#F9B53F]" /> Business
                     Address
                   </span>
-                  {!isEditingProfile && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditForm({
-                          companyName: currentCustomer.companyName,
-                          tin: currentCustomer.tin || "",
-                          companyAddress: currentCustomer.companyAddress || "",
-                          notes: currentCustomer.notes || "",
-                        });
-                        setIsEditingProfile(true);
-                      }}
-                      className="text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:underline cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                  )}
                 </div>
 
                 {isEditingProfile ? (
@@ -483,7 +449,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
             </div>
 
             {/* Interactive Navigation Tabs */}
-            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
               <button
                 type="button"
                 onClick={() => setActiveTab("contacts")}
@@ -522,7 +488,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
             {/* TAB 1: CONTACTS */}
             {activeTab === "contacts" && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                     <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -601,7 +567,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
             {/* TAB 2: QUOTATIONS HISTORY */}
             {activeTab === "quotations" && (
-              <div className="space-y-3">
+              <div className="space-y-3 pt-1">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-400" />
                   <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -653,7 +619,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
             {/* TAB 3: INVOICES HISTORY */}
             {activeTab === "invoices" && (
-              <div className="space-y-3">
+              <div className="space-y-3 pt-1">
                 <div className="flex items-center gap-2">
                   <Receipt className="w-4 h-4 text-slate-400" />
                   <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -756,7 +722,6 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
         />
       )}
 
-      {/* Embedded PdfPreviewModal component */}
       <PdfPreviewModal
         isOpen={Boolean(previewPdfUrl)}
         pdfUrl={previewPdfUrl}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { Product } from "../../types/product";
 import {
   Package,
@@ -15,6 +15,8 @@ import {
   Edit,
   Loader2,
   ChevronDown,
+  MoreVertical,
+  Eye,
 } from "lucide-react";
 
 interface ProductTableProps {
@@ -63,6 +65,26 @@ export const ProductTable: React.FC<ProductTableProps> = ({
     number | null
   >(null);
 
+  // Actions dropdown menu states
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenuId(null);
+        setMenuCoords(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   if (loading) {
     return (
       <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
@@ -76,7 +98,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
   if (products.length === 0) {
     return (
-      <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-medium bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-medium shadow-xs">
         No products found. Click{" "}
         <b className="text-slate-800 dark:text-slate-200">"+ Add Product"</b>{" "}
         above to add one.
@@ -84,7 +106,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
     );
   }
 
-  const totalPages = Math.ceil(products.length / pageSize);
+  const totalPages = Math.ceil(products.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const currentProducts = products.slice(startIndex, startIndex + pageSize);
 
@@ -151,27 +173,25 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   };
 
   return (
-    <div>
-      <div className="overflow-x-auto">
+    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
               <th
                 onClick={() => onSort("name")}
-                className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                className="py-4 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
               >
                 <div className="flex items-center gap-1.5">
                   Product Name
                   {renderSortIcon("name")}
                 </div>
               </th>
-              <th className="py-3.5 px-6 whitespace-nowrap">Catalog Status</th>
-              <th className="py-3.5 px-6 whitespace-nowrap">Variants</th>
-              <th className="py-3.5 px-6 whitespace-nowrap">Price Range</th>
-              <th className="py-3.5 px-6 whitespace-nowrap">
-                Stock Management
-              </th>
-              <th className="py-3.5 px-6 text-right whitespace-nowrap">
+              <th className="py-4 px-6 whitespace-nowrap">Catalog Status</th>
+              <th className="py-4 px-6 whitespace-nowrap">Variants</th>
+              <th className="py-4 px-6 whitespace-nowrap">Price Range</th>
+              <th className="py-4 px-6 whitespace-nowrap">Stock Management</th>
+              <th className="py-4 px-6 text-right whitespace-nowrap w-20">
                 Actions
               </th>
             </tr>
@@ -198,13 +218,15 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               const isUpdatingStatus =
                 updatingStatusProductId === product.productId;
 
+              const isMenuOpen = activeMenuId === product.productId;
+
               return (
                 <tr
                   key={product.productId}
                   className={`transition-colors ${
                     isEditing
                       ? "bg-amber-50/70 dark:bg-amber-950/40 ring-1 ring-inset ring-amber-300/60 dark:ring-amber-800/60"
-                      : "hover:bg-slate-100/80 dark:hover:bg-slate-800/60 group"
+                      : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50 group"
                   }`}
                 >
                   <td
@@ -212,15 +234,19 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     onClick={() => !isEditing && onViewVariants(product)}
                   >
                     <div className="flex items-center gap-3.5 min-w-50">
-                      <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 dark:from-[#FFCB62]/20 dark:to-[#F4D158]/20 text-[#F9B53F] dark:text-amber-400 font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform shrink-0">
+                      <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 dark:from-[#FFCB62]/20 dark:to-[#F4D158]/20 text-[#F9B53F] dark:text-amber-400 font-bold flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform shrink-0 border border-amber-200/50 dark:border-amber-800/50">
                         <Package className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-slate-900 dark:text-white font-bold group-hover:text-amber-900 dark:group-hover:text-amber-300 transition-colors truncate">
+                        <div className="text-slate-900 dark:text-white font-bold group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors truncate">
                           {product.name}
                         </div>
                         <div className="text-xs text-slate-400 dark:text-slate-500 font-normal max-w-xs truncate mt-0.5">
-                          {product.description || "No description provided"}
+                          {product.description || (
+                            <span className="italic opacity-70">
+                              No description provided
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -243,7 +269,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           )
                         }
                         onClick={(e) => e.stopPropagation()}
-                        className={`appearance-none pl-3.5 pr-7 py-1 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 transition-all shadow-2xs ${
+                        className={`appearance-none pl-3.5 pr-7 py-1.5 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 transition-all shadow-2xs ${
                           isActiveInCatalog
                             ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 focus:ring-emerald-300"
                             : "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/60 hover:bg-rose-100/80 dark:hover:bg-rose-900/50 focus:ring-rose-300"
@@ -383,31 +409,90 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
 
-                  <td className="py-4 px-6 text-right whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1.5">
+                  {/* Actions Column with Fixed Positioning Dropdown */}
+                  <td className="py-4 px-6 text-right relative whitespace-nowrap">
+                    <div
+                      className="flex items-center justify-end"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
-                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEditProduct?.(product);
+                          if (activeMenuId === product.productId) {
+                            setActiveMenuId(null);
+                            setMenuCoords(null);
+                          } else {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            const menuHeight = 160;
+                            const showAbove =
+                              window.innerHeight - rect.bottom < menuHeight &&
+                              rect.top > menuHeight;
+
+                            setActiveMenuId(product.productId);
+                            setMenuCoords({
+                              top: showAbove
+                                ? rect.top - menuHeight - 4
+                                : rect.bottom + 4,
+                              left: Math.max(12, rect.right - 192),
+                            });
+                          }
                         }}
-                        title="Edit Product Details"
-                        className="p-2 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center active:scale-95"
+                        title="Actions"
+                        className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer inline-flex items-center justify-center"
                       >
-                        <Edit className="w-4 h-4" />
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteProduct?.(product.productId);
-                        }}
-                        title="Delete Product"
-                        className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60 rounded-xl transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center active:scale-95"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isMenuOpen && menuCoords && (
+                        <div
+                          ref={menuRef}
+                          style={{
+                            position: "fixed",
+                            top: `${menuCoords.top}px`,
+                            left: `${menuCoords.left}px`,
+                          }}
+                          className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 py-1.5 text-left text-xs animate-in fade-in zoom-in-95 duration-100"
+                        >
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onViewVariants(product);
+                            }}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-slate-400" />
+                            <span>View Variants</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onEditProduct?.(product);
+                            }}
+                            className="w-full px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Edit Product</span>
+                          </button>
+
+                          <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setMenuCoords(null);
+                              onDeleteProduct?.(product.productId);
+                            }}
+                            className="w-full px-4 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Product</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -417,49 +502,48 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-            Showing{" "}
-            <span className="font-bold text-slate-700 dark:text-slate-200">
-              {startIndex + 1}
-            </span>{" "}
-            to{" "}
-            <span className="font-bold text-slate-700 dark:text-slate-200">
-              {Math.min(startIndex + pageSize, products.length)}
-            </span>{" "}
-            of{" "}
-            <span className="font-bold text-slate-700 dark:text-slate-200">
-              {products.length}
-            </span>{" "}
-            results
-          </p>
+      {/* Integrated Pagination Footer Card Section */}
+      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+          Showing{" "}
+          <span className="font-bold text-slate-700 dark:text-slate-200">
+            {products.length > 0 ? startIndex + 1 : 0}
+          </span>{" "}
+          to{" "}
+          <span className="font-bold text-slate-700 dark:text-slate-200">
+            {Math.min(startIndex + pageSize, products.length)}
+          </span>{" "}
+          of{" "}
+          <span className="font-bold text-slate-700 dark:text-slate-200">
+            {products.length}
+          </span>{" "}
+          results
+        </p>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrevPage}
-              disabled={currentPage === 1}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              aria-label="Previous Page"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              aria-label="Next Page"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrevPage}
+            disabled={currentPage === 1}
+            className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center shadow-2xs"
+            aria-label="Previous Page"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center shadow-2xs"
+            aria-label="Next Page"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };

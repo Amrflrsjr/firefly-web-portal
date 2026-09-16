@@ -720,9 +720,9 @@ export const Quotations: React.FC = () => {
 
       <ConfirmModal
         isOpen={quotationToDelete !== null}
-        title="Cancel Quotation"
-        message="Are you sure you want to cancel this quotation? This will set its status to Cancelled and hide it from active listings."
-        confirmText="Yes, Cancel"
+        title="Delete Quotation"
+        message="Are you sure you want to delete this quotation? This action will move it to the archive trash bin. You can restore it later if needed."
+        confirmText="Yes, Delete"
         isDanger={true}
         loading={saving}
         onConfirm={executeDeleteQuotation}

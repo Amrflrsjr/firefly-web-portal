@@ -288,7 +288,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     loadCustomerDetails(parentCustomer.customerId);
   };
 
-  // Flatten all contacts from all loaded customers for secondary searching
   const allAvailableContacts = allCustomers.flatMap((cust) =>
     (cust.contacts || []).map((contact) => ({
       contact,
@@ -317,7 +316,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     setProductSearchQueries({ ...productSearchQueries, [index]: product.name });
 
     const updated = [...items];
-    // Keep or initialize description with product name
     updated[index] = {
       ...updated[index],
       description: product.name,
@@ -335,7 +333,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     const currentProd = selectedProducts[index];
     const baseName = currentProd ? currentProd.name : "";
 
-    // Combine product name and variant description cleanly
     const combinedDescription = [
       baseName,
       variantLabel ? `(${variantLabel})` : "",
@@ -528,34 +525,37 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
         <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-335 overflow-hidden my-auto flex flex-col max-h-[95vh]">
+          {/* Top Accent Gradient Bar */}
+          <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
+
           {/* Modal Header */}
-          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-2xs">
+          <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-2xs">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-                  Create New Quotation
-                </h2>
-                <p className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-400 font-medium">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                    Create New Quotation
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
                   Build client proposals with dynamic inventory mapping
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="hidden sm:block px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-xs font-bold border border-slate-200/60 dark:border-slate-700">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200/60 dark:border-amber-900/60 shadow-2xs">
                 {items.length} {items.length === 1 ? "item" : "items"} •{" "}
-                <span className="text-amber-600 dark:text-amber-400 font-extrabold">
-                  {currency(calculatedTotal)}
-                </span>
-              </div>
+                {currency(calculatedTotal)}
+              </span>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+                className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -576,14 +576,14 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
             {/* Expanded Main Column (9 Cols) */}
             <div className="lg:col-span-9 space-y-5 sm:space-y-6">
-              {/* Proposal & Customer Details */}
+              {/* Proposal & Customer Details (Rebalanced 2-Row Grid Layout) */}
               <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
                 <div className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3">
                   Proposal & Customer Details
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {/* Customer Searchable Dropdown with + Add New option */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Row 1: Customer & VAT Computation */}
                   <div className="space-y-1.5 relative">
                     <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
                       Customer <span className="text-rose-500">*</span>
@@ -604,7 +604,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             setSelectedContactId(0);
                           }
                         }}
-                        className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                        className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-8 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                       />
                       <button
                         type="button"
@@ -659,7 +659,22 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     )}
                   </div>
 
-                  {/* Searchable Contact Person Field */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                      VAT Computation
+                    </label>
+                    <select
+                      value={vatType}
+                      onChange={(e) => setVatType(e.target.value)}
+                      className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer"
+                    >
+                      <option value="Exclusive">VAT Exclusive (12%)</option>
+                      <option value="Inclusive">VAT Inclusive (12%)</option>
+                      <option value="ZeroRated">VAT Exempt / Zero-Rated</option>
+                    </select>
+                  </div>
+
+                  {/* Row 2: Contact Person & Contact Email */}
                   <div className="space-y-1.5 relative">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
@@ -697,7 +712,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             setContactEmailSnapshot("");
                           }
                         }}
-                        className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                        className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-8 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
                       />
                       <button
                         type="button"
@@ -746,7 +761,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Contact Email */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
                       Contact Email
@@ -758,25 +772,9 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         value={contactEmailSnapshot}
                         disabled
                         placeholder="contact@company.com"
-                        className="w-full border rounded-xl pl-8 pr-3 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-850 cursor-not-allowed border-slate-200 dark:border-slate-700"
+                        className="w-full border rounded-xl pl-8 pr-3 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-850 cursor-not-allowed border-slate-200 dark:border-slate-700"
                       />
                     </div>
-                  </div>
-
-                  {/* VAT Computation */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
-                      VAT Computation
-                    </label>
-                    <select
-                      value={vatType}
-                      onChange={(e) => setVatType(e.target.value)}
-                      className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer"
-                    >
-                      <option value="Exclusive">VAT Exclusive (12%)</option>
-                      <option value="Inclusive">VAT Inclusive (12%)</option>
-                      <option value="ZeroRated">VAT Exempt / Zero-Rated</option>
-                    </select>
                   </div>
                 </div>
               </div>
@@ -1177,9 +1175,9 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                   type="submit"
                   onClick={() => setSubmittingAction("create")}
                   disabled={saving}
-                  className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-extrabold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-2xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-3 text-xs font-extrabold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-950 rounded-2xl shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                 >
-                  <Calculator className="w-3.5 h-3.5" />
+                  <Calculator className="w-4 h-4" />
                   {saving && submittingAction === "create"
                     ? "Creating..."
                     : "Create Quotation"}
@@ -1191,9 +1189,9 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     type="submit"
                     onClick={() => setSubmittingAction("send")}
                     disabled={saving}
-                    className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-2xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-extrabold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                   >
-                    <Mail className="w-3.5 h-3.5" />
+                    <Mail className="w-4 h-4 text-amber-500" />
                     {saving && submittingAction === "send"
                       ? "Saving & Sending..."
                       : "Save & Send Email"}

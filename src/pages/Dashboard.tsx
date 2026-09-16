@@ -7,10 +7,6 @@ import {
   Clock,
   AlertCircle,
   Receipt,
-  Package,
-  Trash2,
-  ArrowRight,
-  Building2,
   CheckCircle2,
   ArrowUpRight,
   Sparkles,
@@ -20,6 +16,8 @@ import {
   User,
   RefreshCw,
   X,
+  ArrowRight,
+  Building2,
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
@@ -155,8 +153,7 @@ export const Dashboard: React.FC = () => {
         )
       : 0;
 
-  // Highest single collection day within the selected range — a real,
-  // non-fabricated signal to surface next to the trend chart.
+  // Highest single collection day within the selected range
   const peakDay = useMemo(() => {
     if (chartData.length === 0) return null;
     return chartData.reduce((max, point) =>
@@ -280,55 +277,6 @@ export const Dashboard: React.FC = () => {
     },
   ];
 
-  const navModules = [
-    {
-      label: "Customers",
-      caption: "Directory",
-      icon: Building2,
-      path: "/customers",
-      hoverIcon:
-        "group-hover:bg-indigo-50 group-hover:text-indigo-600 dark:group-hover:bg-indigo-950/50 dark:group-hover:text-indigo-400",
-      hoverBorder: "hover:border-indigo-300 dark:hover:border-indigo-700",
-    },
-    {
-      label: "Products",
-      caption: "Catalog",
-      icon: Package,
-      path: "/products",
-      hoverIcon:
-        "group-hover:bg-purple-50 group-hover:text-purple-600 dark:group-hover:bg-purple-950/50 dark:group-hover:text-purple-400",
-      hoverBorder: "hover:border-purple-300 dark:hover:border-purple-700",
-    },
-    {
-      label: "Quotations",
-      caption: "Estimates",
-      icon: FileText,
-      path: "/quotations",
-      hoverIcon:
-        "group-hover:bg-blue-50 group-hover:text-blue-600 dark:group-hover:bg-blue-950/50 dark:group-hover:text-blue-400",
-      hoverBorder: "hover:border-blue-300 dark:hover:border-blue-700",
-    },
-    {
-      label: "Invoices",
-      caption: "Billing",
-      icon: Receipt,
-      path: "/invoices",
-      hoverIcon:
-        "group-hover:bg-emerald-50 group-hover:text-emerald-600 dark:group-hover:bg-emerald-950/50 dark:group-hover:text-emerald-400",
-      hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-700",
-    },
-    {
-      label: "Archive",
-      caption: "Trash & Recovery",
-      icon: Trash2,
-      path: "/trash",
-      hoverIcon:
-        "group-hover:bg-rose-50 group-hover:text-rose-600 dark:group-hover:bg-rose-950/50 dark:group-hover:text-rose-400",
-      hoverBorder: "hover:border-rose-300 dark:hover:border-rose-700",
-      wideOnSm: true,
-    },
-  ];
-
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
       {/* Executive Header Banner */}
@@ -386,13 +334,13 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Top Key Performance Indicators Grid (Clickable) */}
+      {/* Top Key Performance Indicators Grid (Interactive & Clickable) */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
         {kpis.map((kpi) => (
           <div
             key={kpi.label}
             onClick={() => setActiveModal(kpi.id)}
-            className={`relative overflow-hidden bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none hover:shadow-2xl hover:-translate-y-0.5 transition-all flex flex-col justify-between group cursor-pointer ${
+            className={`relative overflow-hidden bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col justify-between group cursor-pointer ${
               kpi.wide ? "col-span-2 xl:col-span-1" : ""
             }`}
           >
@@ -417,7 +365,7 @@ export const Dashboard: React.FC = () => {
                 className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 sm:mt-1 flex items-center justify-between ${kpi.captionClass}`}
               >
                 <span>{kpi.caption}</span>
-                <span className="text-[10px] opacity-0 group-hover:opacity-100 text-amber-500 font-bold transition-opacity">
+                <span className="text-[10px] opacity-0 group-hover:opacity-100 text-amber-500 font-bold transition-opacity flex items-center gap-0.5">
                   View &rarr;
                 </span>
               </p>
@@ -431,7 +379,7 @@ export const Dashboard: React.FC = () => {
         {/* Interactive Income Trend Area Chart (Clickable) */}
         <div
           onClick={() => setActiveModal("revenue")}
-          className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 transition-all"
+          className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all"
         >
           <div className="space-y-4 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -492,13 +440,19 @@ export const Dashboard: React.FC = () => {
 
           <div className="pt-6 h-80 w-full">
             {chartData.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500 text-xs">
-                <div className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 text-xs bg-slate-50/50 dark:bg-slate-850/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-500">
+                  <BarChart3 className="w-6 h-6" />
                 </div>
-                <span className="italic">
-                  No collections recorded in this range.
-                </span>
+                <div className="text-center space-y-1">
+                  <p className="font-bold text-slate-700 dark:text-slate-300">
+                    No collection data recorded yet
+                  </p>
+                  <span className="text-[11px] text-slate-400">
+                    Settled payments will automatically populate this trend
+                    chart.
+                  </span>
+                </div>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -590,7 +544,7 @@ export const Dashboard: React.FC = () => {
           {/* Performance Health Ratios Card (Clickable) */}
           <div
             onClick={() => setActiveModal("performance")}
-            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 transition-all"
+            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all"
           >
             <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
@@ -676,7 +630,7 @@ export const Dashboard: React.FC = () => {
           {/* Client Demographics Card (Clickable) */}
           <div
             onClick={() => setActiveModal("demographics")}
-            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 transition-all"
+            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all"
           >
             <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
@@ -758,48 +712,6 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Modern Sleek & Compact Navigation Hub */}
-      <div className="space-y-3 pt-4">
-        <div>
-          <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Navigation Hub
-          </h2>
-          <p className="text-xs text-slate-400 dark:text-slate-400 mt-0.5">
-            Quick links to manage your application modules
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {navModules.map((mod) => (
-            <button
-              key={mod.label}
-              type="button"
-              onClick={() => navigate(mod.path)}
-              className={`bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-md dark:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 ${
-                mod.hoverBorder
-              } ${mod.wideOnSm ? "col-span-2 sm:col-span-1" : ""}`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className={`w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover:scale-110 transition-all shadow-2xs shrink-0 ${mod.hoverIcon}`}
-                >
-                  <mod.icon className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white transition-colors truncate">
-                    {mod.label}
-                  </h3>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-400 truncate">
-                    {mod.caption}
-                  </p>
-                </div>
-              </div>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ----------------------------------------------------------------- */}
       {/* DETAILS MODAL OVERLAY                                            */}
       {/* ----------------------------------------------------------------- */}
@@ -857,7 +769,7 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            {/* Modal Body Content depending on selection */}
+            {/* Modal Body Content */}
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               {activeModal === "revenue" && (
                 <div className="space-y-4">
@@ -874,9 +786,8 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                     This figure represents all successfully collected payments
-                    from completed invoices across your entire platform history.
-                    You can review individual paid billing statements inside the
-                    Invoices module.
+                    from completed invoices across your platform history. Review
+                    individual statements inside the Invoices module.
                   </p>
                 </div>
               )}
@@ -895,9 +806,9 @@ export const Dashboard: React.FC = () => {
                     <Clock className="w-8 h-8 text-amber-500" />
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    These are invoices that have been dispatched to clients but
-                    are awaiting payment clearance. Follow up with your clients
-                    or check the Invoices page to update their statuses.
+                    These are invoices dispatched to clients awaiting payment
+                    clearance. Check the Invoices page to follow up or update
+                    statuses.
                   </p>
                 </div>
               )}
@@ -937,8 +848,8 @@ export const Dashboard: React.FC = () => {
                     <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Quotations that have been approved by clients and are fully
-                    ready to be converted into binding billing invoices.
+                    Quotations approved by clients that are ready to be
+                    converted into binding billing invoices.
                   </p>
                 </div>
               )}
@@ -1000,7 +911,7 @@ export const Dashboard: React.FC = () => {
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                     Performance health scores measure how quickly estimates
                     convert into paid revenue. Higher percentages indicate
-                    optimal cash flow and healthy closing rates.
+                    optimal cash flow.
                   </p>
                 </div>
               )}

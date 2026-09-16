@@ -313,8 +313,12 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                   </div>
                 ) : (
                   <p className="text-xs text-slate-600 dark:text-slate-300 font-normal leading-relaxed pt-1">
-                    {productDetails.description ||
-                      "No description provided for this catalog product."}
+                    {productDetails.description || (
+                      <span className="italic text-slate-400 dark:text-slate-500">
+                        No description provided for this catalog product. Click
+                        Edit to add one.
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
@@ -451,14 +455,19 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
 
             <div className="space-y-3.5 flex-1 overflow-y-auto pr-1">
               {visibleVariants.length === 0 ? (
-                <div className="p-16 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
-                  <Package className="w-8 h-8 opacity-40 text-slate-400" />
-                  <p className="font-semibold">
-                    No variant configurations added yet.
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Use the form on the left to add your first option.
-                  </p>
+                <div className="p-16 text-center bg-slate-50/70 dark:bg-slate-850/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center gap-3 my-auto">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-500">
+                    <Layers className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-700 dark:text-slate-300">
+                      No variant configurations added yet.
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-xs">
+                      Use the form on the left to add your first product variant
+                      option.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 visibleVariants.map((v, idx) => {
