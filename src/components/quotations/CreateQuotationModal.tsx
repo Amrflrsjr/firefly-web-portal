@@ -224,19 +224,30 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         const freshCustomers = await fetchAllCustomers();
         if (!isMounted) return;
 
-        // Auto-match newly created customer if name matches what was typed
-        if (lastTypedCustomerQuery.trim()) {
-          const matched = freshCustomers.find(
-            (c) =>
-              c.companyName.trim().toLowerCase() ===
-              lastTypedCustomerQuery.trim().toLowerCase(),
-          );
+        if (freshCustomers && freshCustomers.length > 0) {
+          let matched: Customer | undefined;
+
+          // 1. Try matching by exact or partial typed query
+          if (lastTypedCustomerQuery.trim()) {
+            const queryLower = lastTypedCustomerQuery.trim().toLowerCase();
+            matched = freshCustomers.find(
+              (c) => c.companyName.trim().toLowerCase() === queryLower,
+            );
+          }
+
+          // 2. Fallback: If no exact string match is found, assume the newest customer (highest ID or last item) was just created
+          if (!matched) {
+            matched = [...freshCustomers].sort(
+              (a, b) => b.customerId - a.customerId,
+            )[0];
+          }
+
           if (matched) {
             setSelectedCustomerId(matched.customerId);
             setCustomerSearchQuery(matched.companyName);
             await loadCustomerDetails(matched.customerId);
             toast.success(
-              `Automatically selected customer: ${matched.companyName}`,
+              `Successfully selected customer: ${matched.companyName}`,
             );
           }
         } else if (selectedCustomerId > 0) {
