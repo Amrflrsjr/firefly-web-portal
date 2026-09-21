@@ -31,16 +31,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   const [formData, setFormData] = useState<CreateProductDto>({
     name: "",
     description: "",
-    variants: [
-      {
-        sku: "",
-        color: "",
-        size: "",
-        unitPrice: 0,
-        stock: 0,
-        isActive: true,
-      },
-    ],
+    variants: [],
   });
 
   useEffect(() => {
@@ -54,7 +45,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     field: keyof ProductVariant,
     value: string | number | boolean,
   ) => {
-    const updatedVariants = [...formData.variants];
+    const updatedVariants = [...(formData.variants || [])];
     updatedVariants[index] = { ...updatedVariants[index], [field]: value };
     setFormData({ ...formData, variants: updatedVariants });
   };
@@ -63,7 +54,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     setFormData({
       ...formData,
       variants: [
-        ...formData.variants,
+        ...(formData.variants || []),
         {
           sku: "",
           color: "",
@@ -74,17 +65,15 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
         },
       ],
     });
-    toast.success("New variant field added.");
+    toast.success("Variant field added.");
   };
 
   const removeVariantField = (index: number) => {
-    if (formData.variants.length === 1) {
-      toast.error("A product must keep at least one variant configuration.");
-      return;
-    }
-    const updatedVariants = formData.variants.filter((_, i) => i !== index);
+    const updatedVariants = (formData.variants || []).filter(
+      (_, i) => i !== index,
+    );
     setFormData({ ...formData, variants: updatedVariants });
-    toast.success("Variant field removed.");
+    toast.success("Variant removed.");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -94,26 +83,40 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       return;
     }
 
-    // Validate variants: Ensure every variant has at least Color or Size filled out and a valid price
-    for (let i = 0; i < formData.variants.length; i++) {
-      const v = formData.variants[i];
-      const hasOption =
-        (v.color && v.color.trim() !== "") || (v.size && v.size.trim() !== "");
+    // Filter out completely empty variant rows so they don't get saved as "Standard Option"
+    const validVariants = (formData.variants || []).filter((v) => {
+      const hasSku = v.sku && v.sku.trim() !== "";
+      const hasColor = v.color && v.color.trim() !== "";
+      const hasSize = v.size && v.size.trim() !== "";
+      const hasPrice = Number(v.unitPrice) > 0;
+      const hasStock = Number(v.stock) > 0;
 
-      if (!hasOption) {
+      // Keep variant only if at least one meaningful field has data
+      return hasSku || hasColor || hasSize || hasPrice || hasStock;
+    });
+
+    // Validate remaining active variants (Price is now optional, so no > 0 check)
+    for (let i = 0; i < validVariants.length; i++) {
+      const v = validVariants[i];
+      const hasIdentifier =
+        (v.sku && v.sku.trim() !== "") ||
+        (v.color && v.color.trim() !== "") ||
+        (v.size && v.size.trim() !== "");
+
+      if (!hasIdentifier) {
         toast.error(
-          `Variant #${i + 1}: Please fill out at least a Color or Size option.`,
+          `Variant #${i + 1}: Please provide at least a SKU, Color, or Size option.`,
         );
-        return;
-      }
-
-      if (v.unitPrice <= 0) {
-        toast.error(`Variant #${i + 1}: Unit price must be greater than 0.`);
         return;
       }
     }
 
-    onSubmit(formData);
+    const payload: CreateProductDto = {
+      ...formData,
+      variants: validVariants,
+    };
+
+    onSubmit(payload);
   };
 
   return (
@@ -189,13 +192,16 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
               </div>
             </div>
 
-            {/* Variants Section */}
+            {/* Variants Section (Optional) */}
             <div className="border-t border-slate-200/60 dark:border-slate-800 pt-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    Variants &amp; Pricing
+                    Variants &amp; Pricing{" "}
+                    <span className="text-[10px] font-normal lowercase opacity-75">
+                      (Optional)
+                    </span>
                   </h3>
                 </div>
                 <button
@@ -203,24 +209,33 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                   onClick={addVariantField}
                   className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60 dark:border-amber-800/60 shadow-2xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Variant
+                  <Plus className="w-3.5 h-3.5" /> Add Variant Option
                 </button>
               </div>
 
-              <div className="space-y-3">
-                {formData.variants.map((variant, index) => (
-                  <div
-                    key={index}
-                    className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3 transition-all hover:border-slate-300 dark:hover:border-slate-700"
-                  >
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center text-[10px] font-black">
-                          {index + 1}
+              {!formData.variants || formData.variants.length === 0 ? (
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-500 text-xs shadow-2xs">
+                  No variants added. This product will be created as a
+                  standalone item without sub-variants. Click{" "}
+                  <b className="text-slate-700 dark:text-slate-300">
+                    "+ Add Variant Option"
+                  </b>{" "}
+                  if you need specific options (e.g. size/color).
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {formData.variants.map((variant, index) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3 transition-all hover:border-slate-300 dark:hover:border-slate-700"
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                        <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center text-[10px] font-black">
+                            {index + 1}
+                          </span>
+                          Variant Config
                         </span>
-                        Variant Config
-                      </span>
-                      {formData.variants.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeVariantField(index)}
@@ -228,84 +243,87 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div className="space-y-1">
+                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
+                            <Palette className="w-3 h-3 text-[#F9B53F]" /> Color
+                            / Option <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={variant.color}
+                            onChange={(e) =>
+                              handleVariantChange(
+                                index,
+                                "color",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="e.g. Red, Matte"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
+                            <Sliders className="w-3 h-3 text-[#F9B53F]" /> Size
+                            / Format
+                          </label>
+                          <input
+                            type="text"
+                            value={variant.size}
+                            onChange={(e) =>
+                              handleVariantChange(index, "size", e.target.value)
+                            }
+                            placeholder="e.g. A4, Large"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
+                            <DollarSign className="w-3 h-3 text-[#F9B53F]" />{" "}
+                            Price
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={variant.unitPrice}
+                            onChange={(e) =>
+                              handleVariantChange(
+                                index,
+                                "unitPrice",
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
+                            <Box className="w-3 h-3 text-[#F9B53F]" /> Stock
+                          </label>
+                          <input
+                            type="number"
+                            value={variant.stock}
+                            onChange={(e) =>
+                              handleVariantChange(
+                                index,
+                                "stock",
+                                parseInt(e.target.value) || 0,
+                              )
+                            }
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                          />
+                        </div>
+                      </div>
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                      <div className="space-y-1">
-                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                          <Palette className="w-3 h-3 text-[#F9B53F]" /> Color /
-                          Option <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={variant.color}
-                          onChange={(e) =>
-                            handleVariantChange(index, "color", e.target.value)
-                          }
-                          placeholder="e.g. Red, Matte"
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                          <Sliders className="w-3 h-3 text-[#F9B53F]" /> Size /
-                          Format
-                        </label>
-                        <input
-                          type="text"
-                          value={variant.size}
-                          onChange={(e) =>
-                            handleVariantChange(index, "size", e.target.value)
-                          }
-                          placeholder="e.g. A4, Large"
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                          <DollarSign className="w-3 h-3 text-[#F9B53F]" />{" "}
-                          Price <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          value={variant.unitPrice}
-                          onChange={(e) =>
-                            handleVariantChange(
-                              index,
-                              "unitPrice",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                          <Box className="w-3 h-3 text-[#F9B53F]" /> Stock
-                        </label>
-                        <input
-                          type="number"
-                          value={variant.stock}
-                          onChange={(e) =>
-                            handleVariantChange(
-                              index,
-                              "stock",
-                              parseInt(e.target.value) || 0,
-                            )
-                          }
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

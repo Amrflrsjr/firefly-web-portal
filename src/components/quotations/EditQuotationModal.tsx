@@ -54,7 +54,7 @@ interface QuotationFullDetail extends QuotationResponseDto {
 }
 
 interface EditableLineItem extends QuotationItemDto {
-  productId?: number | "";
+  productId?: number | null;
   productVariantId: number | null;
 }
 
@@ -202,8 +202,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     [allCustomers, contactId],
   );
 
-  // Fetch full quotation details, customers, and products on mount
-  // Fetch full quotation details, customers, and products on mount
   useEffect(() => {
     const fetchQuotationData = async () => {
       try {
@@ -245,9 +243,8 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
           const mappedItems: EditableLineItem[] = await Promise.all(
             (rawItems || []).map(async (i, index) => {
-              let matchedProductId: number | "" = "";
-              // Force numerical conversion to prevent string vs number lookup failures
-              let matchedVariantId: number | null = i.productVariantId
+              let matchedProductId: number | null = null;
+              const matchedVariantId: number | null = i.productVariantId
                 ? Number(i.productVariantId)
                 : null;
               let foundProduct: Product | null = null;
@@ -273,18 +270,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 if (foundProd) {
                   matchedProductId = foundProd.productId;
                   foundProduct = foundProd;
-                  if (
-                    foundProd.variants &&
-                    foundProd.variants.length > 0 &&
-                    !matchedVariantId
-                  ) {
-                    matchedVariantId =
-                      foundProd.variants[0].productVariantId ?? null;
-                  }
                 }
               }
 
-              // Fetch full product details to guarantee ALL variants are loaded into state
               if (matchedProductId) {
                 try {
                   const prodRes = await api.get<Product>(
@@ -292,7 +280,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                   );
                   foundProduct = prodRes.data;
                 } catch {
-                  // Fallback to loaded product if fetch fails
+                  // Fallback
                 }
               }
 
@@ -321,8 +309,8 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
               }
 
               return {
-                productVariantId: matchedVariantId ?? null,
                 productId: matchedProductId,
+                productVariantId: matchedVariantId ?? null,
                 description: i.description,
                 quantity: i.quantity,
                 unitPrice: i.unitPrice,
@@ -338,7 +326,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
               ? mappedItems
               : [
                   {
-                    productId: "",
+                    productId: null,
                     productVariantId: null,
                     description: "",
                     quantity: 1,
@@ -462,7 +450,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
   const handleSelectProduct = async (index: number, product: Product) => {
     try {
-      // Fetch full product details to guarantee all variants are loaded
       const res = await api.get<Product>(`/products/${product.productId}`);
       const fullProduct = res.data;
 
@@ -478,15 +465,20 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       updated[index] = {
         ...updated[index],
         productId: fullProduct.productId,
-        description: fullProduct.name,
+        productVariantId: null,
+        description: fullProduct.description || fullProduct.name,
       };
       setItems(updated);
+
+      setVariantSearchQueries({
+        ...variantSearchQueries,
+        [index]: "",
+      });
 
       setActiveVariantSearchIndex(index);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to load product variants."));
 
-      // Fallback behavior
       const updatedProducts = { ...selectedProducts, [index]: product };
       setSelectedProducts(updatedProducts);
       setActiveProductSearchIndex(null);
@@ -499,7 +491,8 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       updated[index] = {
         ...updated[index],
         productId: product.productId,
-        description: product.name,
+        productVariantId: null,
+        description: product.description || product.name,
       };
       setItems(updated);
       setActiveVariantSearchIndex(index);
@@ -511,11 +504,22 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     const skuLabel =
       variant.sku && variant.sku.trim() !== "" ? ` - SKU: ${variant.sku}` : "";
 
+    const currentProd = selectedProducts[index];
+    const baseName = currentProd ? currentProd.name : "";
+
+    const combinedDescription = [
+      baseName,
+      variantLabel ? `(${variantLabel})` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     const updated = [...items];
     updated[index] = {
       ...updated[index],
+      productId: currentProd ? currentProd.productId : updated[index].productId,
       productVariantId: variant.productVariantId ?? null,
-      description: variantLabel ? `Variant: ${variantLabel}` : "Standard Item",
+      description: combinedDescription || "Standard Item",
       unitPrice: variant.unitPrice,
     };
     setItems(updated);
@@ -566,7 +570,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       );
 
       if (refreshedProd) {
-        // Update all active row mappings that use this product so they get the fresh variants array
         setSelectedProducts((prev) => {
           const updatedMap = { ...prev };
           Object.keys(updatedMap).forEach((key) => {
@@ -599,7 +602,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     setItems([
       ...items,
       {
-        productId: "",
+        productId: null,
         productVariantId: null,
         description: "",
         quantity: 1,
@@ -693,9 +696,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         vatType,
         noteToCustomer: noteToCustomer.trim() || undefined,
         items: items.map((i) => ({
-          productVariantId: i.productVariantId
-            ? Number(i.productVariantId)
-            : null,
+          productId:
+            !i.productId || i.productId === 0 ? null : Number(i.productId),
+          productVariantId:
+            !i.productVariantId || i.productVariantId === 0
+              ? null
+              : Number(i.productVariantId),
           description: i.description,
           quantity: Number(i.quantity),
           unitPrice: Number(i.unitPrice),
@@ -1159,7 +1165,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                   type="text"
                                   placeholder={
                                     selectedProd
-                                      ? "Select variant..."
+                                      ? "Optional variant..."
                                       : "Select product first"
                                   }
                                   disabled={!selectedProd}
@@ -1202,6 +1208,25 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                     </div>
 
                                     <div className="max-h-40 overflow-y-auto">
+                                      <div
+                                        onClick={() => {
+                                          const updated = [...items];
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            productVariantId: null,
+                                          };
+                                          setItems(updated);
+                                          setActiveVariantSearchIndex(null);
+                                          setVariantSearchQueries({
+                                            ...variantSearchQueries,
+                                            [idx]: "",
+                                          });
+                                        }}
+                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                      >
+                                        — None (No specific variant) —
+                                      </div>
+
                                       {filteredVariants.length > 0 ? (
                                         filteredVariants.map((variant) => {
                                           const vLabel = formatVariantLabel(
@@ -1246,7 +1271,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                 )}
                             </div>
 
-                            {/* Description (Non-mandatory like Create) */}
+                            {/* Description */}
                             <div className="sm:col-span-2 lg:col-span-4 space-y-1">
                               <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
                                 Description

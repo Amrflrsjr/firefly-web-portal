@@ -128,6 +128,17 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const hasIdentifier =
+      (newVariant.sku && newVariant.sku.trim() !== "") ||
+      (newVariant.color && newVariant.color.trim() !== "") ||
+      (newVariant.size && newVariant.size.trim() !== "");
+
+    if (!hasIdentifier) {
+      toast.error("Please provide at least a SKU Code, Color, or Size option.");
+      return;
+    }
+
     onAddVariant(product.productId, newVariant);
     setNewVariant({
       sku: "",
@@ -394,12 +405,11 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                     <div className="space-y-1">
                       <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
                         <DollarSign className="w-3 h-3 text-[#F9B53F]" /> Unit
-                        Price <span className="text-rose-500">*</span>
+                        Price
                       </label>
                       <input
                         type="number"
                         step="0.01"
-                        required
                         value={newVariant.unitPrice}
                         onChange={(e) =>
                           setNewVariant({

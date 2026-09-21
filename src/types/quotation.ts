@@ -1,4 +1,5 @@
 export interface QuotationItemDto {
+  productId?: number | null;
   productVariantId: number | null;
   description: string;
   quantity: number;

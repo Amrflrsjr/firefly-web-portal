@@ -198,14 +198,17 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
             {currentProducts.map((product) => {
-              const minPrice = product.variants?.length
+              const hasVariants =
+                product.variants && product.variants.length > 0;
+              const minPrice = hasVariants
                 ? Math.min(...product.variants.map((v) => v.unitPrice))
                 : 0;
-              const maxPrice = product.variants?.length
+              const maxPrice = hasVariants
                 ? Math.max(...product.variants.map((v) => v.unitPrice))
                 : 0;
-              const totalStock =
-                product.variants?.reduce((acc, v) => acc + v.stock, 0) || 0;
+              const totalStock = hasVariants
+                ? product.variants.reduce((acc, v) => acc + v.stock, 0)
+                : 0;
 
               const hasSingleVariant = product.variants?.length === 1;
               const targetVariant = hasSingleVariant
@@ -309,10 +312,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     className="py-4 px-6 text-slate-600 dark:text-slate-400 whitespace-nowrap cursor-pointer"
                     onClick={() => !isEditing && onViewVariants(product)}
                   >
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shadow-2xs">
-                      <Layers className="w-3 h-3 text-[#F9B53F]" />
-                      {product.variants?.length || 0} Variants
-                    </span>
+                    {hasVariants ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shadow-2xs">
+                        <Layers className="w-3 h-3 text-[#F9B53F]" />
+                        {product.variants.length} Variants
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700 shadow-2xs">
+                        No Variants
+                      </span>
+                    )}
                   </td>
 
                   <td
@@ -320,9 +329,11 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     onClick={() => !isEditing && onViewVariants(product)}
                   >
                     <span className="bg-slate-100/80 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
-                      {minPrice === maxPrice
-                        ? `PHP ${minPrice.toFixed(2)}`
-                        : `PHP ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)}`}
+                      {hasVariants
+                        ? minPrice === maxPrice
+                          ? `PHP ${minPrice.toFixed(2)}`
+                          : `PHP ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)}`
+                        : "N/A"}
                     </span>
                   </td>
 
@@ -373,6 +384,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           <X className="w-4 h-4" />
                         </button>
                       </div>
+                    ) : !hasVariants ? (
+                      <div
+                        onClick={() => onViewVariants(product)}
+                        className="inline-flex items-center gap-2 cursor-pointer py-1 px-2.5 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-all border border-transparent"
+                        title="Click to add variants and stock"
+                      >
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200/80 dark:border-slate-700 shadow-2xs whitespace-nowrap">
+                          No stock tracked
+                        </span>
+                      </div>
                     ) : hasSingleVariant && targetVariant ? (
                       <div
                         onClick={() => {
@@ -402,7 +423,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                         title="Click to view and edit variant stocks in modal"
                       >
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 shadow-2xs whitespace-nowrap">
-                          {totalStock} total ({product.variants?.length || 0}{" "}
+                          {totalStock} total ({product.variants.length}{" "}
                           variants)
                         </span>
                       </div>

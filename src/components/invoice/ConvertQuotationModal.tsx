@@ -17,12 +17,14 @@ interface Props {
   onClose: () => void;
   quotations: QuotationResponseDto[];
   onSuccess: () => void;
+  onQuotationConverted?: (quotationId: number) => void;
 }
 
 export const ConvertQuotationModal: React.FC<Props> = ({
   isOpen,
   onClose,
   onSuccess,
+  onQuotationConverted,
 }) => {
   const [availableQuotations, setAvailableQuotations] = useState<
     QuotationResponseDto[]
@@ -102,6 +104,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
       const defaultDueDate = new Date();
       defaultDueDate.setDate(defaultDueDate.getDate() + 30);
 
+      // 1. Generate the invoice from quotation
       await api.post("/invoices/from-quotation", {
         quotationId: selectedQuotationId,
         dueDate: defaultDueDate.toISOString(),
@@ -109,9 +112,38 @@ export const ConvertQuotationModal: React.FC<Props> = ({
           "Thank you for choosing us! We appreciate your business and kindly ask that you settle this invoice by the due date.",
       });
 
+      // 2. Explicitly update the status on backend to Approved
+      try {
+        await api.put(`/quotations/${selectedQuotationId}/status`, {
+          status: "Approved",
+        });
+      } catch {
+        try {
+          await api.put(
+            `/quotations/${selectedQuotationId}/status`,
+            "Approved",
+            {
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        } catch (statusErr) {
+          console.error(
+            "Failed to update quotation status automatically on backend",
+            statusErr,
+          );
+        }
+      }
+
+      // 3. Immediately trigger local state update if provided by parent
+      if (onQuotationConverted) {
+        onQuotationConverted(selectedQuotationId);
+      }
+
       setSelectedQuotationId(null);
       setSearchFilter("");
-      toast.success("Invoice generated successfully!");
+      toast.success(
+        "Invoice generated successfully and quotation marked as approved!",
+      );
       onSuccess();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

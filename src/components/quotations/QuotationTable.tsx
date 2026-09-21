@@ -300,7 +300,12 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
                   >
                     <div className="relative inline-flex items-center">
                       <select
-                        value={q.status || "Draft"}
+                        value={
+                          q.status
+                            ? q.status.charAt(0).toUpperCase() +
+                              q.status.slice(1).toLowerCase()
+                            : "Draft"
+                        }
                         onChange={(e) => handleStatusChange(e, q.quotationId)}
                         className={`appearance-none cursor-pointer pl-3 pr-7 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 outline-none focus:ring-2 focus:ring-amber-400/40 shadow-2xs ${getStatusBadgeStyle(
                           q.status,

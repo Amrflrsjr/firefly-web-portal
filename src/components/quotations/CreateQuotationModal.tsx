@@ -82,7 +82,13 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   const [contactEmailSnapshot, setContactEmailSnapshot] = useState("");
 
   const [items, setItems] = useState<QuotationItemDto[]>([
-    { productVariantId: null, description: "", quantity: 1, unitPrice: 0 },
+    {
+      productId: null,
+      productVariantId: null,
+      description: "",
+      quantity: 1,
+      unitPrice: 0,
+    },
   ]);
 
   const [selectedProducts, setSelectedProducts] = useState<{
@@ -124,6 +130,9 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   const [localError, setLocalError] = useState<string | null>(null);
   const activeError = localError || externalError;
 
+  // Track the most recently typed customer query so we can match and auto-select it after refresh
+  const [lastTypedCustomerQuery, setLastTypedCustomerQuery] = useState("");
+
   // Helper to safely format variant attributes without stray slashes
   const formatVariantLabel = (color?: string, size?: string) => {
     const parts = [color, size].filter((p) => p && p.trim() !== "");
@@ -154,8 +163,10 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       const res = await api.get<Customer[]>("/customers");
       setAllCustomers(res.data);
       setSearchedCustomers(res.data);
+      return res.data;
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to load customers."));
+      return [];
     }
   }, []);
 
@@ -210,11 +221,27 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
     if (refreshTrigger > 0) {
       const reloadData = async () => {
-        await fetchAllCustomers();
-        if (selectedCustomerId > 0) {
+        const freshCustomers = await fetchAllCustomers();
+        if (!isMounted) return;
+
+        // Auto-match newly created customer if name matches what was typed
+        if (lastTypedCustomerQuery.trim()) {
+          const matched = freshCustomers.find(
+            (c) =>
+              c.companyName.trim().toLowerCase() ===
+              lastTypedCustomerQuery.trim().toLowerCase(),
+          );
+          if (matched) {
+            setSelectedCustomerId(matched.customerId);
+            setCustomerSearchQuery(matched.companyName);
+            await loadCustomerDetails(matched.customerId);
+            toast.success(
+              `Automatically selected customer: ${matched.companyName}`,
+            );
+          }
+        } else if (selectedCustomerId > 0) {
           await loadCustomerDetails(selectedCustomerId);
         }
-        if (!isMounted) return;
       };
 
       void reloadData();
@@ -226,6 +253,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   }, [
     refreshTrigger,
     selectedCustomerId,
+    lastTypedCustomerQuery,
     loadCustomerDetails,
     fetchAllCustomers,
   ]);
@@ -318,11 +346,16 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     const updated = [...items];
     updated[index] = {
       ...updated[index],
-      description: product.name,
+      productId: product.productId ?? null,
+      productVariantId: null,
+      description: product.description || product.name,
     };
     setItems(updated);
 
-    setActiveVariantSearchIndex(index);
+    setVariantSearchQueries({
+      ...variantSearchQueries,
+      [index]: "",
+    });
   };
 
   const handleSelectVariant = (index: number, variant: ProductVariant) => {
@@ -343,6 +376,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     const updated = [...items];
     updated[index] = {
       ...updated[index],
+      productId: currentProd ? currentProd.productId : updated[index].productId,
       productVariantId: variant.productVariantId ?? null,
       description: combinedDescription || "Standard Item",
       unitPrice: variant.unitPrice,
@@ -368,10 +402,10 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
       if (quickProductTargetIndex !== null) {
         handleSelectProduct(quickProductTargetIndex, createdProd);
-        const firstVariant = createdProd.variants?.[0];
-        if (firstVariant) {
-          handleSelectVariant(quickProductTargetIndex, firstVariant);
-        }
+        setProductSearchQueries((prev) => ({
+          ...prev,
+          [quickProductTargetIndex]: createdProd.name,
+        }));
       }
 
       setIsQuickProductModalOpen(false);
@@ -394,10 +428,33 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         (p) => p.productId === productId,
       );
 
-      if (refreshedProd && variantModalTargetIndex !== null) {
-        const latestVariant =
-          refreshedProd.variants[refreshedProd.variants.length - 1];
-        handleSelectVariant(variantModalTargetIndex, latestVariant);
+      if (refreshedProd) {
+        setSelectedProducts((prev) => ({
+          ...prev,
+          [variantModalTargetIndex!]: refreshedProd,
+        }));
+
+        if (variantModalTargetIndex !== null) {
+          const latestVariant =
+            refreshedProd.variants[refreshedProd.variants.length - 1];
+          if (latestVariant) {
+            handleSelectVariant(variantModalTargetIndex, latestVariant);
+            const vLabel = formatVariantLabel(
+              latestVariant.color,
+              latestVariant.size,
+            );
+            const skuLabel =
+              latestVariant.sku && latestVariant.sku.trim() !== ""
+                ? ` - SKU: ${latestVariant.sku}`
+                : "";
+            setVariantSearchQueries((prev) => ({
+              ...prev,
+              [variantModalTargetIndex]: `${
+                vLabel || "Standard Variant"
+              }${skuLabel}`,
+            }));
+          }
+        }
       }
 
       setIsVariantModalOpen(false);
@@ -411,7 +468,13 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   const addItemRow = () => {
     setItems([
       ...items,
-      { productVariantId: null, description: "", quantity: 1, unitPrice: 0 },
+      {
+        productId: null,
+        productVariantId: null,
+        description: "",
+        quantity: 1,
+        unitPrice: 0,
+      },
     ]);
   };
 
@@ -477,11 +540,15 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
   const buildDto = (statusOverride?: string): CreateQuotationDto => {
     const formattedItems: QuotationItemDto[] = items.map((item) => ({
+      productId:
+        !item.productId || item.productId === 0 ? null : Number(item.productId),
+      productVariantId:
+        !item.productVariantId || item.productVariantId === 0
+          ? null
+          : Number(item.productVariantId),
       description: item.description,
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
-      productVariantId:
-        item.productVariantId === 0 ? null : item.productVariantId,
     }));
 
     return {
@@ -576,7 +643,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
             {/* Expanded Main Column (9 Cols) */}
             <div className="lg:col-span-9 space-y-5 sm:space-y-6">
-              {/* Proposal & Customer Details (Rebalanced 2-Row Grid Layout) */}
+              {/* Proposal & Customer Details */}
               <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
                 <div className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3">
                   Proposal & Customer Details
@@ -598,6 +665,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         onFocus={() => setIsCustomerSearchOpen(true)}
                         onChange={(e) => {
                           setCustomerSearchQuery(e.target.value);
+                          setLastTypedCustomerQuery(e.target.value);
                           setIsCustomerSearchOpen(true);
                           if (!e.target.value) {
                             setSelectedCustomerId(0);
@@ -622,6 +690,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         <div
                           onClick={() => {
                             setIsCustomerSearchOpen(false);
+                            setLastTypedCustomerQuery(customerSearchQuery);
                             onTriggerAddCustomer();
                           }}
                           className="px-3.5 py-3 text-xs font-black text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer flex items-center gap-2 border-b border-amber-200 dark:border-amber-900 shrink-0 transition-colors"
@@ -945,7 +1014,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                 type="text"
                                 placeholder={
                                   selectedProd
-                                    ? "Select variant..."
+                                    ? "Optional variant..."
                                     : "Select product first"
                                 }
                                 disabled={!selectedProd}
@@ -981,6 +1050,26 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                   </div>
 
                                   <div className="max-h-40 overflow-y-auto">
+                                    {/* Option to clear variant selection */}
+                                    <div
+                                      onClick={() => {
+                                        const updated = [...items];
+                                        updated[idx] = {
+                                          ...updated[idx],
+                                          productVariantId: null,
+                                        };
+                                        setItems(updated);
+                                        setActiveVariantSearchIndex(null);
+                                        setVariantSearchQueries({
+                                          ...variantSearchQueries,
+                                          [idx]: "",
+                                        });
+                                      }}
+                                      className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                    >
+                                      — None (No specific variant) —
+                                    </div>
+
                                     {filteredVariants.length > 0 ? (
                                       filteredVariants.map((variant) => {
                                         const vLabel = formatVariantLabel(
