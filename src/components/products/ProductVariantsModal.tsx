@@ -179,12 +179,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
 
   const requestDeleteVariant = (variantId: number | undefined) => {
     if (variantId === undefined) return;
-
-    if (visibleVariants.length <= 1) {
-      toast.error("A product must keep at least one variant configuration.");
-      return;
-    }
-
     setVariantToDelete(variantId);
   };
 
