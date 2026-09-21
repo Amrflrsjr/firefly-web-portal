@@ -133,6 +133,9 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   // Track the most recently typed customer query so we can match and auto-select it after refresh
   const [lastTypedCustomerQuery, setLastTypedCustomerQuery] = useState("");
 
+  // Ref to track if user explicitly clicked "+ Add New Customer"
+  const isCreatingCustomerRef = useRef(false);
+
   // Helper to safely format variant attributes without stray slashes
   const formatVariantLabel = (color?: string, size?: string) => {
     const parts = [color, size].filter((p) => p && p.trim() !== "");
@@ -224,7 +227,12 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         const freshCustomers = await fetchAllCustomers();
         if (!isMounted) return;
 
-        if (freshCustomers && freshCustomers.length > 0) {
+        // Only auto-select the newest/matched customer if the user was actively creating one via the modal button
+        if (
+          isCreatingCustomerRef.current &&
+          freshCustomers &&
+          freshCustomers.length > 0
+        ) {
           let matched: Customer | undefined;
 
           // 1. Try matching by exact or partial typed query
@@ -235,7 +243,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
             );
           }
 
-          // 2. Fallback: If no exact string match is found, assume the newest customer (highest ID or last item) was just created
+          // 2. Fallback: If no exact string match is found, assume the newest customer was just created
           if (!matched) {
             matched = [...freshCustomers].sort(
               (a, b) => b.customerId - a.customerId,
@@ -250,6 +258,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
               `Successfully selected customer: ${matched.companyName}`,
             );
           }
+          isCreatingCustomerRef.current = false; // Reset flag after handling
         } else if (selectedCustomerId > 0) {
           await loadCustomerDetails(selectedCustomerId);
         }
@@ -681,6 +690,9 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                           if (!e.target.value) {
                             setSelectedCustomerId(0);
                             setSelectedContactId(0);
+                            setContactEmailSnapshot("");
+                            setContactNameSnapshot("");
+                            setContactSearchQuery("");
                           }
                         }}
                         className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-8 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
@@ -700,6 +712,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col">
                         <div
                           onClick={() => {
+                            isCreatingCustomerRef.current = true;
                             setIsCustomerSearchOpen(false);
                             setLastTypedCustomerQuery(customerSearchQuery);
                             onTriggerAddCustomer();
