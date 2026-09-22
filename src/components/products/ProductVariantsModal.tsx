@@ -5,7 +5,6 @@ import {
   X,
   Plus,
   Package,
-  Layers,
   DollarSign,
   Box,
   Check,
@@ -14,9 +13,7 @@ import {
   Sliders,
   Palette,
   Tag,
-  Save,
   Trash2,
-  Sparkles,
 } from "lucide-react";
 import { ConfirmModal } from "../common/ConfirmModal";
 
@@ -203,150 +200,158 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-950/20 border border-slate-100 dark:border-slate-800 w-full max-w-5xl overflow-hidden my-6 flex flex-col max-h-[92vh]">
-        {/* Top Accent Gradient Bar */}
-        <div className="h-1.5 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
-
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-xs shrink-0">
-              <Package className="w-6 h-6" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+      {/* Modal Shell matching CustomerDetailsModal / QuotationDetailsModal */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+        {/* Flat Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 shadow-2xs shrink-0">
+              <Package className="w-4 h-4" />
             </div>
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-[10px] font-extrabold tracking-wider uppercase mb-1">
-                <Sparkles className="w-3 h-3" /> Catalog Manager
-              </div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate max-w-lg">
-                {productDetails.name}
-              </h2>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
-            aria-label="Close modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* 2-Column Split Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-          {/* Left Column: Product Info & Create Variant Form */}
-          <div className="lg:col-span-5 p-6 overflow-y-auto space-y-5 flex flex-col justify-between">
-            <div className="space-y-5">
-              {/* Product Info Card */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl space-y-3.5 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-[#F9B53F]" /> General
-                    Details
-                  </span>
-                  {!isEditingProduct ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingProduct(true)}
-                      className="inline-flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 hover:text-amber-800 font-extrabold cursor-pointer px-2 py-1 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-all"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" /> Edit
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        disabled={savingProduct}
-                        onClick={handleSaveProductDetails}
-                        className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer text-xs font-bold flex items-center gap-1"
-                      >
-                        <Save className="w-3 h-3" /> Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEditingProduct(false);
-                          setProductDetails({
-                            name: product.name,
-                            description: product.description || "",
-                            isActive: product.isActive,
-                          });
-                        }}
-                        className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer text-xs font-bold"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                </div>
-
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                  Product Overview
+                </h2>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
                 {isEditingProduct ? (
-                  <div className="space-y-3 pt-1">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-                        Product Name
-                      </label>
-                      <input
-                        type="text"
-                        value={productDetails.name}
-                        onChange={(e) =>
-                          setProductDetails({
-                            ...productDetails,
-                            name: e.target.value,
-                          })
-                        }
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-                        Description
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={productDetails.description}
-                        onChange={(e) =>
-                          setProductDetails({
-                            ...productDetails,
-                            description: e.target.value,
-                          })
-                        }
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] resize-none"
-                      />
-                    </div>
-                  </div>
+                  <input
+                    type="text"
+                    value={productDetails.name}
+                    onChange={(e) =>
+                      setProductDetails({
+                        ...productDetails,
+                        name: e.target.value,
+                      })
+                    }
+                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs max-w-xs"
+                    placeholder="Product Name"
+                  />
                 ) : (
-                  <p className="text-xs text-slate-600 dark:text-slate-300 font-normal leading-relaxed pt-1">
-                    {productDetails.description || (
-                      <span className="italic text-slate-400 dark:text-slate-500">
-                        No description provided for this catalog product. Click
-                        Edit to add one.
-                      </span>
-                    )}
-                  </p>
+                  <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
+                    {productDetails.name}
+                  </span>
                 )}
               </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Detailed view, variants, and stock management parameters
+              </p>
+            </div>
+          </div>
 
-              {/* Add Variant Form Card */}
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase shadow-2xs">
+              {visibleVariants.length} Variant(s)
+            </span>
+
+            {!isEditingProduct ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setProductDetails({
+                    name: product.name,
+                    description: product.description || "",
+                    isActive: product.isActive,
+                  });
+                  setIsEditingProduct(true);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+              >
+                <Edit2 className="w-3.5 h-3.5 text-slate-500" /> Edit
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={savingProduct}
+                  onClick={handleSaveProductDetails}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 shadow-2xs"
+                >
+                  <Check className="w-3.5 h-3.5" /> Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProduct(false)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-2xs"
+                >
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Content Body (2-Column Grid Layout matching CustomerDetailsModal/QuotationDetailsModal) */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-5 bg-slate-50/50 dark:bg-slate-950/50">
+          {/* Info Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-slate-400" /> Description
+              </span>
+              {isEditingProduct ? (
+                <textarea
+                  rows={2}
+                  value={productDetails.description}
+                  onChange={(e) =>
+                    setProductDetails({
+                      ...productDetails,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Enter product description..."
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs mt-1 resize-none"
+                />
+              ) : (
+                <p className="text-xs font-medium text-slate-900 dark:text-slate-100 pt-0.5 leading-relaxed">
+                  {productDetails.description || (
+                    <span className="italic text-slate-400 dark:text-slate-500">
+                      No description provided.
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Box className="w-3.5 h-3.5 text-slate-400" /> Total Stock &amp;
+                Status
+              </span>
+              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 pt-0.5">
+                {visibleVariants.reduce((acc, v) => acc + (v.stock || 0), 0)}{" "}
+                units across {visibleVariants.length} variant(s)
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Left Column: Add Variant Form */}
+            <div className="lg:col-span-5 space-y-3">
               <form
                 onSubmit={handleAddSubmit}
-                className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4"
+                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3"
               >
-                <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
-                    <Plus className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Add New Variant Option
                   </span>
                 </div>
 
-                <div className="space-y-3.5">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                        <Tag className="w-3 h-3 text-[#F9B53F]" /> SKU Code
+                      <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <Tag className="w-3 h-3 text-slate-400" /> SKU Code
                       </label>
                       <input
                         type="text"
@@ -355,13 +360,13 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                           setNewVariant({ ...newVariant, sku: e.target.value })
                         }
                         placeholder="e.g. SKU-001"
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                        <Palette className="w-3 h-3 text-[#F9B53F]" /> Color /
+                      <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <Palette className="w-3 h-3 text-slate-400" /> Color /
                         Variant
                       </label>
                       <input
@@ -374,14 +379,14 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                           })
                         }
                         placeholder="e.g. Matte Black"
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                      <Sliders className="w-3 h-3 text-[#F9B53F]" /> Size /
+                    <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                      <Sliders className="w-3 h-3 text-slate-400" /> Size /
                       Format
                     </label>
                     <input
@@ -390,15 +395,15 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                       onChange={(e) =>
                         setNewVariant({ ...newVariant, size: e.target.value })
                       }
-                      placeholder="e.g. A4 / Large / 500ml"
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                      placeholder="e.g. A4 / Large"
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                        <DollarSign className="w-3 h-3 text-[#F9B53F]" /> Unit
+                      <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <DollarSign className="w-3 h-3 text-slate-400" /> Unit
                         Price
                       </label>
                       <input
@@ -411,13 +416,13 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                             unitPrice: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                        <Box className="w-3 h-3 text-[#F9B53F]" /> Stock Level
+                      <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <Box className="w-3 h-3 text-slate-400" /> Stock Level
                       </label>
                       <input
                         type="number"
@@ -428,7 +433,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                             stock: parseInt(e.target.value) || 0,
                           })
                         }
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
                       />
                     </div>
                   </div>
@@ -437,244 +442,228 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full mt-2 py-3 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 >
-                  <Plus className="w-4 h-4 stroke-3" />
+                  <Plus className="w-4 h-4" />
                   <span>{saving ? "Adding..." : "Save Variant Option"}</span>
                 </button>
               </form>
             </div>
-          </div>
 
-          {/* Right Column: Configured Variants List */}
-          <div className="lg:col-span-7 p-6 overflow-y-auto space-y-4 bg-white dark:bg-slate-900 flex flex-col">
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[#F9B53F]" />
-                <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Configured Variants ({visibleVariants.length})
+            {/* Right Column: Configured Variants List */}
+            <div className="lg:col-span-7 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Configured Variants
                 </h3>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
+                  {visibleVariants.length} item(s)
+                </span>
               </div>
-            </div>
 
-            <div className="space-y-3.5 flex-1 overflow-y-auto pr-1">
-              {visibleVariants.length === 0 ? (
-                <div className="p-16 text-center bg-slate-50/70 dark:bg-slate-850/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center gap-3 my-auto">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-500">
-                    <Layers className="w-6 h-6" />
+              <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
+                {visibleVariants.length === 0 ? (
+                  <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs italic shadow-2xs">
+                    No variant configurations added yet.
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-bold text-slate-700 dark:text-slate-300">
-                      No variant configurations added yet.
-                    </p>
-                    <p className="text-[11px] text-slate-400 max-w-xs">
-                      Use the form on the left to add your first product variant
-                      option.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                visibleVariants.map((v, idx) => {
-                  const isEditing =
-                    editingVariantId !== null &&
-                    editingVariantId === v.productVariantId;
-                  const isDeleting =
-                    deletingVariantId !== null &&
-                    deletingVariantId === v.productVariantId;
+                ) : (
+                  visibleVariants.map((v, idx) => {
+                    const isEditing =
+                      editingVariantId !== null &&
+                      editingVariantId === v.productVariantId;
+                    const isDeleting =
+                      deletingVariantId !== null &&
+                      deletingVariantId === v.productVariantId;
 
-                  if (isEditing) {
+                    if (isEditing) {
+                      return (
+                        <div
+                          key={v.productVariantId ?? idx}
+                          className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-700 space-y-3 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <Edit2 className="w-3.5 h-3.5 text-slate-500" />{" "}
+                              Editing Variant
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={savingVariant}
+                                onClick={() =>
+                                  handleSaveVariant(v.productVariantId)
+                                }
+                                className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-lg transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingVariantId(null)}
+                                className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-2xs"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase block mb-1">
+                                SKU
+                              </label>
+                              <input
+                                type="text"
+                                value={editVariantData.sku}
+                                onChange={(e) =>
+                                  setEditVariantData({
+                                    ...editVariantData,
+                                    sku: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase block mb-1">
+                                Color
+                              </label>
+                              <input
+                                type="text"
+                                value={editVariantData.color}
+                                onChange={(e) =>
+                                  setEditVariantData({
+                                    ...editVariantData,
+                                    color: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase block mb-1">
+                                Size
+                              </label>
+                              <input
+                                type="text"
+                                value={editVariantData.size}
+                                onChange={(e) =>
+                                  setEditVariantData({
+                                    ...editVariantData,
+                                    size: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase block mb-1">
+                                Unit Price (₱)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editVariantData.unitPrice}
+                                onChange={(e) =>
+                                  setEditVariantData({
+                                    ...editVariantData,
+                                    unitPrice: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase block mb-1">
+                                Stock
+                              </label>
+                              <input
+                                type="number"
+                                value={editVariantData.stock}
+                                onChange={(e) =>
+                                  setEditVariantData({
+                                    ...editVariantData,
+                                    stock: parseInt(e.target.value) || 0,
+                                  })
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const hasSku = v.sku && v.sku.trim() !== "";
+
                     return (
                       <div
                         key={v.productVariantId ?? idx}
-                        className="p-5 bg-amber-50/50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/80 space-y-3.5 shadow-sm"
+                        className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group"
                       >
-                        <div className="flex items-center justify-between border-b border-amber-200/60 dark:border-amber-800/60 pb-2.5">
-                          <span className="text-xs font-extrabold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                            <Edit2 className="w-3.5 h-3.5 text-amber-600" />{" "}
-                            Editing Variant Item
-                          </span>
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {hasSku && (
+                              <span className="font-mono text-[10px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg">
+                                {v.sku}
+                              </span>
+                            )}
+                            <span className="font-semibold text-slate-900 dark:text-slate-100">
+                              {formatVariantAttributes(v.color, v.size)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                            Stock: {v.stock} units
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="font-mono font-semibold text-slate-900 dark:text-white text-xs">
+                            ₱{v.unitPrice.toFixed(2)}
+                          </div>
+
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              disabled={savingVariant}
-                              onClick={() =>
-                                handleSaveVariant(v.productVariantId)
-                              }
-                              className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-xl transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800/60 text-xs font-bold flex items-center gap-1 shadow-2xs"
+                              onClick={() => startEditVariant(v)}
+                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                              title="Edit Variant"
                             >
-                              <Check className="w-3.5 h-3.5" /> Save
+                              <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
-                              onClick={() => setEditingVariantId(null)}
-                              className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs"
+                              disabled={isDeleting}
+                              onClick={() =>
+                                requestDeleteVariant(v.productVariantId)
+                              }
+                              className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 transition-all cursor-pointer border border-rose-200 dark:border-rose-900/60 shadow-2xs disabled:opacity-40"
+                              title="Delete Variant"
                             >
-                              Cancel
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2.5">
-                          <div>
-                            <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase block mb-1">
-                              SKU Code
-                            </label>
-                            <input
-                              type="text"
-                              value={editVariantData.sku}
-                              onChange={(e) =>
-                                setEditVariantData({
-                                  ...editVariantData,
-                                  sku: e.target.value,
-                                })
-                              }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase block mb-1">
-                              Color
-                            </label>
-                            <input
-                              type="text"
-                              value={editVariantData.color}
-                              onChange={(e) =>
-                                setEditVariantData({
-                                  ...editVariantData,
-                                  color: e.target.value,
-                                })
-                              }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase block mb-1">
-                              Size / Option
-                            </label>
-                            <input
-                              type="text"
-                              value={editVariantData.size}
-                              onChange={(e) =>
-                                setEditVariantData({
-                                  ...editVariantData,
-                                  size: e.target.value,
-                                })
-                              }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div>
-                            <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase block mb-1">
-                              Unit Price (PHP)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editVariantData.unitPrice}
-                              onChange={(e) =>
-                                setEditVariantData({
-                                  ...editVariantData,
-                                  unitPrice: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase block mb-1">
-                              Stock Count
-                            </label>
-                            <input
-                              type="number"
-                              value={editVariantData.stock}
-                              onChange={(e) =>
-                                setEditVariantData({
-                                  ...editVariantData,
-                                  stock: parseInt(e.target.value) || 0,
-                                })
-                              }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                            />
                           </div>
                         </div>
                       </div>
                     );
-                  }
-
-                  const hasSku = v.sku && v.sku.trim() !== "";
-
-                  return (
-                    <div
-                      key={v.productVariantId ?? idx}
-                      className="p-4 bg-slate-50/60 dark:bg-slate-900/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm hover:border-amber-300/60 dark:hover:border-amber-600/40 transition-all hover:bg-white dark:hover:bg-slate-800 group"
-                    >
-                      <div className="space-y-1.5 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {hasSku && (
-                            <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md shadow-2xs">
-                              {v.sku}
-                            </span>
-                          )}
-                          <span className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm">
-                            {formatVariantAttributes(v.color, v.size)}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1.5">
-                          <Box className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Stock:</span>
-                          <span className="text-slate-800 dark:text-slate-200 font-bold">
-                            {v.stock} units
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3.5 self-end sm:self-auto shrink-0">
-                        <div className="font-mono font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 px-3 py-1.5 rounded-xl shadow-2xs">
-                          PHP {v.unitPrice.toFixed(2)}
-                        </div>
-
-                        {/* Edit & Delete Action Buttons */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => startEditVariant(v)}
-                            className="p-2 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 rounded-xl transition-all shadow-2xs cursor-pointer active:scale-95"
-                            title="Edit Variant"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isDeleting}
-                            onClick={() =>
-                              requestDeleteVariant(v.productVariantId)
-                            }
-                            className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60 rounded-xl transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-40"
-                            title="Delete Variant"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="flex items-center justify-end px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-xs">
+        <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-2xs">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-extrabold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 shadow-2xs"
+            className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
           >
-            Close Window
+            Close Overview
           </button>
         </div>
       </div>

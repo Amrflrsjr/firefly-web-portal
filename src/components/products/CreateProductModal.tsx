@@ -1,19 +1,7 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { CreateProductDto, ProductVariant } from "../../types/product";
-import {
-  X,
-  PackagePlus,
-  Tag,
-  FileText,
-  Layers,
-  Plus,
-  Trash2,
-  DollarSign,
-  Box,
-  Sliders,
-  Palette,
-} from "lucide-react";
+import { X, PackagePlus, Layers, Plus, Trash2, Calculator } from "lucide-react";
 
 interface CreateProductModalProps {
   saving: boolean;
@@ -33,6 +21,10 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     description: "",
     variants: [],
   });
+
+  const [submittingAction, setSubmittingAction] = useState<
+    "create" | "draft" | null
+  >(null);
 
   useEffect(() => {
     if (error) {
@@ -95,7 +87,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       return hasSku || hasColor || hasSize || hasPrice || hasStock;
     });
 
-    // Validate remaining active variants (Price is now optional, so no > 0 check)
+    // Validate remaining active variants
     for (let i = 0; i < validVariants.length; i++) {
       const v = validVariants[i];
       const hasIdentifier =
@@ -120,84 +112,92 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
-        {/* Top Accent Gradient Bar */}
-        <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
-
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 sticky top-0 z-10">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-2xs shrink-0">
-              <PackagePlus className="w-5 h-5 text-[#F9B53F]" />
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <span className="font-mono text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Catalog Management
-              </span>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
-                Add New Product
-              </h2>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      {/* Modal Shell with reduced max-width for smaller appearance on large screens */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-auto flex flex-col max-h-[95vh]">
+        {/* Flat Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              Add New Product
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Build items and manage SKU variants across active catalog
+              inventory
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-colors cursor-pointer shrink-0 shadow-2xs disabled:opacity-50"
-            aria-label="Close modal"
-          >
-            <X className="w-4 h-4" />
-          </button>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 hidden sm:inline">
+              {formData.variants?.length || 0}{" "}
+              {formData.variants?.length === 1 ? "variant" : "variants"}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Form Body */}
+        {/* Form Body - 9 / 3 Split Ratio Layout */}
         <form
+          id="create-product-form"
           onSubmit={handleSubmit}
-          className="flex flex-col flex-1 overflow-hidden"
+          className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6"
         >
-          <div className="p-6 space-y-6 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/40">
-            {/* Main Product Info Fields */}
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  <Tag className="w-3 h-3 text-[#F9B53F]" /> Product Name{" "}
-                  <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="e.g. Die-Cut Vinyl Stickers"
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all shadow-2xs"
-                />
+          {/* Expanded Main Column (9 Cols) */}
+          <div className="lg:col-span-9 space-y-5">
+            {/* Main Product Info Card */}
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2.5 flex items-center gap-2">
+                <PackagePlus className="w-4 h-4 text-slate-400" /> General
+                Details
               </div>
 
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  <FileText className="w-3 h-3 text-[#F9B53F]" /> Description
-                </label>
-                <textarea
-                  rows={2}
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Brief details or specifications..."
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-[#FFCB62]/20 transition-all shadow-2xs resize-none"
-                />
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Product Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    placeholder="e.g. Die-Cut Vinyl Stickers"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    placeholder="Brief details, material specifications, or notes..."
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none transition-all shadow-2xs"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Variants Section (Optional) */}
-            <div className="border-t border-slate-200/60 dark:border-slate-800 pt-5 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Variants & Pricing Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                  <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Variants &amp; Pricing{" "}
                     <span className="text-[10px] font-normal lowercase opacity-75">
                       (Optional)
@@ -207,49 +207,67 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                 <button
                   type="button"
                   onClick={addVariantField}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60 dark:border-amber-800/60 shadow-2xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Variant Option
+                  <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Variant
+                  Option
                 </button>
               </div>
 
               {!formData.variants || formData.variants.length === 0 ? (
-                <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-500 text-xs shadow-2xs">
+                <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs italic shadow-2xs">
                   No variants added. This product will be created as a
                   standalone item without sub-variants. Click{" "}
                   <b className="text-slate-700 dark:text-slate-300">
                     "+ Add Variant Option"
                   </b>{" "}
-                  if you need specific options (e.g. size/color).
+                  if you need specific configuration options (e.g. size/color).
                 </div>
               ) : (
                 <div className="space-y-3">
                   {formData.variants.map((variant, index) => (
                     <div
                       key={index}
-                      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3 transition-all hover:border-slate-300 dark:hover:border-slate-700"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-3 shadow-2xs relative group"
                     >
-                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                        <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center text-[10px] font-black">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">
                             {index + 1}
                           </span>
-                          Variant Config
-                        </span>
+                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Variant Option Configuration
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeVariantField(index)}
-                          className="inline-flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-bold cursor-pointer p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-500 dark:text-rose-400 rounded-lg transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+                          title="Remove Variant"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                        <div className="space-y-1">
-                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                            <Palette className="w-3 h-3 text-[#F9B53F]" /> Color
-                            / Option <span className="text-rose-500">*</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                        <div className="lg:col-span-3 space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                            SKU Code
+                          </label>
+                          <input
+                            type="text"
+                            value={variant.sku}
+                            onChange={(e) =>
+                              handleVariantChange(index, "sku", e.target.value)
+                            }
+                            placeholder="e.g. SKU-001"
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                          />
+                        </div>
+
+                        <div className="lg:col-span-3 space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                            Color / Variant
                           </label>
                           <input
                             type="text"
@@ -261,15 +279,14 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                                 e.target.value,
                               )
                             }
-                            placeholder="e.g. Red, Matte"
-                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                            placeholder="e.g. Matte Black"
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                           />
                         </div>
 
-                        <div className="space-y-1">
-                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                            <Sliders className="w-3 h-3 text-[#F9B53F]" /> Size
-                            / Format
+                        <div className="sm:col-span-2 lg:col-span-3 space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                            Size / Format
                           </label>
                           <input
                             type="text"
@@ -277,47 +294,50 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                             onChange={(e) =>
                               handleVariantChange(index, "size", e.target.value)
                             }
-                            placeholder="e.g. A4, Large"
-                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                            placeholder="e.g. A4 / Large"
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                           />
                         </div>
 
-                        <div className="space-y-1">
-                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                            <DollarSign className="w-3 h-3 text-[#F9B53F]" />{" "}
-                            Price
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={variant.unitPrice}
-                            onChange={(e) =>
-                              handleVariantChange(
-                                index,
-                                "unitPrice",
-                                parseFloat(e.target.value) || 0,
-                              )
-                            }
-                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                          />
-                        </div>
+                        <div className="grid grid-cols-2 gap-2 lg:col-span-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
+                              Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={variant.unitPrice}
+                              onChange={(e) =>
+                                handleVariantChange(
+                                  index,
+                                  "unitPrice",
+                                  parseFloat(e.target.value) || 0,
+                                )
+                              }
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                            />
+                          </div>
 
-                        <div className="space-y-1">
-                          <label className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase">
-                            <Box className="w-3 h-3 text-[#F9B53F]" /> Stock
-                          </label>
-                          <input
-                            type="number"
-                            value={variant.stock}
-                            onChange={(e) =>
-                              handleVariantChange(
-                                index,
-                                "stock",
-                                parseInt(e.target.value) || 0,
-                              )
-                            }
-                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
-                          />
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                              Stock
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={variant.stock}
+                              onChange={(e) =>
+                                handleVariantChange(
+                                  index,
+                                  "stock",
+                                  parseInt(e.target.value) || 0,
+                                )
+                              }
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -327,23 +347,61 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
             </div>
           </div>
 
-          {/* Form Actions Footer */}
-          <div className="px-6 py-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5 shrink-0 shadow-sm">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-5 py-2.5 text-xs font-bold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
-            >
-              {saving ? "Saving..." : "Save Product"}
-            </button>
+          {/* Compact Right Sidebar Column (3 Cols) */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Catalog Info Summary Card */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+              <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+                <Calculator className="w-3.5 h-3.5 text-slate-400" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                  Catalog Summary
+                </h3>
+              </div>
+
+              <div className="space-y-2 text-xs font-medium">
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>Total Variants</span>
+                  <span className="font-mono text-slate-900 dark:text-slate-100">
+                    {formData.variants?.length || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>Total Initial Stock</span>
+                  <span className="font-mono text-slate-900 dark:text-slate-100">
+                    {formData.variants?.reduce(
+                      (acc, v) => acc + (Number(v.stock) || 0),
+                      0,
+                    ) || 0}{" "}
+                    units
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Standardized Button Hierarchy */}
+            <div className="space-y-2 pt-1">
+              <button
+                form="create-product-form"
+                type="submit"
+                onClick={() => setSubmittingAction("create")}
+                disabled={saving}
+                className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-white rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+              >
+                <PackagePlus className="w-4 h-4" />
+                {saving && submittingAction === "create"
+                  ? "Saving..."
+                  : "Save Product"}
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </form>
       </div>
