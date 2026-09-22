@@ -1,25 +1,8 @@
-import React, {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import axios from "axios";
-import {
-  Search,
-  Plus,
-  AlertCircle,
-  Filter,
-  X,
-  Sparkles,
-  ArrowUpRight,
-  Receipt,
-  CheckCircle2,
-  Clock,
-} from "lucide-react";
+import { Search, Plus, AlertCircle, Filter, X } from "lucide-react";
 import type { InvoiceResponseDto } from "../types/invoice";
 import type { QuotationResponseDto } from "../types/quotation";
 import toast from "react-hot-toast";
@@ -66,12 +49,6 @@ export const Invoices: React.FC = () => {
 
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 
   const loadData = useCallback(
     async (
@@ -155,22 +132,6 @@ export const Invoices: React.FC = () => {
     ascending,
     loadData,
   ]);
-
-  // Compute live breakdown stats for header indicators
-  const totalCount = invoices.length;
-  const paidCount = useMemo(
-    () => invoices.filter((i) => i.status?.toLowerCase() === "paid").length,
-    [invoices],
-  );
-  const unpaidCount = useMemo(
-    () =>
-      invoices.filter(
-        (i) =>
-          i.status?.toLowerCase() === "unpaid" ||
-          i.status?.toLowerCase() === "partiallypaid",
-      ).length,
-    [invoices],
-  );
 
   const activeInvoice = selectedInvoice;
 
@@ -307,77 +268,31 @@ export const Invoices: React.FC = () => {
     statusFilter !== "all" || startDateFilter || endDateFilter || searchQuery;
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
-      {/* Executive Header Banner matching Dashboard style */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Billing &amp; Payments Hub</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                </span>
-                {today}
-              </div>
-            </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
-              Invoices &amp; Payments
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Convert approved estimates to invoices, dispatch PDFs, and record
-              customer remittances efficiently.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {/* Real-time Summary Indicators */}
-            <div className="hidden lg:flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-semibold">
-              <div className="flex items-center gap-1.5 text-amber-300 font-bold">
-                <Receipt className="w-4 h-4" />
-                <span>{totalCount} Total</span>
-              </div>
-              <span className="text-slate-500">•</span>
-              <div className="flex items-center gap-1 text-slate-300">
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
-                <span>{unpaidCount} Pending</span>
-              </div>
-              <span className="text-slate-500">•</span>
-              <div className="flex items-center gap-1 text-slate-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{paidCount} Settled</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsConvertOpen(true)}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-            >
-              <Plus className="w-4 h-4 stroke-3" />
-              <span>Convert Quotation</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-          </div>
+    <div className="space-y-6 pb-10 px-4 sm:px-0">
+      {/* Flat Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Invoices &amp; Payments
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
+            Convert approved estimates to invoices, dispatch PDFs, and record
+            customer remittances efficiently.
+          </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsConvertOpen(true)}
+          className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Convert Quotation</span>
+        </button>
       </div>
 
       {apiError && (
-        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-4 rounded-2xl flex items-center justify-between shadow-xs">
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-4 rounded-xl flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
             <span className="text-sm font-medium">{apiError}</span>
@@ -393,62 +308,51 @@ export const Invoices: React.FC = () => {
                 ascending,
               )
             }
-            className="text-xs font-bold bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
+            className="text-xs font-bold bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 px-3.5 py-1.5 rounded-xl shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
           >
             Retry
           </button>
         </div>
       )}
 
-      {/* Professional UI/UX Filter & Search Toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none space-y-4">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          {/* Enhanced Search Input & Mobile Filter Toggle Button */}
-          <div className="flex items-center gap-2 flex-1 max-w-lg">
+      {/* Filter & Search Toolbar */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 max-w-md">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
-                placeholder="Search by invoice number, customer name or quotation number..."
+                placeholder="Search by invoice number, customer or quotation..."
                 value={searchQuery}
                 onChange={(e) => updateQueryParams({ search: e.target.value })}
-                className="w-full bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all shadow-2xs"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 transition-all shadow-2xs"
               />
             </div>
 
-            {/* Mobile Filter Toggle Button */}
             <button
               onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
-              className={`lg:hidden flex items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
+              className={`lg:hidden flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer ${
                 isMobileFiltersOpen || hasActiveFilters
-                  ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
-                  : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750"
+                  ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white"
+                  : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
               }`}
               title="Toggle Filters"
             >
-              <Filter className="w-5 h-5" />
+              <Filter className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Desktop Filters Group */}
           <div
             className={`flex-wrap items-center gap-2.5 ${
               isMobileFiltersOpen ? "flex" : "hidden lg:flex"
             }`}
           >
-            <div className="hidden lg:flex items-center gap-1.5 text-xs font-black text-slate-400 uppercase tracking-wider px-2">
-              <Filter className="w-3.5 h-3.5 text-amber-500" /> Filters:
-            </div>
-
-            {/* Status Select */}
             <div className="w-full sm:w-auto">
-              <label className="block lg:hidden text-[10px] font-extrabold uppercase text-slate-400 mb-1">
-                Status
-              </label>
               <select
                 value={statusFilter}
                 onChange={(e) => updateQueryParams({ status: e.target.value })}
-                className="w-full sm:w-auto bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3 py-2.5 lg:py-1 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer shadow-2xs"
+                className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
               >
                 <option value="all">All Statuses</option>
                 <option value="Unpaid">Unpaid</option>
@@ -458,9 +362,8 @@ export const Invoices: React.FC = () => {
               </select>
             </div>
 
-            {/* Start Date (From) */}
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3.5 py-2 shadow-2xs">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <div className="w-full sm:w-auto flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 From
               </span>
               <input
@@ -469,31 +372,29 @@ export const Invoices: React.FC = () => {
                 onChange={(e) =>
                   updateQueryParams({ startDate: e.target.value })
                 }
-                className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
               />
             </div>
 
-            {/* End Date (To) */}
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3.5 py-2 shadow-2xs">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <div className="w-full sm:w-auto flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 To
               </span>
               <input
                 type="date"
                 value={endDateFilter}
                 onChange={(e) => updateQueryParams({ endDate: e.target.value })}
-                className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
               />
             </div>
 
-            {/* Clear Filters Button */}
             {hasActiveFilters && (
               <button
                 onClick={() => {
                   setSearchParams({}, { replace: true });
                   setIsMobileFiltersOpen(false);
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 hover:text-amber-900 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 px-4 py-3 lg:py-2.5 rounded-2xl transition-all cursor-pointer shadow-2xs"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-2xs"
               >
                 <X className="w-3.5 h-3.5" /> Clear Filters
               </button>
@@ -502,7 +403,7 @@ export const Invoices: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <InvoicesTable
           invoices={invoices}
           loading={loading}

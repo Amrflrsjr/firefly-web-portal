@@ -1,5 +1,5 @@
-import React from "react";
-import { X, Download } from "lucide-react";
+import React, { useState } from "react";
+import { X, Download, Loader2 } from "lucide-react";
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -16,7 +16,26 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   filename,
   onClose,
 }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   if (!isOpen || !pdfUrl) return null;
+
+  const handleDownload = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (isDownloading) return;
+    setIsDownloading(true);
+
+    const link = document.createElement("a");
+    link.href = pdfUrl;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+
+    setTimeout(() => {
+      setIsDownloading(false);
+    }, 1000);
+  };
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -36,9 +55,17 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
             <a
               href={pdfUrl}
               download={filename}
-              className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-white px-3.5 py-2 rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
+              onClick={handleDownload}
+              className={`inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 ${
+                isDownloading ? "opacity-60 pointer-events-none" : ""
+              }`}
             >
-              <Download className="w-4 h-4" /> Download PDF
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              ) : (
+                <Download className="w-4 h-4 text-slate-500" />
+              )}{" "}
+              Download PDF
             </a>
             <button
               onClick={onClose}
