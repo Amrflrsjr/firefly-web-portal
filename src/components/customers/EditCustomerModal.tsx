@@ -30,6 +30,8 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
     notes: customer.notes || "",
   });
 
+  const isPersonal = customer.customerType === "Individual";
+
   useEffect(() => {
     if (error) {
       toast.error(error);
@@ -39,36 +41,37 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.companyName.trim()) {
-      toast.error("Company Name is required.");
+      toast.error(
+        isPersonal ? "Customer Name is required." : "Company Name is required.",
+      );
       return;
     }
     onSubmit(formData);
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Top Accent Gradient Bar */}
-        <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158]" />
-
-        {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-[#FFCB62]/30 to-[#F4D158]/30 dark:from-[#FFCB62]/20 dark:to-[#F4D158]/20 flex items-center justify-center text-slate-800 dark:text-slate-200 shadow-2xs">
-              <Building className="w-5 h-5 text-[#F9B53F]" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden my-8 flex flex-col max-h-[90vh]">
+        {/* Modal Header matching Quotation and Customer modals */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 shadow-2xs shrink-0">
+              <Building className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">
                 Customer Management
               </p>
-              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
                 Edit Customer
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+            disabled={saving}
+            className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
@@ -76,15 +79,16 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
         {/* Form Body */}
         <form
+          id="edit-customer-form"
           onSubmit={handleSubmit}
-          className="p-6 overflow-y-auto space-y-4 flex-1 bg-[#FCFDFF] dark:bg-slate-950/40"
+          className="p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50"
         >
-          <div>
-            <label className="block text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-500 mb-1">
-              Company Name *
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              {isPersonal ? "Customer Full Name *" : "Company Name *"}
             </label>
             <div className="relative">
-              <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
                 type="text"
                 required
@@ -92,66 +96,74 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, companyName: e.target.value })
                 }
-                placeholder="Enter company name"
-                className="w-full bg-slate-50/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-500 mb-1">
-              Tax ID (TIN)
-            </label>
-            <div className="relative">
-              <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-              <input
-                type="text"
-                value={formData.tin}
-                onChange={(e) =>
-                  setFormData({ ...formData, tin: e.target.value })
+                placeholder={
+                  isPersonal ? "Enter customer name" : "Enter company name"
                 }
-                placeholder="e.g. 123-456-789-000"
-                className="w-full bg-slate-50/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3 py-2.5 text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-500 mb-1">
-              Business Address
+          {!isPersonal && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Tax ID (TIN)
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={formData.tin}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tin: e.target.value })
+                  }
+                  placeholder="e.g. 123-456-789-000"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              {isPersonal
+                ? "Residential / Shipping Address"
+                : "Business Address"}
             </label>
             <div className="relative">
-              <MapPin className="absolute left-3.5 top-3 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <MapPin className="absolute left-3 top-3 w-3.5 h-3.5 text-slate-400" />
               <textarea
                 rows={2}
                 value={formData.companyAddress}
                 onChange={(e) =>
                   setFormData({ ...formData, companyAddress: e.target.value })
                 }
-                placeholder="Enter business address"
-                className="w-full bg-slate-50/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all resize-none"
+                placeholder="Enter address"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none"
               />
             </div>
           </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-5 py-2.5 text-xs font-bold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
-            >
-              {saving ? "Updating..." : "Update Customer"}
-            </button>
-          </div>
         </form>
+
+        {/* Modal Actions Footer matching Quotation style */}
+        <div className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-2xs">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs active:scale-95 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            form="edit-customer-form"
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            {saving ? "Updating..." : "Update Customer"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../api/axios";
@@ -7,17 +7,7 @@ import type {
   CreateCustomerDto,
   CustomerContact,
 } from "../types/customer";
-import {
-  Plus,
-  Search,
-  AlertCircle,
-  RefreshCw,
-  Sparkles,
-  ArrowUpRight,
-  Users,
-  Building2,
-  User,
-} from "lucide-react";
+import { Plus, Search, AlertCircle, RefreshCw, X } from "lucide-react";
 import axios from "axios";
 
 import { CustomerTable } from "../components/customers/CustomerTable";
@@ -31,7 +21,7 @@ export const Customers: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
   const sortBy = searchParams.get("sortBy") || "companyname";
-  const ascending = searchParams.get("ascending") !== "false";
+  const ascending = searchParams.get("ascending") === "true";
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,12 +45,6 @@ export const Customers: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 
   const getUserRole = (): boolean => {
     const token = localStorage.getItem("token");
@@ -94,7 +78,7 @@ export const Customers: React.FC = () => {
   const isAdmin = getUserRole();
 
   const loadCustomers = useCallback(
-    async (query = "", sort = "companyname", asc = true) => {
+    async (query = "", sort = "companyname", asc = false) => {
       try {
         setLoading(true);
         const response = await api.get<Customer[]>("/customers", {
@@ -133,14 +117,6 @@ export const Customers: React.FC = () => {
   }, [searchQuery, sortBy, ascending, loadCustomers]);
 
   const activeCustomer = selectedCustomer;
-
-  // Compute breakdown stats for header indicators
-  const totalCustomers = customers.length;
-  const corporateCount = useMemo(
-    () => customers.filter((c) => c.contacts && c.contacts.length > 0).length,
-    [customers],
-  );
-  const personalCount = totalCustomers - corporateCount;
 
   const handleCreateCustomer = async (dto: CreateCustomerDto) => {
     setSaving(true);
@@ -294,7 +270,7 @@ export const Customers: React.FC = () => {
     const params: Record<string, string> = {};
     if (val) params.search = val;
     if (sortBy) params.sortBy = sortBy;
-    if (!ascending) params.ascending = "false";
+    if (ascending) params.ascending = String(ascending);
     setSearchParams(params, { replace: true });
   };
 
@@ -309,119 +285,83 @@ export const Customers: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
-      {/* Executive Header Banner matching Dashboard style */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Customer Management Hub</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                </span>
-                {today}
-              </div>
-            </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
-              Client Directory
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Manage client companies, contact profiles, and tax identification
-              details across your active account portfolio.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {/* Real-time Directory Counters */}
-            <div className="hidden lg:flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-semibold">
-              <div className="flex items-center gap-1.5 text-amber-300 font-bold">
-                <Users className="w-4 h-4" />
-                <span>{totalCustomers}</span>
-              </div>
-              <span className="text-slate-500">•</span>
-              <div className="flex items-center gap-1 text-slate-300">
-                <Building2 className="w-3.5 h-3.5 text-amber-400" />
-                <span>{corporateCount} Corp</span>
-              </div>
-              <span className="text-slate-500">•</span>
-              <div className="flex items-center gap-1 text-slate-300">
-                <User className="w-3.5 h-3.5 text-indigo-400" />
-                <span>{personalCount} Ind</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setFormError("");
-                setIsCreateOpen(true);
-              }}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-            >
-              <Plus className="w-4 h-4 stroke-3" />
-              <span>Add Customer</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-          </div>
+    <div className="space-y-6 pb-10 px-4 sm:px-0">
+      {/* Flat Page Header matching Quotation style */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Client Directory
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
+            Manage client companies, contact profiles, and tax identification
+            details.
+          </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setFormError("");
+            setIsCreateOpen(true);
+          }}
+          className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create Customer</span>
+        </button>
       </div>
 
       {apiError && (
-        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-4 rounded-2xl flex items-center justify-between shadow-xs">
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-4 rounded-xl flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
             <span className="text-sm font-medium">{apiError}</span>
           </div>
           <button
             onClick={() => loadCustomers(searchQuery, sortBy, ascending)}
-            className="text-xs font-bold bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-xl shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-200"
+            className="text-xs font-bold bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 px-3.5 py-1.5 rounded-xl shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Retry
           </button>
         </div>
       )}
 
-      {/* Professional Filter & Search Toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none space-y-4">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-1 max-w-lg">
+      {/* Filter & Search Toolbar matching Quotation style */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 max-w-md">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
-                placeholder="Search by company name, TIN..."
+                placeholder="Search by contact name, email, or company..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="w-full bg-slate-50/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all shadow-2xs"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 transition-all shadow-2xs"
               />
             </div>
+
+            {searchQuery && (
+              <button
+                onClick={() => setSearchParams({}, { replace: true })}
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-2xs"
+              >
+                <X className="w-3.5 h-3.5" /> Clear
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Main Customers Table Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none overflow-hidden">
+      {/* Main Customers Table Container matching Quotation table container style */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <CustomerTable
           loading={loading}
           customers={customers}
           isAdmin={isAdmin}
           sortBy={sortBy}
           ascending={ascending}
+          searchQuery={searchQuery}
           onSort={handleSortChange}
           onView={(cust) => setSelectedCustomer(cust)}
           onEditCustomer={handleEditCustomer}

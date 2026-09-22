@@ -168,9 +168,11 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
     };
   }, [currentCustomer]);
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!editForm.companyName.trim()) {
-      toast.error("Customer name is required.");
+      toast.error(
+        isPersonal ? "Customer name is required." : "Company name is required.",
+      );
       return;
     }
 
@@ -179,18 +181,25 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
       tin: isPersonal ? "" : editForm.tin,
     };
 
-    if (onEditCustomer) {
-      onEditCustomer(currentCustomer, payload);
+    try {
+      if (onEditCustomer) {
+        onEditCustomer(currentCustomer, payload);
+      } else {
+        await api.put(`/customers/${currentCustomer.customerId}`, payload);
+        toast.success("Customer profile updated successfully!");
+      }
+
+      setCurrentCustomer((prev) => ({
+        ...prev,
+        companyName: editForm.companyName,
+        companyAddress: editForm.companyAddress,
+        tin: isPersonal ? "" : editForm.tin,
+      }));
+
+      setIsEditingProfile(false);
+    } catch {
+      toast.error("Failed to update customer profile.");
     }
-
-    setCurrentCustomer((prev) => ({
-      ...prev,
-      companyName: editForm.companyName,
-      companyAddress: editForm.companyAddress,
-      tin: isPersonal ? "" : editForm.tin,
-    }));
-
-    setIsEditingProfile(false);
   };
 
   const handleViewQuotationPdf = async (id: number, number: string) => {
@@ -296,43 +305,21 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-950/20 border border-slate-100 dark:border-slate-800 w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
-          {/* Top Accent Gradient Bar */}
-          <div className="h-1.5 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
-
-          {/* Modal Header */}
-          <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-            <div className="flex items-center gap-4 min-w-0 flex-1">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-xs shrink-0">
-                <Building className="w-6 h-6" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+          {/* Flat Modal Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 shadow-2xs shrink-0">
+                <Building className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2 mb-0.5">
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    Customer Profile & History
-                  </span>
-                  {!isEditingProfile && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditForm({
-                          companyName: currentCustomer.companyName,
-                          tin: currentCustomer.tin || "",
-                          companyAddress: currentCustomer.companyAddress || "",
-                          notes: currentCustomer.notes || "",
-                        });
-                        setIsEditingProfile(true);
-                      }}
-                      className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300 hover:text-amber-800 font-extrabold cursor-pointer px-2.5 py-1 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-all border border-amber-200/40 dark:border-amber-800/40 shadow-2xs"
-                    >
-                      <Pencil className="w-3 h-3" /> Edit Profile
-                    </button>
-                  )}
-                </div>
-
-                {isEditingProfile ? (
-                  <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                    Customer Overview
+                  </h2>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  {isEditingProfile ? (
                     <input
                       type="text"
                       value={editForm.companyName}
@@ -342,60 +329,91 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                           companyName: e.target.value,
                         })
                       }
-                      className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1 text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] w-full max-w-sm"
-                      placeholder="Company Name"
+                      className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs max-w-xs"
+                      placeholder={
+                        isPersonal ? "Customer Full Name" : "Company Name"
+                      }
                     />
-                    <button
-                      type="button"
-                      onClick={handleSaveProfile}
-                      className="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer shrink-0 border border-emerald-200/60"
-                      title="Save"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingProfile(false)}
-                      className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 transition-colors cursor-pointer shrink-0 border border-slate-200"
-                      title="Cancel"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
-                    {currentCustomer.companyName}
-                  </h2>
-                )}
+                  ) : (
+                    <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
+                      {currentCustomer.companyName}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Detailed view, contacts, and transaction history
+                </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 ml-4"
-              aria-label="Close modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-3">
+              <span
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border uppercase shadow-2xs ${
+                  isPersonal
+                    ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60"
+                    : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60"
+                }`}
+              >
+                {isPersonal ? "Individual" : "Corporate"}
+              </span>
+
+              {!isEditingProfile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditForm({
+                      companyName: currentCustomer.companyName,
+                      tin: currentCustomer.tin || "",
+                      companyAddress: currentCustomer.companyAddress || "",
+                      notes: currentCustomer.notes || "",
+                    });
+                    setIsEditingProfile(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+                >
+                  <Pencil className="w-3.5 h-3.5 text-slate-500" /> Edit Profile
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleSaveProfile}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 shadow-2xs"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-2xs"
+                  >
+                    <X className="w-3.5 h-3.5" /> Cancel
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Modal Scrollable Body */}
-          <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 bg-slate-50/50 dark:bg-slate-950/40">
-            {/* Info Cards Grid (Read-Only clean data blocks) */}
+          <div className="p-6 overflow-y-auto space-y-5 flex-1 bg-slate-50/50 dark:bg-slate-950/50">
+            {/* Info Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Tax ID Card */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
-                    <FileText className="w-3.5 h-3.5 text-[#F9B53F]" /> Tax ID
-                    (TIN)
-                  </span>
-                </div>
-
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-slate-400" /> Tax ID
+                  (TIN)
+                </span>
                 {isEditingProfile ? (
                   isPersonal ? (
-                    <div className="text-slate-400 dark:text-slate-500 italic text-xs bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="text-slate-400 dark:text-slate-500 italic text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                       Not applicable
                     </div>
                   ) : (
@@ -406,11 +424,11 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                         setEditForm({ ...editForm, tin: e.target.value })
                       }
                       placeholder="000-000-000-000"
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 shadow-2xs mt-1"
                     />
                   )
                 ) : (
-                  <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200">
+                  <p className="text-xs font-mono font-semibold text-slate-900 dark:text-slate-100 pt-0.5">
                     {isPersonal
                       ? "Not applicable"
                       : currentCustomer.tin || "N/A"}
@@ -418,15 +436,10 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                 )}
               </div>
 
-              {/* Business Address Card */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[10px] font-extrabold uppercase tracking-wider">
-                    <MapPin className="w-3.5 h-3.5 text-[#F9B53F]" /> Business
-                    Address
-                  </span>
-                </div>
-
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" /> Address
+                </span>
                 {isEditingProfile ? (
                   <input
                     type="text"
@@ -438,10 +451,10 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                       })
                     }
                     placeholder="Street, City, Province"
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F]"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs mt-1"
                   />
                 ) : (
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <p className="text-xs font-medium text-slate-900 dark:text-slate-100 pt-0.5 leading-relaxed">
                     {currentCustomer.companyAddress || "N/A"}
                   </p>
                 )}
@@ -449,14 +462,14 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
             </div>
 
             {/* Interactive Navigation Tabs */}
-            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
               <button
                 type="button"
                 onClick={() => setActiveTab("contacts")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === "contacts"
-                    ? "bg-[#FFCB62] text-slate-900 shadow-xs"
-                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
+                    ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-2xs"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
                 }`}
               >
                 Contacts ({currentCustomer.contacts?.length || 0})
@@ -464,86 +477,87 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("quotations")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === "quotations"
-                    ? "bg-[#FFCB62] text-slate-900 shadow-xs"
-                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
+                    ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-2xs"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
                 }`}
               >
-                Quotations History ({quotations.length})
+                Quotations ({quotations.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("invoices")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === "invoices"
-                    ? "bg-[#FFCB62] text-slate-900 shadow-xs"
-                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
+                    ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-2xs"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
                 }`}
               >
-                Invoices History ({invoices.length})
+                Invoices ({invoices.length})
               </button>
             </div>
 
             {/* TAB 1: CONTACTS */}
             {activeTab === "contacts" && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Associated Contacts
                     </h3>
                   </div>
                   <button
                     type="button"
                     onClick={onAddContact}
-                    className="inline-flex items-center gap-1.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                   >
-                    <UserPlus className="w-4 h-4" /> Add Contact
+                    <UserPlus className="w-3.5 h-3.5 text-slate-500" /> Add
+                    Contact
                   </button>
                 </div>
 
-                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {currentCustomer.contacts?.length === 0 ||
                   !currentCustomer.contacts ? (
-                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs italic shadow-xs">
+                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs italic shadow-2xs">
                       No contacts added yet.
                     </div>
                   ) : (
                     currentCustomer.contacts?.map((contact, idx) => (
                       <div
                         key={idx}
-                        className="p-4.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
-                        <div className="space-y-1 min-w-0">
+                        <div className="space-y-0.5 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
+                            <span className="font-semibold text-slate-900 dark:text-slate-100">
                               {contact.name}
                             </span>
                             {contact.position && (
-                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                              <span className="text-slate-500 dark:text-slate-400 font-normal">
                                 ({contact.position})
                               </span>
                             )}
                             {contact.isPrimary && (
-                              <span className="text-[9px] font-black px-2.5 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 uppercase tracking-wide">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 uppercase">
                                 Primary
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 font-medium truncate">
+                          <p className="text-slate-500 dark:text-slate-400 font-normal truncate">
                             {contact.email || "No email"} •{" "}
                             {contact.phone || "No phone"}
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-end gap-2 shrink-0">
+                        <div className="flex items-center justify-end gap-1.5 shrink-0">
                           <button
                             type="button"
                             onClick={() => onEditContact(contact)}
                             title="Edit Contact"
-                            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700 shadow-2xs"
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
@@ -552,7 +566,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                               type="button"
                               onClick={() => onDeleteContact(contact.contactId)}
                               title="Delete Contact"
-                              className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 transition-all cursor-pointer border border-rose-200/60 dark:border-rose-900/60 shadow-2xs"
+                              className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 transition-all cursor-pointer border border-rose-200 dark:border-rose-900/60 shadow-2xs"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -567,21 +581,21 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
             {/* TAB 2: QUOTATIONS HISTORY */}
             {activeTab === "quotations" && (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Past Quotations (Click to View)
                   </h3>
                 </div>
 
-                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {loadingHistory ? (
                     <div className="p-8 text-center text-xs text-slate-400">
                       Loading quotations...
                     </div>
                   ) : quotations.length === 0 ? (
-                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-slate-400 text-xs italic shadow-xs">
+                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs italic shadow-2xs">
                       No quotations found for this customer.
                     </div>
                   ) : (
@@ -589,26 +603,24 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                       <div
                         key={q.quotationId}
                         onClick={() => setSelectedQuotation(q)}
-                        className="p-4 bg-white dark:bg-slate-900 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center justify-between text-xs cursor-pointer transition-all group"
+                        className="p-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center justify-between text-xs cursor-pointer transition-all group"
                       >
-                        <div className="space-y-1">
-                          <span className="font-mono font-bold text-slate-900 dark:text-white text-sm group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-semibold text-slate-900 dark:text-white group-hover:underline">
                             {q.quotationNumber}
                           </span>
-                          <p className="text-slate-400 font-medium">
+                          <p className="text-slate-500 dark:text-slate-400 text-[11px]">
                             Created:{" "}
                             {new Date(q.createdAt).toLocaleDateString()} •
                             Status:{" "}
-                            <strong className="text-amber-500">
-                              {q.status}
-                            </strong>
+                            <span className="font-bold">{q.status}</span>
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="font-mono font-bold text-slate-900 dark:text-white text-sm">
+                          <div className="font-mono font-semibold text-slate-900 dark:text-white">
                             {currency(q.totalAmount)}
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 group-hover:text-amber-500 transition-all" />
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                         </div>
                       </div>
                     ))
@@ -619,21 +631,21 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
             {/* TAB 3: INVOICES HISTORY */}
             {activeTab === "invoices" && (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Receipt className="w-3.5 h-3.5 text-slate-400" />
+                  <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Past Invoices & Billing Statements (Click to View)
                   </h3>
                 </div>
 
-                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {loadingHistory ? (
                     <div className="p-8 text-center text-xs text-slate-400">
                       Loading invoices...
                     </div>
                   ) : invoices.length === 0 ? (
-                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-slate-400 text-xs italic shadow-xs">
+                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs italic shadow-2xs">
                       No invoices found for this customer.
                     </div>
                   ) : (
@@ -641,20 +653,20 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                       <div
                         key={inv.invoiceId}
                         onClick={() => setSelectedInvoice(inv)}
-                        className="p-4 bg-white dark:bg-slate-900 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center justify-between text-xs cursor-pointer transition-all group"
+                        className="p-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center justify-between text-xs cursor-pointer transition-all group"
                       >
-                        <div className="space-y-1">
-                          <span className="font-mono font-bold text-slate-900 dark:text-white text-sm group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-semibold text-slate-900 dark:text-white group-hover:underline">
                             {inv.invoiceNumber}
                           </span>
-                          <p className="text-slate-400 font-medium">
+                          <p className="text-slate-500 dark:text-slate-400 text-[11px]">
                             Date: {new Date(inv.createdAt).toLocaleDateString()}{" "}
                             • Status:{" "}
                             <span
                               className={
                                 inv.status === "Paid"
-                                  ? "text-emerald-500 font-bold"
-                                  : "text-amber-500 font-bold"
+                                  ? "text-emerald-600 font-bold"
+                                  : "text-amber-600 font-bold"
                               }
                             >
                               {inv.status}
@@ -662,10 +674,10 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="font-mono font-bold text-slate-900 dark:text-white text-sm">
+                          <div className="font-mono font-semibold text-slate-900 dark:text-white">
                             {currency(inv.totalAmount)}
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 group-hover:text-amber-500 transition-all" />
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                         </div>
                       </div>
                     ))
@@ -675,12 +687,12 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Modal Footer Actions */}
-          <div className="flex items-center justify-end px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-xs">
+          {/* Modal Footer Actions matching QuotationDetailsModal */}
+          <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-2xs">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-extrabold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 shadow-2xs"
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
             >
               Close Profile
             </button>
