@@ -883,9 +883,12 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     const variantQuery = variantSearchQueries[idx] || "";
                     const selectedProd = selectedProducts[idx];
 
-                    const filteredProducts = products.filter((p) =>
-                      p.name.toLowerCase().includes(prodQuery.toLowerCase()),
-                    );
+                    const filteredProducts = products.filter((p) => {
+                      const matchesQuery = p.name
+                        .toLowerCase()
+                        .includes(prodQuery.toLowerCase());
+                      return matchesQuery && p.isActive === true;
+                    });
 
                     const filteredVariants = (
                       selectedProd?.variants || []
