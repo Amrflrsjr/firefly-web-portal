@@ -8,6 +8,7 @@ export interface UserModalSubmitData {
   password?: string;
   newPassword?: string;
   role?: string;
+  profilePictureUrl?: string;
   isActive?: boolean;
 }
 
@@ -21,6 +22,7 @@ interface UserModalProps {
     email?: string;
     role?: string;
     isActive?: boolean;
+    profilePictureUrl?: string;
   };
   submitting: boolean;
   onClose: () => void;
@@ -43,6 +45,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     password: "",
     newPassword: "",
     role: initialData?.role || "Staff",
+    profilePictureUrl: initialData?.profilePictureUrl || "",
     isActive: initialData?.isActive ?? true,
   });
 
@@ -59,12 +62,14 @@ export const UserModal: React.FC<UserModalProps> = ({
         email: formData.email,
         password: formData.password,
         role: formData.role,
+        profilePictureUrl: formData.profilePictureUrl,
       });
     } else if (type === "edit") {
       onSubmit({
         fullName: formData.fullName,
         email: formData.email,
         role: formData.role,
+        profilePictureUrl: formData.profilePictureUrl,
         isActive: formData.isActive,
       });
     } else if (type === "reset-password") {
@@ -75,32 +80,33 @@ export const UserModal: React.FC<UserModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-lg overflow-hidden my-8 flex flex-col max-h-[90vh] zoom-in-95 duration-200">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      {/* Modal Shell with compact width matching other modals */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden my-auto flex flex-col max-h-[95vh]">
+        {/* Flat Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-2xs">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 shadow-2xs">
               {type === "reset-password" ? (
-                <Key className="w-5 h-5" />
+                <Key className="w-4 h-4" />
               ) : (
-                <User className="w-5 h-5" />
+                <User className="w-4 h-4" />
               )}
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Administration
-              </p>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 {title}
               </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Administration portal access credentials &amp; permissions
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+            className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -109,12 +115,12 @@ export const UserModal: React.FC<UserModalProps> = ({
         {/* Form Body */}
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/40"
+          className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50"
         >
           {type === "create" && (
-            <>
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Full Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -125,11 +131,11 @@ export const UserModal: React.FC<UserModalProps> = ({
                     setFormData({ ...formData, fullName: e.target.value })
                   }
                   placeholder="e.g. John Doe"
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Username <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -140,11 +146,11 @@ export const UserModal: React.FC<UserModalProps> = ({
                     setFormData({ ...formData, username: e.target.value })
                   }
                   placeholder="johndoe"
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Email Address <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -155,11 +161,11 @@ export const UserModal: React.FC<UserModalProps> = ({
                     setFormData({ ...formData, email: e.target.value })
                   }
                   placeholder="john@fireflycraftsph.com"
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -172,12 +178,12 @@ export const UserModal: React.FC<UserModalProps> = ({
                       setFormData({ ...formData, password: e.target.value })
                     }
                     placeholder="••••••••"
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 pr-10 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 pr-9 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -188,7 +194,7 @@ export const UserModal: React.FC<UserModalProps> = ({
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Role
                 </label>
                 <select
@@ -196,19 +202,19 @@ export const UserModal: React.FC<UserModalProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, role: e.target.value })
                   }
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs cursor-pointer"
                 >
                   <option value="Staff">Staff</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
-            </>
+            </div>
           )}
 
           {type === "edit" && (
-            <>
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Full Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -218,11 +224,11 @@ export const UserModal: React.FC<UserModalProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, fullName: e.target.value })
                   }
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Email Address <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -232,11 +238,11 @@ export const UserModal: React.FC<UserModalProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Role
                 </label>
                 <select
@@ -244,13 +250,13 @@ export const UserModal: React.FC<UserModalProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, role: e.target.value })
                   }
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs cursor-pointer"
                 >
                   <option value="Staff">Staff</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
-              <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs">
+              <div className="flex items-center gap-2.5 pt-1">
                 <input
                   type="checkbox"
                   id="modalIsActive"
@@ -258,52 +264,54 @@ export const UserModal: React.FC<UserModalProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, isActive: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-[#F9B53F] focus:ring-[#F9B53F] cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-500 cursor-pointer bg-white dark:bg-slate-800"
                 />
                 <label
                   htmlFor="modalIsActive"
-                  className="text-xs font-extrabold text-slate-700 dark:text-slate-300 cursor-pointer select-none flex-1"
+                  className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none"
                 >
-                  Account Active
+                  Account Active Status
                 </label>
               </div>
-            </>
+            </div>
           )}
 
           {type === "reset-password" && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                New Password (min 8 chars){" "}
-                <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={formData.newPassword}
-                onChange={(e) =>
-                  setFormData({ ...formData, newPassword: e.target.value })
-                }
-                placeholder="••••••••"
-                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] shadow-2xs"
-              />
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  New Password (min 8 chars){" "}
+                  <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={formData.newPassword}
+                  onChange={(e) =>
+                    setFormData({ ...formData, newPassword: e.target.value })
+                  }
+                  placeholder="••••••••"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                />
+              </div>
             </div>
           )}
 
           {/* Modal Actions Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 -mx-6 -mb-6 p-6 shrink-0 shadow-sm">
+          <div className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-2xs">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
             >
               {submitting ? "Processing..." : "Confirm"}
             </button>

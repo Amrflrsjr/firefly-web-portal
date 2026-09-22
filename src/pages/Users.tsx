@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import axios from "axios";
 import {
@@ -7,7 +8,6 @@ import {
   Key,
   Trash2,
   Edit,
-  Sparkles,
   RefreshCw,
   Check,
   X,
@@ -16,6 +16,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Search,
+  Filter,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -50,6 +52,11 @@ const getImageUrl = (url?: string) => {
 
 export const Users: React.FC = () => {
   const { username: currentUsername } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
+  const roleFilter = searchParams.get("role") || "all";
+  const statusFilter = searchParams.get("status") || "all";
+
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,6 +66,7 @@ export const Users: React.FC = () => {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
   // Pagination & Sorting states
   const [currentPage, setCurrentPage] = useState(1);
@@ -118,6 +126,20 @@ export const Users: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  const updateQueryParams = (updates: Record<string, string>) => {
+    const params: Record<string, string> = {
+      search: searchQuery,
+      role: roleFilter,
+      status: statusFilter,
+      ...updates,
+    };
+    Object.keys(params).forEach((key) => {
+      if (!params[key] || params[key] === "all") delete params[key];
+    });
+    setSearchParams(params, { replace: true });
+    setCurrentPage(1);
+  };
 
   const handleCreateUser = async (data: UserModalSubmitData) => {
     setSubmitting(true);
@@ -237,16 +259,36 @@ export const Users: React.FC = () => {
       );
     }
     return ascending ? (
-      <ArrowUp className="w-3 h-3 text-[#F9B53F]" />
+      <ArrowUp className="w-3 h-3 text-slate-700 dark:text-slate-300" />
     ) : (
-      <ArrowDown className="w-3 h-3 text-[#F9B53F]" />
+      <ArrowDown className="w-3 h-3 text-slate-700 dark:text-slate-300" />
     );
   };
 
-  // Filter out the currently logged-in admin from the users list
-  const filteredUsers = users.filter(
-    (u) => u.username.toLowerCase() !== (currentUsername || "").toLowerCase(),
-  );
+  // Filter out current admin user and apply search / filters
+  const filteredUsers = users.filter((u) => {
+    const isNotSelf =
+      u.username.toLowerCase() !== (currentUsername || "").toLowerCase();
+    if (!isNotSelf) return false;
+
+    const matchesSearch =
+      !searchQuery ||
+      u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const userRole = u.roles[0] || "Staff";
+    const matchesRole =
+      roleFilter === "all" ||
+      userRole.toLowerCase() === roleFilter.toLowerCase();
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && u.isActive) ||
+      (statusFilter === "inactive" && !u.isActive);
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     let valA = "";
@@ -270,105 +312,169 @@ export const Users: React.FC = () => {
     return 0;
   });
 
-  const totalPages = Math.ceil(sortedUsers.length / pageSize);
+  const totalPages = Math.ceil(sortedUsers.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const currentUsers = sortedUsers.slice(startIndex, startIndex + pageSize);
 
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const hasActiveFilters =
+    roleFilter !== "all" || statusFilter !== "all" || searchQuery !== "";
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
-      {/* Executive Header Banner */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Administration Command Center</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                </span>
-                {today}
-              </div>
+    <div className="space-y-6 pb-10 px-4 sm:px-0">
+      {/* Flat Page Header matching Quotations */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            User Management
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
+            Manage team portal accounts, access levels, roles, and security
+            credentials.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {refreshing && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              Syncing
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Add New User</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter & Search Toolbar matching Quotations */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 max-w-md">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search by name, username, email..."
+                value={searchQuery}
+                onChange={(e) => updateQueryParams({ search: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 transition-all shadow-2xs"
+              />
             </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
-              User Management
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Manage team portal accounts, access levels, roles, and security
-              credentials with real-time sync.
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            {refreshing && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Syncing
-              </span>
-            )}
+
             <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+              onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
+              className={`lg:hidden flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer ${
+                isMobileFiltersOpen || hasActiveFilters
+                  ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white"
+                  : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+              }`}
+              title="Toggle Filters"
             >
-              <UserPlus className="w-4 h-4" />
-              <span>Add New User</span>
+              <Filter className="w-4 h-4" />
             </button>
+          </div>
+
+          <div
+            className={`flex-wrap items-center gap-2.5 ${
+              isMobileFiltersOpen ? "flex" : "hidden lg:flex"
+            }`}
+          >
+            <div className="w-full sm:w-auto">
+              <select
+                value={roleFilter}
+                onChange={(e) => updateQueryParams({ role: e.target.value })}
+                className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
+              >
+                <option value="all">All Roles</option>
+                <option value="Admin">Admin</option>
+                <option value="Staff">Staff</option>
+              </select>
+            </div>
+
+            <div className="w-full sm:w-auto">
+              <select
+                value={statusFilter}
+                onChange={(e) => updateQueryParams({ status: e.target.value })}
+                className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setSearchParams({}, { replace: true });
+                  setIsMobileFiltersOpen(false);
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-2xs"
+              >
+                <X className="w-3.5 h-3.5" /> Clear Filters
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Users Table Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xl shadow-slate-100/60 dark:shadow-none overflow-hidden">
+      {/* Users Table Card matching Quotations */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col">
         {loading ? (
-          <div className="p-16 text-center text-slate-400 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900">
-            <div className="w-6 h-6 border-2 border-[#F9B53F] border-t-transparent rounded-full animate-spin" />
-            <span className="font-semibold text-slate-600 dark:text-slate-300 text-sm">
+          <div className="p-16 text-center text-slate-400 text-xs font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900">
+            <div className="w-7 h-7 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" />
+            <span className="font-semibold text-slate-600 dark:text-slate-300">
               Loading users directory...
             </span>
           </div>
         ) : sortedUsers.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-medium">
-            No other users found. Click{" "}
-            <b className="text-slate-700 dark:text-slate-300">"Add New User"</b>{" "}
-            above to create one.
+          <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-xs font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                No users matched your search criteria.
+              </p>
+              <p className="text-slate-400 text-xs">
+                {searchQuery || roleFilter !== "all" || statusFilter !== "all"
+                  ? "Try adjusting your filters or search query."
+                  : 'There are currently no other user accounts. Click "+ Add New User" above to create one.'}
+              </p>
+            </div>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => setSearchParams({}, { replace: true })}
+                className="mt-2 px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 rounded-xl font-semibold text-xs transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         ) : (
-          <div>
+          <>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
+                  <tr className="bg-slate-50/75 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase text-slate-400 dark:text-slate-400 tracking-wider">
                     <th
                       onClick={() => handleSort("fullname")}
-                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                      className="py-3 px-5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
                     >
                       <div className="flex items-center gap-1.5">
-                        User
+                        User Profile
                         {renderSortIcon("fullname")}
                       </div>
                     </th>
                     <th
                       onClick={() => handleSort("role")}
-                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                      className="py-3 px-5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
                     >
                       <div className="flex items-center gap-1.5">
                         Role
@@ -377,18 +483,22 @@ export const Users: React.FC = () => {
                     </th>
                     <th
                       onClick={() => handleSort("status")}
-                      className="py-3.5 px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                      className="py-3 px-5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
                     >
                       <div className="flex items-center gap-1.5">
                         Status
                         {renderSortIcon("status")}
                       </div>
                     </th>
-                    <th className="py-3.5 px-6">Created Date</th>
-                    <th className="py-3.5 px-6 text-right">Actions</th>
+                    <th className="py-3 px-5 whitespace-nowrap">
+                      Created Date
+                    </th>
+                    <th className="py-3 px-5 text-right whitespace-nowrap">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs font-medium">
                   {currentUsers.map((u) => {
                     const isEditing = editingUserId === u.id;
                     const resolvedAvatarUrl = getImageUrl(u.profilePictureUrl);
@@ -396,21 +506,18 @@ export const Users: React.FC = () => {
                     return (
                       <tr
                         key={u.id}
-                        className={`transition-colors ${
+                        className={`transition-colors group ${
                           isEditing
-                            ? "bg-amber-50/70 dark:bg-amber-950/30 ring-1 ring-inset ring-amber-300/60 dark:ring-amber-500/30"
-                            : "hover:bg-[#FCFDFF] dark:hover:bg-slate-850 group"
+                            ? "bg-amber-50/70 dark:bg-amber-950/30"
+                            : "hover:bg-slate-50/50 dark:hover:bg-slate-850/50"
                         }`}
                       >
-                        <td className="py-4 px-6 text-slate-800 dark:text-slate-100">
+                        <td className="py-3.5 px-5 text-slate-800 dark:text-slate-100">
                           {isEditing ? (
                             <div
-                              className="space-y-1.5"
+                              className="space-y-1.5 py-1"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">
-                                Edit Full Name
-                              </span>
                               <input
                                 type="text"
                                 value={editForm.fullName}
@@ -420,11 +527,9 @@ export const Users: React.FC = () => {
                                     fullName: e.target.value,
                                   })
                                 }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
+                                placeholder="Full Name"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 shadow-2xs"
                               />
-                              <span className="text-[10px] font-bold text-slate-400 uppercase block pt-1">
-                                Email Address
-                              </span>
                               <input
                                 type="email"
                                 value={editForm.email}
@@ -434,12 +539,13 @@ export const Users: React.FC = () => {
                                     email: e.target.value,
                                   })
                                 }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
+                                placeholder="Email Address"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 shadow-2xs"
                               />
                             </div>
                           ) : (
-                            <div className="flex items-center gap-3.5">
-                              <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-black text-xs flex items-center justify-center border border-amber-200/60 dark:border-amber-800/50 group-hover:scale-105 transition-transform shrink-0 shadow-2xs overflow-hidden">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0 shadow-2xs overflow-hidden">
                                 {resolvedAvatarUrl && !failedImages[u.id] ? (
                                   <img
                                     src={resolvedAvatarUrl}
@@ -457,10 +563,10 @@ export const Users: React.FC = () => {
                                 )}
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900 dark:text-white group-hover:text-amber-900 dark:group-hover:text-amber-300 transition-colors">
+                                <p className="font-semibold text-slate-900 dark:text-white">
                                   {u.fullName}
                                 </p>
-                                <p className="text-xs text-slate-400 dark:text-slate-400 font-normal">
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
                                   @{u.username} • {u.email}
                                 </p>
                               </div>
@@ -468,75 +574,63 @@ export const Users: React.FC = () => {
                           )}
                         </td>
 
-                        <td className="py-4 px-6">
+                        <td className="py-3.5 px-5">
                           {isEditing ? (
-                            <div
-                              className="space-y-1"
+                            <select
+                              value={editForm.role}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  role: e.target.value,
+                                })
+                              }
+                              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">
-                                Select Role
-                              </span>
-                              <select
-                                value={editForm.role}
-                                onChange={(e) =>
-                                  setEditForm({
-                                    ...editForm,
-                                    role: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F9B53F] focus:ring-2 focus:ring-amber-400/20 shadow-2xs"
-                              >
-                                <option value="Admin">Admin</option>
-                                <option value="Staff">Staff</option>
-                              </select>
-                            </div>
+                              <option value="Admin">Admin</option>
+                              <option value="Staff">Staff</option>
+                            </select>
                           ) : (
                             <span
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-semibold border shadow-2xs ${
                                 u.roles.includes("Admin")
-                                  ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/80 dark:border-purple-800/60"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700"
+                                  ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900/60"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                               }`}
                             >
-                              <Shield className="w-3.5 h-3.5" />
+                              <Shield className="w-3 h-3" />
                               {u.roles.join(", ") || "Staff"}
                             </span>
                           )}
                         </td>
 
-                        <td className="py-4 px-6">
+                        <td className="py-3.5 px-5">
                           {isEditing ? (
-                            <div
-                              className="space-y-1"
+                            <label
+                              className="flex items-center gap-1.5 cursor-pointer"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">
-                                Status
+                              <input
+                                type="checkbox"
+                                checked={editForm.isActive}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    isActive: e.target.checked,
+                                  })
+                                }
+                                className="w-3.5 h-3.5 text-slate-900 rounded border-slate-300 dark:border-slate-700 focus:ring-slate-500 bg-white dark:bg-slate-800"
+                              />
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                {editForm.isActive ? "Active" : "Inactive"}
                               </span>
-                              <label className="flex items-center gap-2 cursor-pointer pt-1">
-                                <input
-                                  type="checkbox"
-                                  checked={editForm.isActive}
-                                  onChange={(e) =>
-                                    setEditForm({
-                                      ...editForm,
-                                      isActive: e.target.checked,
-                                    })
-                                  }
-                                  className="w-4 h-4 text-amber-500 rounded border-slate-300 dark:border-slate-700 focus:ring-amber-400 bg-white dark:bg-slate-800"
-                                />
-                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                  {editForm.isActive ? "Active" : "Inactive"}
-                                </span>
-                              </label>
-                            </div>
+                            </label>
                           ) : (
                             <span
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-semibold border shadow-2xs ${
                                 u.isActive
-                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
-                                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60"
+                                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60"
                               }`}
                             >
                               <span
@@ -549,11 +643,11 @@ export const Users: React.FC = () => {
                           )}
                         </td>
 
-                        <td className="py-4 px-6 text-slate-500 dark:text-slate-400 text-xs font-normal">
+                        <td className="py-3.5 px-5 text-slate-500 dark:text-slate-400 font-normal">
                           {new Date(u.createdAt).toLocaleDateString()}
                         </td>
 
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-3.5 px-5 text-right">
                           <div
                             className="flex items-center justify-end gap-1.5"
                             onClick={(e) => e.stopPropagation()}
@@ -564,17 +658,17 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={(e) => handleSaveEdit(e, u)}
                                   title="Save Changes"
-                                  className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 transition-all active:scale-95 cursor-pointer border border-emerald-200/60 dark:border-emerald-800/60 shadow-2xs"
+                                  className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 transition-all cursor-pointer border border-emerald-200 dark:border-emerald-900/60 shadow-2xs"
                                 >
-                                  <Check className="w-4 h-4" />
+                                  <Check className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={handleCancelEdit}
                                   title="Cancel"
-                                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all active:scale-95 cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                                 >
-                                  <X className="w-4 h-4" />
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               </>
                             ) : (
@@ -583,25 +677,25 @@ export const Users: React.FC = () => {
                                   type="button"
                                   onClick={(e) => handleStartEdit(e, u)}
                                   title="Quick Edit User"
-                                  className="p-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/80 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                                  className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center"
                                 >
-                                  <Edit className="w-4 h-4" />
+                                  <Edit className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setResetPasswordUser(u)}
                                   title="Reset Password"
-                                  className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                                  className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center"
                                 >
-                                  <Key className="w-4 h-4" />
+                                  <Key className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setDeleteUserId(u.id)}
                                   title="Permanently Delete User"
-                                  className="p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/80 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/50 rounded-xl transition-all active:scale-95 shadow-2xs cursor-pointer inline-flex items-center justify-center"
+                                  className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg transition-all shadow-2xs cursor-pointer inline-flex items-center justify-center"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </>
                             )}
@@ -614,9 +708,9 @@ export const Users: React.FC = () => {
               </table>
             </div>
 
-            {/* Pagination footer */}
+            {/* Pagination footer matching QuotationTable style */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Showing{" "}
                   <span className="font-bold text-slate-700 dark:text-slate-200">
@@ -639,12 +733,12 @@ export const Users: React.FC = () => {
                       setCurrentPage((prev) => Math.max(prev - 1, 1))
                     }
                     disabled={currentPage === 1}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
                     aria-label="Previous Page"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 px-1">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
@@ -652,7 +746,7 @@ export const Users: React.FC = () => {
                       setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                     }
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
                     aria-label="Next Page"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -660,7 +754,7 @@ export const Users: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 

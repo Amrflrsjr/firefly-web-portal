@@ -2,16 +2,15 @@ import React, { useEffect, useState, useRef } from "react";
 import api from "../api/axios";
 import axios from "axios";
 import {
-  User,
   Shield,
   Key,
   CheckCircle2,
   Lock,
-  Sparkles,
-  X,
   Camera,
   Upload,
-  ShieldCheck,
+  Mail,
+  AtSign,
+  Edit2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -26,7 +25,6 @@ interface UserProfile {
   createdAt: string;
 }
 
-// Helper to resolve relative backend upload paths
 const getImageUrl = (url?: string) => {
   if (!url) return "";
   if (
@@ -41,16 +39,10 @@ const getImageUrl = (url?: string) => {
   return `${baseOrigin}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-};
-
 export const Profile: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -70,7 +62,7 @@ export const Profile: React.FC = () => {
   });
 
   // Check if current form inputs or selected file differ from saved profile data
-  const hasProfileChanges =
+  const hasChanges =
     profile !== null &&
     (formData.fullName !== profile.fullName ||
       formData.email !== profile.email ||
@@ -117,8 +109,8 @@ export const Profile: React.FC = () => {
       });
       setSelectedFile(null);
       setPreviewImage(null);
+      setIsEditing(false);
 
-      // Dispatch custom event to instantly update the sidebar layout avatar and name without page reload
       window.dispatchEvent(
         new CustomEvent("userProfileUpdated", {
           detail: {
@@ -142,12 +134,13 @@ export const Profile: React.FC = () => {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasChanges) return;
+
     setUpdatingProfile(true);
     try {
       const data = new FormData();
       data.append("FullName", formData.fullName);
       data.append("Email", formData.email);
-      // Include the role to satisfy the backend validation requirement
       data.append("Role", profile?.roles[0] || "Staff");
 
       if (selectedFile) {
@@ -173,7 +166,7 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const handleDiscardChanges = () => {
+  const handleCancelEdit = () => {
     if (profile) {
       setFormData({
         fullName: profile.fullName,
@@ -182,6 +175,7 @@ export const Profile: React.FC = () => {
       setSelectedFile(null);
       setPreviewImage(null);
     }
+    setIsEditing(false);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -217,17 +211,11 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
   if (loading && !profile) {
     return (
-      <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-pulse">
-        <div className="h-40 sm:h-44 rounded-3xl bg-slate-100 dark:bg-slate-800" />
-        <div className="h-96 rounded-3xl bg-slate-100 dark:bg-slate-800" />
+      <div className="space-y-6 pb-10 px-4 sm:px-0 animate-pulse">
+        <div className="h-32 rounded-2xl bg-slate-100 dark:bg-slate-800" />
+        <div className="h-64 rounded-2xl bg-slate-100 dark:bg-slate-800" />
       </div>
     );
   }
@@ -236,93 +224,102 @@ export const Profile: React.FC = () => {
     previewImage || getImageUrl(profile?.profilePictureUrl);
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
-      {/* Executive Header Banner */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl transition-all duration-300 hover:shadow-slate-900/20 dark:border dark:border-slate-800">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold transition-transform hover:scale-105">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Account Control Center</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                </span>
-                {today}
-              </div>
-            </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
-              {getGreeting()},{" "}
-              {profile?.fullName || profile?.username || "User"}
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Manage your personal credentials, view your current platform
-              permissions, and secure your account access.
-            </p>
+    <div className="space-y-6 pb-10 px-4 sm:px-0 max-w-4xl mx-auto">
+      {/* Profile Header Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
+        <div className="relative group shrink-0">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-md overflow-hidden flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold text-2xl">
+            {resolvedAvatarUrl ? (
+              <img
+                src={resolvedAvatarUrl}
+                alt="Profile Avatar"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              (profile?.fullName || profile?.username || "A")
+                .charAt(0)
+                .toUpperCase()
+            )}
           </div>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 rounded-full bg-slate-950/50 backdrop-blur-xs flex flex-col items-center justify-center text-white cursor-pointer"
+              title="Change photo"
+            >
+              <Camera className="w-5 h-5 mb-0.5 text-amber-300" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">
+                Change
+              </span>
+            </button>
+          )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+        </div>
+
+        <div className="space-y-1.5 flex-1">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+              {profile?.fullName || profile?.username}
+              {/* Verified Badge SVG matching requested style */}
+              <svg
+                className="w-5 h-5 text-blue-500 shrink-0 inline-block"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.99 14.5l-3.5-3.5 1.41-1.41L10.01 13.67l5.59-5.59 1.41 1.41-7 7z" />
+              </svg>
+            </h1>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+            {profile?.email}
+          </p>
+          {isEditing && (
+            <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload Photo</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Profile Content Layout */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/60 dark:shadow-none space-y-6 transition-all duration-300 hover:shadow-2xl">
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-2xs transition-transform hover:rotate-6">
-            <User className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-              Personal Information
-            </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">
-              Your registered user identification and role assignments.
-            </p>
-          </div>
+      {/* Personal Details Card Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+            Personal details
+          </h2>
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-2xs"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-amber-500" /> Edit Profile
+            </button>
+          )}
         </div>
 
-        <form onSubmit={handleUpdateProfile} className="space-y-6">
-          <div className="flex flex-col lg:flex-row gap-8 items-start">
-            {/* Left Form Inputs Column */}
-            <div className="flex-1 w-full space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    disabled
-                    value={profile?.username || ""}
-                    className="w-full bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 cursor-not-allowed shadow-2xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">
-                    Role
-                  </label>
-                  <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-2xs">
-                    <Shield className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>{profile?.roles.join(", ") || "Staff"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">
-                  Full Name
-                </label>
+        <form onSubmit={handleUpdateProfile}>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+            {/* Full Name Row */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 gap-2">
+              <span className="font-semibold text-slate-500 dark:text-slate-400 w-40 shrink-0">
+                Full name:
+              </span>
+              {isEditing ? (
                 <input
                   type="text"
                   required
@@ -330,14 +327,43 @@ export const Profile: React.FC = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, fullName: e.target.value })
                   }
-                  className="w-full bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-[#FFCB62]/15 transition-all shadow-2xs"
+                  className="w-full sm:max-w-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                 />
-              </div>
+              ) : (
+                <span className="font-semibold text-slate-800 dark:text-slate-100 px-1">
+                  {profile?.fullName}
+                </span>
+              )}
+            </div>
 
-              <div>
-                <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">
-                  Email Address
-                </label>
+            {/* Username Row */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 gap-2">
+              <span className="font-semibold text-slate-500 dark:text-slate-400 w-40 shrink-0 flex items-center gap-1.5">
+                <AtSign className="w-3.5 h-3.5" /> Username:
+              </span>
+              <div className="w-full sm:max-w-md text-slate-700 dark:text-slate-300 font-mono font-semibold px-1">
+                @{profile?.username}
+              </div>
+            </div>
+
+            {/* Role Row */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 gap-2">
+              <span className="font-semibold text-slate-500 dark:text-slate-400 w-40 shrink-0 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" /> Role:
+              </span>
+              <div className="w-full sm:max-w-md px-1">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  {profile?.roles.join(", ") || "Staff"}
+                </span>
+              </div>
+            </div>
+
+            {/* Email Row */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 gap-2">
+              <span className="font-semibold text-slate-500 dark:text-slate-400 w-40 shrink-0 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5" /> Email:
+              </span>
+              {isEditing ? (
                 <input
                   type="email"
                   required
@@ -345,219 +371,134 @@ export const Profile: React.FC = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-[#FFCB62]/15 transition-all shadow-2xs"
+                  className="w-full sm:max-w-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                 />
-              </div>
+              ) : (
+                <span className="font-semibold text-slate-800 dark:text-slate-100 px-1">
+                  {profile?.email}
+                </span>
+              )}
             </div>
+          </div>
 
-            {/* Right Side Avatar Circle Card with Immersive Upload Overlay */}
-            <div className="w-full lg:w-72 flex flex-col items-center justify-center p-6 bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-3xl shrink-0 self-center lg:self-start transition-transform hover:scale-[1.02]">
-              <div className="relative group">
-                <div className="w-28 h-28 rounded-full bg-linear-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 text-amber-300 font-black text-2xl flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden transition-transform">
-                  {resolvedAvatarUrl ? (
-                    <img
-                      src={resolvedAvatarUrl}
-                      alt="Profile Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    (profile?.fullName || profile?.username || "A")
-                      .charAt(0)
-                      .toUpperCase()
-                  )}
-                </div>
-
-                {/* Immersive Hover Overlay Trigger */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 rounded-full bg-slate-950/60 backdrop-blur-xs flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer shadow-inner"
-                  title="Change profile picture"
-                >
-                  <Camera className="w-6 h-6 mb-1 text-amber-300 animate-bounce" />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-200">
-                    Change Photo
-                  </span>
-                </button>
-              </div>
-
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
-
+          {/* Conditional Save Actions Footer */}
+          {isEditing && (
+            <div className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-linear-to-r from-amber-500/10 to-amber-500/20 hover:from-amber-500/20 hover:to-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs active:scale-95"
+                onClick={handleCancelEdit}
+                disabled={updatingProfile}
+                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 transition-all cursor-pointer shadow-2xs"
               >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Upload New Photo</span>
+                Cancel
               </button>
-
-              <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-3 truncate max-w-full">
-                {profile?.fullName || profile?.username}
-              </p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                {profile?.roles.join(", ") || "Staff Member"}
-              </p>
+              <button
+                type="submit"
+                disabled={updatingProfile || !hasChanges}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{updatingProfile ? "Saving..." : "Save Changes"}</span>
+              </button>
             </div>
-          </div>
-
-          {/* Conditional Save & Discard Actions Footer with Smooth Accordion Motion */}
-          <div
-            className={`grid transition-all duration-300 ease-in-out overflow-hidden border-slate-100 dark:border-slate-800 ${
-              hasProfileChanges
-                ? "grid-rows-[1fr] opacity-100 pt-4 border-t"
-                : "grid-rows-[0fr] opacity-0 pt-0 border-t-0"
-            }`}
-          >
-            <div className="overflow-hidden">
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleDiscardChanges}
-                  disabled={updatingProfile}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-98 transition-all cursor-pointer shadow-2xs"
-                >
-                  <X className="w-4 h-4 text-slate-400 dark:text-slate-400" />
-                  <span>Discard Changes</span>
-                </button>
-                <button
-                  type="submit"
-                  disabled={updatingProfile}
-                  className="bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-amber-400 text-slate-950 font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-amber-500/10 active:scale-98 cursor-pointer disabled:opacity-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{updatingProfile ? "Saving..." : "Save Changes"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </form>
       </div>
 
-      {/* Password Reset Section with Balanced Metadata & Smooth Accordion Motion */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/60 dark:shadow-none space-y-6 transition-all duration-300 hover:shadow-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-2xs transition-transform hover:rotate-6">
-              <Key className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  Security &amp; Password
-                </h2>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold">
-                  <ShieldCheck className="w-3 h-3" /> Account Secured
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">
-                Ensure your account is protected with a secure password and
-                credentials.
-              </p>
-            </div>
-          </div>
-
+      {/* Security Settings Card Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+            Security Settings
+          </h2>
           {!showPasswordSection && (
             <button
               type="button"
               onClick={() => setShowPasswordSection(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all active:scale-98 cursor-pointer shadow-2xs self-start sm:self-auto"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-2xs"
             >
-              <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Change Password</span>
+              <Key className="w-3.5 h-3.5 text-amber-500" /> Change Password
             </button>
           )}
         </div>
 
-        {/* Smooth Expand/Collapse Wrapper */}
-        <div
-          className={`grid transition-all duration-300 ease-in-out overflow-hidden ${
-            showPasswordSection
-              ? "grid-rows-[1fr] opacity-100 mt-4"
-              : "grid-rows-[0fr] opacity-0 mt-0"
-          }`}
-        >
-          <div className="overflow-hidden">
-            <form onSubmit={handleResetPassword} className="space-y-5 pt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2">
-                    New Password (min 8 chars)
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-400" />
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      value={passwordData.newPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          newPassword: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                      className="w-full bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-[#FFCB62]/15 transition-all shadow-2xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2">
-                    Confirm New Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-400" />
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      value={passwordData.confirmPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                      className="w-full bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-[#FFCB62]/15 transition-all shadow-2xs"
-                    />
-                  </div>
+        {showPasswordSection && (
+          <form
+            onSubmit={handleResetPassword}
+            className="p-6 space-y-4 text-xs"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-slate-600 dark:text-slate-400 block">
+                  New Password (min 8 chars)
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    placeholder="••••••••"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3.5 py-2 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPasswordSection(false);
-                    setPasswordData({ newPassword: "", confirmPassword: "" });
-                  }}
-                  className="px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-98 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updatingPassword}
-                  className="bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-amber-400 text-slate-950 font-extrabold text-xs px-6 py-3 rounded-xl transition-all shadow-md shadow-amber-500/10 active:scale-98 cursor-pointer disabled:opacity-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
-                >
-                  <Key className="w-4 h-4" />
-                  <span>
-                    {updatingPassword ? "Updating..." : "Update Password"}
-                  </span>
-                </button>
+              <div className="space-y-1.5">
+                <label className="font-semibold text-slate-600 dark:text-slate-400 block">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    placeholder="••••••••"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3.5 py-2 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 shadow-2xs"
+                  />
+                </div>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordSection(false);
+                  setPasswordData({ newPassword: "", confirmPassword: "" });
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 transition-all cursor-pointer shadow-2xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updatingPassword}
+                className="inline-flex items-center gap-1.5 px-4 py-2 font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>
+                  {updatingPassword ? "Updating..." : "Update Password"}
+                </span>
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

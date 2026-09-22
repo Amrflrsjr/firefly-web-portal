@@ -611,7 +611,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
         {/* Modal Shell with standardized rounded-xl (12px) */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-500 overflow-hidden my-auto flex flex-col max-h-[95vh]">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-7xl overflow-hidden my-auto flex flex-col max-h-[95vh]">
           {/* Flat Modal Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
             <div>
