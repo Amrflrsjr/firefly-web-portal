@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Calculator,
   PackagePlus,
-  Sparkles,
   RefreshCw,
   Copy,
   Calendar,
@@ -729,33 +728,26 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-335 overflow-hidden my-auto flex flex-col max-h-[95vh]">
-          {/* Modal Header */}
-          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-2xs">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-                  Edit Quotation #{quotation.quotationNumber}
-                </h2>
-                <p className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-400 font-medium">
-                  Modify proposal parameters and itemized product selections
-                </p>
-              </div>
+        {/* Modal Shell with standardized rounded-xl (12px) */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-500 overflow-hidden my-auto flex flex-col max-h-[95vh]">
+          {/* Flat Modal Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                Edit Quotation #{quotation.quotationNumber}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Modify proposal parameters and itemized product selections
+              </p>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="hidden sm:block px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-xs font-bold border border-slate-200/60 dark:border-slate-700">
-                {items.length} {items.length === 1 ? "item" : "items"} •{" "}
-                <span className="text-amber-600 dark:text-amber-400 font-extrabold">
-                  {currency(calculatedTotal)}
-                </span>
-              </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 hidden sm:inline">
+                {items.length} {items.length === 1 ? "item" : "items"}
+              </span>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -763,9 +755,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
           </div>
 
           {loadingDetails ? (
-            <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-sm font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900">
-              <div className="w-6 h-6 border-2 border-[#F9B53F] border-t-transparent rounded-full animate-spin" />
-              <span>
+            <div className="p-16 text-center text-slate-400 dark:text-slate-500 text-xs font-medium flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900">
+              <div className="w-5 h-5 border-2 border-slate-600 dark:border-slate-300 border-t-transparent rounded-full animate-spin" />
+              <span className="font-semibold text-slate-600 dark:text-slate-300">
                 Loading quotation #{quotation.quotationNumber} details...
               </span>
             </div>
@@ -773,32 +765,32 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             <form
               id="edit-quotation-form"
               onSubmit={handleSubmit}
-              className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/40 dark:bg-slate-950/40 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6"
+              className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6"
               ref={searchRef}
             >
               {error && (
-                <div className="lg:col-span-12 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-4 rounded-2xl flex items-center gap-3 text-sm shadow-2xs">
-                  <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
+                <div className="lg:col-span-12 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-3.5 rounded-xl flex items-center gap-3 text-xs shadow-2xs">
+                  <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Expanded Main Column (9 Cols) */}
-              <div className="lg:col-span-9 space-y-5 sm:space-y-6">
-                {/* Proposal & Customer Details */}
-                <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
-                  <div className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="lg:col-span-9 space-y-5">
+                {/* Proposal & Customer Details Card */}
+                <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2.5">
                     Proposal & Customer Details
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Customer Searchable Dropdown */}
                     <div className="space-y-1.5 relative">
-                      <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Customer <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                         <input
                           type="text"
                           required
@@ -813,7 +805,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               setContactId(0);
                             }
                           }}
-                          className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 transition-all shadow-2xs"
                         />
                         <button
                           type="button"
@@ -827,16 +819,16 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       </div>
 
                       {isCustomerSearchOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
                           {onTriggerAddCustomer && (
                             <div
                               onClick={() => {
                                 setIsCustomerSearchOpen(false);
                                 onTriggerAddCustomer();
                               }}
-                              className="px-3.5 py-3 text-xs font-black text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer flex items-center gap-2 border-b border-amber-200 dark:border-amber-900 shrink-0 transition-colors"
+                              className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                             >
-                              <Building2 className="w-4 h-4 text-[#F9B53F]" />
+                              <Building2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                               <span>+ Add New Customer</span>
                             </div>
                           )}
@@ -844,7 +836,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                           <div className="max-h-48 overflow-y-auto">
                             {isSearchingCustomers ? (
                               <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium flex items-center justify-center gap-2">
-                                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#F9B53F]" />
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-500" />
                                 Searching...
                               </div>
                             ) : searchedCustomers.length > 0 ? (
@@ -852,9 +844,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                 <div
                                   key={c.customerId}
                                   onClick={() => handleSelectCustomer(c)}
-                                  className="px-3.5 py-2.5 text-xs hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer flex items-center justify-between border-b border-slate-50 dark:border-slate-800 last:border-none"
+                                  className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                 >
-                                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                                  <span className="font-medium text-slate-800 dark:text-slate-200">
                                     {c.companyName}
                                   </span>
                                   <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
@@ -870,10 +862,28 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       )}
                     </div>
 
+                    {/* VAT Computation */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        VAT Computation
+                      </label>
+                      <select
+                        value={vatType}
+                        onChange={(e) => setVatType(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
+                      >
+                        <option value="Exclusive">VAT Exclusive (12%)</option>
+                        <option value="Inclusive">VAT Inclusive (12%)</option>
+                        <option value="ZeroRated">
+                          VAT Exempt / Zero-Rated
+                        </option>
+                      </select>
+                    </div>
+
                     {/* Contact Person Field */}
                     <div className="space-y-1.5 relative">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                           Contact Person
                         </label>
                         {customerId > 0 && onTriggerAddContact && (
@@ -885,7 +895,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               );
                               if (currentCust) onTriggerAddContact(currentCust);
                             }}
-                            className="text-[10px] font-bold text-[#F9B53F] dark:text-amber-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
+                            className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
                           >
                             <UserPlus className="w-3 h-3" /> + Add
                           </button>
@@ -893,7 +903,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       </div>
 
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                         <input
                           type="text"
                           placeholder="Search contact person..."
@@ -908,7 +918,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               setContactEmailSnapshot("");
                             }
                           }}
-                          className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                         />
                         <button
                           type="button"
@@ -921,7 +931,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                         </button>
 
                         {isContactSearchOpen && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-48">
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-48">
                             <div className="overflow-y-auto">
                               {filteredContacts.length > 0 ? (
                                 filteredContacts.map(
@@ -934,13 +944,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                           customer,
                                         )
                                       }
-                                      className="px-3.5 py-2.5 text-xs hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer flex items-center justify-between border-b border-slate-50 dark:border-slate-800 last:border-none"
+                                      className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                     >
                                       <div>
-                                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                                        <span className="font-medium text-slate-800 dark:text-slate-200">
                                           {contact.name}
                                         </span>
-                                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                                        <div className="text-[10px] text-slate-400 dark:text-slate-500">
                                           Company: {customer.companyName}
                                         </div>
                                       </div>
@@ -961,37 +971,19 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
                     {/* Contact Email */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Contact Email
                       </label>
                       <div className="relative flex items-center">
-                        <Mail className="absolute left-3 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                        <Mail className="absolute left-3 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
                         <input
                           type="email"
                           value={contactEmailSnapshot}
                           disabled
                           placeholder="contact@company.com"
-                          className="w-full border rounded-xl pl-8 pr-3 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-850 cursor-not-allowed border-slate-200 dark:border-slate-700"
+                          className="w-full border rounded-lg pl-9 pr-3 py-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-850 cursor-not-allowed border-slate-200 dark:border-slate-700 shadow-2xs"
                         />
                       </div>
-                    </div>
-
-                    {/* VAT Computation */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
-                        VAT Computation
-                      </label>
-                      <select
-                        value={vatType}
-                        onChange={(e) => setVatType(e.target.value)}
-                        className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer"
-                      >
-                        <option value="Exclusive">VAT Exclusive (12%)</option>
-                        <option value="Inclusive">VAT Inclusive (12%)</option>
-                        <option value="ZeroRated">
-                          VAT Exempt / Zero-Rated
-                        </option>
-                      </select>
                     </div>
                   </div>
                 </div>
@@ -999,16 +991,15 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 {/* Line Items & Products Section */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-1">
-                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Line Items & Products
                     </h3>
                     <button
                       type="button"
                       onClick={addItemRow}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-amber-200/60 dark:border-amber-800/60 shadow-2xs"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                     >
-                      <Plus className="w-3.5 h-3.5 text-[#F9B53F] dark:text-amber-400" />{" "}
-                      Add Item
+                      <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Item
                     </button>
                   </div>
 
@@ -1047,27 +1038,27 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       return (
                         <div
                           key={idx}
-                          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-3xl space-y-3.5 shadow-2xs relative group"
+                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-3 shadow-2xs relative group"
                         >
                           {/* Line Header Controls */}
-                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                             <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-black">
+                              <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">
                                 {idx + 1}
                               </span>
-                              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                                 Item
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="font-mono font-extrabold text-xs text-slate-800 dark:text-slate-200 pr-1">
+                              <span className="font-mono font-semibold text-xs text-slate-800 dark:text-slate-200 pr-1">
                                 {currency(rowTotal)}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => duplicateItemRow(idx)}
-                                className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-colors cursor-pointer border border-slate-200/60 dark:border-slate-700"
+                                className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
                                 title="Duplicate Item"
                               >
                                 <Copy className="w-3.5 h-3.5" />
@@ -1075,7 +1066,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => removeItemRow(idx)}
-                                className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-500 dark:text-rose-400 rounded-lg transition-colors cursor-pointer border border-rose-200/60 dark:border-rose-900/60"
+                                className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-500 dark:text-rose-400 rounded-lg transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
                                 title="Remove Item"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1083,11 +1074,11 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Spacious Horizontal Grid Layout */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5 items-end">
+                          {/* Grid Layout */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
                             {/* 1. Select Product */}
                             <div className="lg:col-span-3 space-y-1 relative">
-                              <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                                 1. Select Product
                               </label>
                               <div className="relative">
@@ -1110,21 +1101,21 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                     });
                                     setActiveProductSearchIndex(idx);
                                   }}
-                                  className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
                               </div>
 
                               {activeProductSearchIndex === idx && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
                                   <div
                                     onClick={() => {
                                       setQuickProductTargetIndex(idx);
                                       setIsQuickProductModalOpen(true);
                                       setActiveProductSearchIndex(null);
                                     }}
-                                    className="px-3.5 py-3 text-xs font-black text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer flex items-center gap-2 border-b border-amber-200 dark:border-amber-900 shrink-0 transition-colors"
+                                    className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                   >
-                                    <PackagePlus className="w-4 h-4 text-[#F9B53F]" />
+                                    <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                     <span>+ Add New Product</span>
                                   </div>
 
@@ -1136,9 +1127,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                           onClick={() =>
                                             handleSelectProduct(idx, p)
                                           }
-                                          className="px-3.5 py-2.5 text-xs hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer flex items-center justify-between border-b border-slate-50 dark:border-slate-800 last:border-none"
+                                          className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                         >
-                                          <span className="font-bold text-slate-800 dark:text-slate-200">
+                                          <span className="font-medium text-slate-800 dark:text-slate-200">
                                             {p.name}
                                           </span>
                                           <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
@@ -1156,7 +1147,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
                             {/* 2. Select Variant */}
                             <div className="lg:col-span-3 space-y-1 relative">
-                              <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                                 2. Select Variant
                               </label>
                               <div className="relative">
@@ -1183,13 +1174,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                     });
                                     setActiveVariantSearchIndex(idx);
                                   }}
-                                  className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all disabled:opacity-50"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
                                 />
                               </div>
 
                               {activeVariantSearchIndex === idx &&
                                 selectedProd && (
-                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
                                     <div
                                       onClick={() => {
                                         setVariantModalTargetIndex(idx);
@@ -1199,9 +1190,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                         setIsVariantModalOpen(true);
                                         setActiveVariantSearchIndex(null);
                                       }}
-                                      className="px-3.5 py-3 text-xs font-black text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer flex items-center gap-2 border-b border-amber-200 dark:border-amber-900 shrink-0 transition-colors"
+                                      className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                     >
-                                      <Plus className="w-4 h-4 text-[#F9B53F]" />
+                                      <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                       <span>
                                         + Add Variant to {selectedProd.name}
                                       </span>
@@ -1222,7 +1213,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                             [idx]: "",
                                           });
                                         }}
-                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
                                       >
                                         — None (No specific variant) —
                                       </div>
@@ -1242,10 +1233,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                                   variant,
                                                 )
                                               }
-                                              className="px-3.5 py-2.5 text-xs hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer flex items-center justify-between border-b border-slate-50 dark:border-slate-800 last:border-none"
+                                              className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                             >
                                               <div>
-                                                <span className="font-bold text-slate-800 dark:text-slate-200">
+                                                <span className="font-medium text-slate-800 dark:text-slate-200">
                                                   {vLabel || "Standard Variant"}
                                                 </span>
                                                 {variant.sku &&
@@ -1255,7 +1246,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                                     </div>
                                                   )}
                                               </div>
-                                              <span className="font-bold font-mono text-slate-700 dark:text-slate-300">
+                                              <span className="font-medium font-mono text-slate-700 dark:text-slate-300">
                                                 {currency(variant.unitPrice)}
                                               </span>
                                             </div>
@@ -1273,7 +1264,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
                             {/* Description */}
                             <div className="sm:col-span-2 lg:col-span-4 space-y-1">
-                              <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                                 Description
                               </label>
                               <input
@@ -1287,14 +1278,14 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                     e.target.value,
                                   )
                                 }
-                                className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                               />
                             </div>
 
                             {/* Qty & Price */}
                             <div className="grid grid-cols-2 gap-2 lg:col-span-2">
                               <div className="space-y-1">
-                                <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                                   Qty
                                 </label>
                                 <input
@@ -1308,12 +1299,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                       Number(e.target.value),
                                     )
                                   }
-                                  className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
                               </div>
 
                               <div className="space-y-1">
-                                <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
                                   Price (₱)
                                 </label>
                                 <input
@@ -1328,7 +1319,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                       parseFloat(e.target.value) || 0,
                                     )
                                   }
-                                  className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
                               </div>
                             </div>
@@ -1340,8 +1331,8 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 </div>
 
                 {/* Note to Customer */}
-                <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
-                  <label className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider block">
+                <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
+                  <label className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider block">
                     Note to Customer
                   </label>
                   <textarea
@@ -1349,7 +1340,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     placeholder="Payment instructions, bank details, or delivery terms..."
                     value={noteToCustomer}
                     onChange={(e) => setNoteToCustomer(e.target.value)}
-                    className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 resize-none transition-all"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none transition-all shadow-2xs"
                   />
                 </div>
               </div>
@@ -1357,32 +1348,33 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
               {/* Compact Right Sidebar Column (3 Cols) */}
               <div className="lg:col-span-3 space-y-4">
                 {/* Order Summary Card */}
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3.5">
-                  <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                    <Calculator className="w-3.5 h-3.5 text-[#F9B53F]" />
-                    <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <Calculator className="w-3.5 h-3.5 text-slate-400" />
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
                       Order Summary
                     </h3>
                   </div>
 
-                  <div className="space-y-2 text-xs font-semibold">
+                  <div className="space-y-2 text-xs font-medium">
                     <div className="flex justify-between text-slate-600 dark:text-slate-400">
                       <span>Subtotal</span>
-                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <span className="font-mono text-slate-900 dark:text-slate-100">
                         {currency(calculatedSubtotal)}
                       </span>
                     </div>
                     <div className="flex justify-between text-slate-600 dark:text-slate-400">
                       <span>VAT ({vatType})</span>
-                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <span className="font-mono text-slate-900 dark:text-slate-100">
                         {currency(calculatedVat)}
                       </span>
                     </div>
-                    <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex justify-between items-baseline">
-                      <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase">
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-baseline">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase">
                         Total
                       </span>
-                      <span className="font-mono text-lg font-black text-amber-600 dark:text-amber-400">
+                      {/* Standard dark text for total price instead of accent color */}
+                      <span className="font-mono text-base font-bold text-slate-900 dark:text-white">
                         {currency(calculatedTotal)}
                       </span>
                     </div>
@@ -1390,10 +1382,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 </div>
 
                 {/* Validity Period Card */}
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2.5">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                    <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                    <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Valid Until Date
                     </label>
                   </div>
@@ -1402,7 +1394,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     required
                     value={validUntil}
                     onChange={(e) => setValidUntil(e.target.value)}
-                    className="w-full bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
                   />
                 </div>
 
@@ -1412,9 +1404,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     form="edit-quotation-form"
                     type="submit"
                     disabled={saving}
-                    className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-extrabold bg-[#FFCB62] hover:bg-[#F9B53F] text-slate-900 rounded-2xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                   >
-                    <Calculator className="w-3.5 h-3.5" />
+                    <Calculator className="w-4 h-4" />
                     {saving ? "Saving Changes..." : "Save Changes"}
                   </button>
 
@@ -1422,7 +1414,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     type="button"
                     onClick={onClose}
                     disabled={saving}
-                    className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold rounded-2xl transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-700 shadow-2xs"
+                    className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                   >
                     Cancel
                   </button>

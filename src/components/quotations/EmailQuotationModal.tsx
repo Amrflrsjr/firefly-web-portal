@@ -4,7 +4,6 @@ import type { EmailPreviewDto } from "../../types/quotation";
 import {
   X,
   Send,
-  Mail,
   Paperclip,
   AlertCircle,
   RefreshCw,
@@ -167,54 +166,47 @@ Firefly Team`;
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-xl overflow-hidden my-auto flex flex-col max-h-[94vh]">
-          {/* Top Accent Gradient Bar */}
-          <div className="h-2 w-full bg-linear-to-r from-[#FFCB62] via-[#F9B53F] to-[#F4D158] shrink-0" />
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/50 flex items-center justify-center text-[#F9B53F] dark:text-amber-400 shadow-2xs">
-                <Mail className="w-5 h-5" />
+        {/* Modal Shell with standardized rounded-xl (12px) */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl overflow-hidden my-auto flex flex-col max-h-[94vh]">
+          {/* Flat Modal Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                  Email Quotation
+                </h2>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  #{displayQNum}
+                </span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                    Email Quotation
-                  </h2>
-                  <span className="text-slate-300 dark:text-slate-700">•</span>
-                  <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
-                    #{displayQNum}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                  Dispatch official PDF proposal directly to client inbox
-                </p>
-              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Dispatch official PDF proposal directly to client inbox
+              </p>
             </div>
 
             <button
               onClick={onClose}
               disabled={sending}
-              className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close modal"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Content Body */}
           <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/40 space-y-4">
             {error && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-semibold shadow-2xs">
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold shadow-2xs">
                 <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {loading ? (
-              <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-xs font-bold flex flex-col items-center justify-center gap-2">
-                <RefreshCw className="w-5 h-5 animate-spin text-[#F9B53F]" />
+              <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-xs font-semibold flex flex-col items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-slate-500" />
                 Loading email preview...
               </div>
             ) : (
@@ -224,18 +216,18 @@ Firefly Team`;
                 className="space-y-4"
               >
                 {/* Dynamic Recipients Input */}
-                <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Recipients <span className="text-rose-500">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={addEmailField}
                       disabled={sending}
-                      className="text-[10px] font-extrabold text-[#F9B53F] dark:text-amber-400 hover:underline cursor-pointer inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:underline cursor-pointer inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Plus className="w-3 h-3" /> Add Recipient
+                      <Plus className="w-3.5 h-3.5" /> Add Recipient
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -250,14 +242,14 @@ Firefly Team`;
                             handleEmailChange(idx, e.target.value)
                           }
                           placeholder="client@company.com"
-                          className="w-full bg-slate-50/50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] transition-all disabled:opacity-60 shadow-2xs"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-60 shadow-2xs"
                         />
                         {recipientEmails.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeEmailField(idx)}
                             disabled={sending}
-                            className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-500 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
+                            className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-500 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -268,8 +260,8 @@ Firefly Team`;
                 </div>
 
                 {/* Subject Input */}
-                <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
-                  <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Subject Line <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -278,13 +270,13 @@ Firefly Team`;
                     disabled={sending}
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    className="w-full bg-slate-50/50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#F9B53F] transition-all disabled:opacity-60 shadow-2xs"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-60 shadow-2xs"
                   />
                 </div>
 
                 {/* Message Body Input */}
-                <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
-                  <label className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Message Body <span className="text-rose-500">*</span>
                   </label>
                   <textarea
@@ -293,26 +285,26 @@ Firefly Team`;
                     disabled={sending}
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
-                    className="w-full bg-slate-50/50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 text-xs font-medium text-slate-800 dark:text-slate-100 leading-relaxed focus:outline-none focus:border-[#F9B53F] resize-y min-h-36 transition-all disabled:opacity-60 font-mono shadow-2xs"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 leading-relaxed focus:outline-none focus:border-slate-400 resize-y min-h-36 transition-all disabled:opacity-60 font-mono shadow-2xs"
                   />
                 </div>
 
                 {/* Attached PDF Box */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-900/60 text-rose-500 dark:text-rose-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 shadow-2xs">
                       <Paperclip className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
                         Attached PDF Document
                       </div>
-                      <div className="text-[11px] font-mono text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                      <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5">
                         {pdfFileName}
                       </div>
                     </div>
                   </div>
-                  <span className="self-start sm:self-auto text-[10px] font-extrabold uppercase bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 px-3 py-1 rounded-full shrink-0 shadow-2xs">
+                  <span className="self-start sm:self-auto text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
                     Auto-Attached
                   </span>
                 </div>
@@ -322,20 +314,21 @@ Firefly Team`;
 
           {/* Modal Footer Actions */}
           {!loading && (
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-sm">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-sm">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={sending}
-                className="px-5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-extrabold rounded-2xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
+              {/* Primary action utilizing blue semantic styling for email/send action */}
               <button
                 form="email-quotation-form"
                 type="submit"
                 disabled={sending}
-                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-extrabold bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-2xl shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-3.5 h-3.5" />
                 {sending ? "Sending Email..." : "Send Quotation"}

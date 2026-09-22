@@ -25,6 +25,9 @@ import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
+  Cell,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -34,6 +37,28 @@ import {
 
 interface ChartPoint {
   date: string;
+  amount: number;
+}
+
+interface InvoiceStatusBreakdown {
+  status: string;
+  count: number;
+  amount: number;
+}
+
+interface AgingBucket {
+  range: "0-30" | "31-60" | "61-90" | "90+";
+  amount: number;
+  count: number;
+}
+
+interface TopCustomer {
+  customerName: string;
+  totalRevenue: number;
+}
+
+interface MonthlyRevenue {
+  month: string;
   amount: number;
 }
 
@@ -47,6 +72,10 @@ interface DashboardMetrics {
   personalCustomersCount: number;
   totalPeriodRevenue: number;
   chartData: ChartPoint[];
+  invoiceStatusBreakdown: InvoiceStatusBreakdown[];
+  agingBuckets: AgingBucket[];
+  topCustomers: TopCustomer[];
+  monthlyRevenue: MonthlyRevenue[];
 }
 
 type ChartTimeRange = "7d" | "30d" | "90d" | "all";
@@ -169,6 +198,17 @@ export const Dashboard: React.FC = () => {
   const personalPct =
     totalCustomers > 0 ? (personalCount / totalCustomers) * 100 : 0;
 
+  const conversionBarData = [
+    {
+      category: "Draft/Sent",
+      count: metrics?.activeQuotesCount || 0,
+    },
+    {
+      category: "Approved",
+      count: metrics?.acceptedQuotesCount || 0,
+    },
+  ];
+
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -179,22 +219,22 @@ export const Dashboard: React.FC = () => {
   if (loading && !metrics) {
     return (
       <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0">
-        <div className="h-40 sm:h-44 rounded-3xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
+        <div className="h-40 sm:h-44 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
         <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className={`h-32 rounded-2xl sm:rounded-3xl bg-slate-100 dark:bg-slate-850 animate-pulse ${
+              className={`h-32 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse ${
                 i === 0 ? "col-span-2 xl:col-span-1" : ""
               }`}
             />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-96 rounded-3xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
+          <div className="lg:col-span-2 h-96 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
           <div className="space-y-6">
-            <div className="h-56 rounded-3xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
-            <div className="h-56 rounded-3xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
+            <div className="h-56 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
+            <div className="h-56 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
           </div>
         </div>
       </div>
@@ -203,14 +243,14 @@ export const Dashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="mx-4 sm:mx-0 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-6 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+      <div className="mx-4 sm:mx-0 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-6 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
           <span className="text-sm font-medium">{error}</span>
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="text-xs font-bold bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-800 shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
+          className="text-xs font-bold bg-white dark:bg-slate-800 px-4 py-2 rounded-lg border border-rose-200 dark:border-rose-800 shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
         >
           Retry
         </button>
@@ -227,8 +267,7 @@ export const Dashboard: React.FC = () => {
       captionClass: "text-emerald-600 dark:text-emerald-400",
       icon: TrendingUp,
       iconClass:
-        "bg-amber-50 dark:bg-amber-950/50 text-[#DB9A28] dark:text-amber-400 border-amber-100/60 dark:border-amber-800/50",
-      accent: "from-amber-400 to-amber-300",
+        "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60",
       wide: true,
     },
     {
@@ -239,8 +278,7 @@ export const Dashboard: React.FC = () => {
       captionClass: "text-slate-400 dark:text-slate-400",
       icon: Clock,
       iconClass:
-        "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-100/60 dark:border-amber-800/50",
-      accent: "from-amber-400 to-amber-300",
+        "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60",
     },
     {
       id: "activeQuotes" as ModalType,
@@ -250,8 +288,7 @@ export const Dashboard: React.FC = () => {
       captionClass: "text-slate-400 dark:text-slate-400",
       icon: FileText,
       iconClass:
-        "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-100/60 dark:border-blue-800/50",
-      accent: "from-blue-400 to-blue-300",
+        "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60",
     },
     {
       id: "acceptedQuotes" as ModalType,
@@ -261,8 +298,7 @@ export const Dashboard: React.FC = () => {
       captionClass: "text-emerald-600 dark:text-emerald-400",
       icon: CheckCircle2,
       iconClass:
-        "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-100/60 dark:border-emerald-800/50",
-      accent: "from-emerald-400 to-emerald-300",
+        "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60",
     },
     {
       id: "customers" as ModalType,
@@ -272,17 +308,15 @@ export const Dashboard: React.FC = () => {
       captionClass: "text-slate-400 dark:text-slate-400",
       icon: Users,
       iconClass:
-        "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-indigo-100/60 dark:border-indigo-800/50",
-      accent: "from-indigo-400 to-indigo-300",
+        "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60",
     },
   ];
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
       {/* Executive Header Banner */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 translate-y-1/2 w-72 h-72 bg-slate-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
+        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
         <div
           className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
@@ -294,19 +328,19 @@ export const Dashboard: React.FC = () => {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Business Command Center</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Business Command Center</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
-                <span className="relative flex h-1.5 w-1.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
                 </span>
-                {today}
+                <span className="truncate">{today}</span>
               </div>
             </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white wrap-break-word">
               {getGreeting()}, {username || "Admin"}
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
@@ -325,47 +359,44 @@ export const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate("/quotations")}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 text-xs font-extrabold shadow-lg shadow-amber-500/10 transition-all cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
             >
               <span>Create Estimate</span>
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="w-4 h-4 shrink-0" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Top Key Performance Indicators Grid (Interactive & Clickable) */}
+      {/* Top Key Performance Indicators Grid */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
         {kpis.map((kpi) => (
           <div
             key={kpi.label}
             onClick={() => setActiveModal(kpi.id)}
-            className={`relative overflow-hidden bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col justify-between group cursor-pointer ${
+            className={`relative overflow-hidden bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col justify-between group cursor-pointer ${
               kpi.wide ? "col-span-2 xl:col-span-1" : ""
             }`}
           >
-            <div
-              className={`absolute top-0 left-0 right-0 h-1 bg-linear-to-r ${kpi.accent} opacity-70`}
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                 {kpi.label}
               </span>
               <div
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border group-hover:scale-110 transition-transform ${kpi.iconClass}`}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center border group-hover:scale-105 transition-transform shrink-0 ${kpi.iconClass}`}
               >
-                <kpi.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <kpi.icon className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 sm:mt-4">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight tabular-nums truncate">
+            <div className="mt-3 sm:mt-4 min-w-0">
+              <h3 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white font-mono tracking-tight tabular-nums truncate">
                 {kpi.value}
               </h3>
               <p
-                className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 sm:mt-1 flex items-center justify-between ${kpi.captionClass}`}
+                className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 sm:mt-1 flex items-center justify-between gap-1 ${kpi.captionClass}`}
               >
-                <span>{kpi.caption}</span>
-                <span className="text-[10px] opacity-0 group-hover:opacity-100 text-amber-500 font-bold transition-opacity flex items-center gap-0.5">
+                <span className="truncate">{kpi.caption}</span>
+                <span className="text-[10px] opacity-0 group-hover:opacity-100 text-amber-600 dark:text-amber-400 font-bold transition-opacity shrink-0">
                   View &rarr;
                 </span>
               </p>
@@ -376,33 +407,33 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Grid: Area Chart & Analytics Cards Stack */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Interactive Income Trend Area Chart (Clickable) */}
+        {/* Interactive Income Trend Area Chart */}
         <div
           onClick={() => setActiveModal("revenue")}
-          className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all"
+          className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all min-w-0"
         >
-          <div className="space-y-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
+          <div className="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
                     Income &amp; Collection Trend
                   </h2>
-                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 font-bold transition-opacity">
+                  <span className="text-xs text-amber-600 dark:text-amber-400 opacity-0 group-hover:opacity-100 font-bold transition-opacity shrink-0">
                     Inspect Report &rarr;
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                  <p className="text-xs text-slate-400 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     Collected:{" "}
-                    <span className="font-mono font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
                       {currency(metrics?.totalPeriodRevenue || 0)}
                     </span>
                   </p>
                   {peakDay && (
-                    <p className="text-xs text-slate-400 dark:text-slate-400">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                       Peak day:{" "}
-                      <span className="font-mono font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
                         {peakDay.date}
                       </span>
                     </p>
@@ -410,7 +441,7 @@ export const Dashboard: React.FC = () => {
                 </div>
               </div>
               <div
-                className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto"
+                className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg self-start sm:self-auto border border-slate-200 dark:border-slate-700 shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
                 {(
@@ -425,9 +456,9 @@ export const Dashboard: React.FC = () => {
                     key={tab.id}
                     type="button"
                     onClick={() => setChartTimeRange(tab.id)}
-                    className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 ${
+                    className={`px-3 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer ${
                       chartTimeRange === tab.id
-                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs border border-slate-200/60 dark:border-slate-600"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs border border-slate-200 dark:border-slate-600"
                         : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                     }`}
                   >
@@ -438,10 +469,10 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-6 h-80 w-full">
+          <div className="pt-6 h-80 w-full min-w-0">
             {chartData.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 text-xs bg-slate-50/50 dark:bg-slate-850/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-500">
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 text-xs bg-slate-50/50 dark:bg-slate-850/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4">
+                <div className="w-12 h-12 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 shrink-0">
                   <BarChart3 className="w-6 h-6" />
                 </div>
                 <div className="text-center space-y-1">
@@ -468,10 +499,14 @@ export const Dashboard: React.FC = () => {
                       x2="0"
                       y2="1"
                     >
-                      <stop offset="5%" stopColor="#F9B53F" stopOpacity={0.4} />
+                      <stop
+                        offset="5%"
+                        stopColor="#D97706"
+                        stopOpacity={0.25}
+                      />
                       <stop
                         offset="95%"
-                        stopColor="#F9B53F"
+                        stopColor="#D97706"
                         stopOpacity={0.0}
                       />
                     </linearGradient>
@@ -501,16 +536,16 @@ export const Dashboard: React.FC = () => {
                   />
                   <Tooltip
                     cursor={{
-                      stroke: "#F9B53F",
+                      stroke: "#D97706",
                       strokeWidth: 1,
                       strokeDasharray: "4 4",
                     }}
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
-                            <p className="font-bold text-amber-300">{label}</p>
-                            <p className="font-mono text-sm font-black tabular-nums">
+                          <div className="bg-slate-900 text-white text-xs p-3 rounded-xl shadow-xl border border-slate-800 space-y-1">
+                            <p className="font-bold text-amber-400">{label}</p>
+                            <p className="font-mono text-sm font-bold tabular-nums">
                               {currency(Number(payload[0].value))}
                             </p>
                           </div>
@@ -522,13 +557,13 @@ export const Dashboard: React.FC = () => {
                   <Area
                     type="monotone"
                     dataKey="amount"
-                    stroke="#F9B53F"
-                    strokeWidth={3}
+                    stroke="#D97706"
+                    strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#colorRevenue)"
                     activeDot={{
                       r: 5,
-                      fill: "#F9B53F",
+                      fill: "#D97706",
                       stroke: "#fff",
                       strokeWidth: 2,
                     }}
@@ -540,46 +575,46 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Right Column Stack: Performance Health & Client Demographics */}
-        <div className="space-y-6 flex flex-col justify-between">
-          {/* Performance Health Ratios Card (Clickable) */}
+        <div className="space-y-6 flex flex-col justify-between min-w-0">
+          {/* Performance Health Ratios Card */}
           <div
             onClick={() => setActiveModal("performance")}
-            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all"
+            className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all min-w-0"
           >
-            <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
+            <div className="space-y-1 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
                     Performance Health
                   </h2>
-                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 font-bold transition-opacity">
+                  <span className="text-xs text-amber-600 dark:text-amber-400 opacity-0 group-hover:opacity-100 font-bold transition-opacity shrink-0">
                     Details &rarr;
                   </span>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-[#DB9A28] dark:text-amber-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800/60 shrink-0">
                   <Activity className="w-4 h-4" />
                 </div>
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                 Key operational conversion benchmarks
               </p>
             </div>
 
-            <div className="py-5 space-y-4">
+            <div className="py-5 space-y-4 min-w-0">
               {/* Metric 1: Invoice Collection Efficiency */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                    <Receipt className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Collection Rate
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate pr-2">
+                    <Receipt className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="truncate">Collection Rate</span>
                   </span>
-                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums">
+                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums font-bold shrink-0">
                     {collectionRate}%
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-lg overflow-hidden">
                   <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                    className="bg-emerald-500 h-full rounded-lg transition-all duration-500"
                     style={{ width: `${collectionRate}%` }}
                   />
                 </div>
@@ -587,18 +622,18 @@ export const Dashboard: React.FC = () => {
 
               {/* Metric 2: Estimate Conversion Velocity */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    Estimate Acceptance
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate pr-2">
+                    <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="truncate">Estimate Acceptance</span>
                   </span>
-                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums">
+                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums font-bold shrink-0">
                     {estimateAcceptanceRate}%
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-lg overflow-hidden">
                   <div
-                    className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                    className="bg-blue-500 h-full rounded-lg transition-all duration-500"
                     style={{ width: `${estimateAcceptanceRate}%` }}
                   />
                 </div>
@@ -606,68 +641,119 @@ export const Dashboard: React.FC = () => {
 
               {/* Metric 3: Active Portfolio Ratio */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                    <Percent className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    Pending Invoices Load
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate pr-2">
+                    <Percent className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="truncate">Pending Invoices Load</span>
                   </span>
-                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums">
+                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums font-bold shrink-0">
                     {metrics?.unpaidCount || 0} active
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-lg overflow-hidden">
                   <div
-                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                    className="bg-amber-500 h-full rounded-lg transition-all duration-500"
                     style={{
                       width: `${Math.min(((metrics?.unpaidCount || 0) / 10) * 100, 100)}%`,
                     }}
                   />
                 </div>
               </div>
+
+              {/* Quotation Conversion Chart */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 min-w-0">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 truncate">
+                  Quotation Pipeline Distribution
+                </div>
+                <div className="h-24 w-full min-w-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={conversionBarData}
+                      layout="vertical"
+                      margin={{ top: 0, right: 10, left: -10, bottom: 0 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="category"
+                        type="category"
+                        stroke="#94A3B8"
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={false}
+                        width={65}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "transparent" }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-slate-900 text-white text-[11px] p-2 rounded-lg shadow-xl border border-slate-800">
+                                <span className="font-semibold">
+                                  {payload[0].payload.category}:{" "}
+                                </span>
+                                <span className="font-mono font-bold">
+                                  {payload[0].value}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        radius={[0, 4, 4, 0]}
+                        barSize={12}
+                        fill="#D97706"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Client Demographics Card (Clickable) */}
+          {/* Client Demographics Card */}
           <div
             onClick={() => setActiveModal("demographics")}
-            className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all"
+            className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all min-w-0"
           >
-            <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
+            <div className="space-y-1 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
                     Client Demographics
                   </h2>
-                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 font-bold transition-opacity">
+                  <span className="text-xs text-amber-600 dark:text-amber-400 opacity-0 group-hover:opacity-100 font-bold transition-opacity shrink-0">
                     Details &rarr;
                   </span>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-900/60 shrink-0">
                   <Users className="w-4 h-4" />
                 </div>
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                 Corporate vs. Personal account ratio
               </p>
             </div>
 
-            <div className="py-5 flex items-center gap-5">
+            <div className="py-5 flex items-center gap-4 sm:gap-5 min-w-0">
               {/* Donut ring */}
-              <div className="relative w-24 h-24 shrink-0">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0">
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
                     background:
                       totalCustomers > 0
-                        ? `conic-gradient(#F9B53F 0% ${corporatePct}%, #6366F1 ${corporatePct}% 100%)`
+                        ? `conic-gradient(#D97706 0% ${corporatePct}%, #6366F1 ${corporatePct}% 100%)`
                         : "#334155",
                   }}
                 />
-                <div className="absolute inset-1.75 rounded-full bg-white dark:bg-slate-900 flex flex-col items-center justify-center">
-                  <span className="text-lg font-black text-slate-900 dark:text-white font-mono tabular-nums leading-none">
+                <div className="absolute inset-1.5 rounded-full bg-white dark:bg-slate-900 flex flex-col items-center justify-center">
+                  <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-mono tabular-nums leading-none">
                     {totalCustomers}
                   </span>
-                  <span className="text-[9px] text-slate-400 dark:text-slate-400 font-bold uppercase mt-1">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-1">
                     Accounts
                   </span>
                 </div>
@@ -676,25 +762,25 @@ export const Dashboard: React.FC = () => {
               {/* Legend */}
               <div className="flex-1 space-y-3 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 min-w-0">
-                    <Building2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 min-w-0 pr-1">
+                    <Building2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <span className="truncate">Corporate</span>
                   </span>
                   <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
                     {corporateCount}
-                    <span className="text-slate-400 dark:text-slate-400 font-medium ml-1">
+                    <span className="text-slate-400 font-normal ml-1">
                       ({Math.round(corporatePct)}%)
                     </span>
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 min-w-0 pr-1">
                     <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                     <span className="truncate">Personal</span>
                   </span>
                   <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
                     {personalCount}
-                    <span className="text-slate-400 dark:text-slate-400 font-medium ml-1">
+                    <span className="text-slate-400 font-normal ml-1">
                       ({Math.round(personalPct)}%)
                     </span>
                   </span>
@@ -713,35 +799,308 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* ----------------------------------------------------------------- */}
+      {/* NEW DETAILED BREAKDOWN CHARDS SECTION                            */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+        {/* 1. Invoice Status Breakdown Card */}
+        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
+          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+              Invoice Status Breakdown
+            </h2>
+            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+              Paid, unpaid, and overdue by amount
+            </p>
+          </div>
+          <div className="pt-6 h-64 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={metrics?.invoiceStatusBreakdown || []}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  stroke="#334155"
+                  strokeOpacity={0.15}
+                  strokeDasharray="4 8"
+                />
+                <XAxis
+                  dataKey="status"
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  width={48}
+                  tickFormatter={(v) =>
+                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                  }
+                />
+                <Tooltip
+                  content={({ active, payload, label }) =>
+                    active && payload?.length ? (
+                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
+                        <p className="font-bold">{label}</p>
+                        <p className="font-mono text-sm font-black">
+                          {currency(Number(payload[0].value))}
+                        </p>
+                        <p className="text-slate-400">
+                          {payload[0].payload.count} invoices
+                        </p>
+                      </div>
+                    ) : null
+                  }
+                />
+                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                  {(metrics?.invoiceStatusBreakdown || []).map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={
+                        entry.status === "Paid"
+                          ? "#10B981"
+                          : entry.status === "Overdue"
+                            ? "#E11D48"
+                            : "#D97706"
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 2. Receivables Aging Card */}
+        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
+          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+              Receivables Aging
+            </h2>
+            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+              Unpaid invoices categorized by aging risk bucket
+            </p>
+          </div>
+          <div className="pt-6 h-64 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={metrics?.agingBuckets || []}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  stroke="#334155"
+                  strokeOpacity={0.15}
+                  strokeDasharray="4 8"
+                />
+                <XAxis
+                  dataKey="range"
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  width={48}
+                  tickFormatter={(v) =>
+                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                  }
+                />
+                <Tooltip
+                  content={({ active, payload, label }) =>
+                    active && payload?.length ? (
+                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
+                        <p className="font-bold">{label} Days</p>
+                        <p className="font-mono text-sm font-black">
+                          {currency(Number(payload[0].value))}
+                        </p>
+                        <p className="text-slate-400">
+                          {payload[0].payload.count} invoices
+                        </p>
+                      </div>
+                    ) : null
+                  }
+                />
+                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                  {(metrics?.agingBuckets || []).map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={
+                        ["#FCD34D", "#F59E0B", "#DC2626", "#991B1B"][i] ||
+                        "#D97706"
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 3. Top Customers by Revenue Card */}
+        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
+          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+              Top Customers by Revenue
+            </h2>
+            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+              Highest contributing client accounts
+            </p>
+          </div>
+          <div className="pt-6 h-64 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={metrics?.topCustomers || []}
+                layout="vertical"
+                margin={{ top: 8, right: 24, left: 8, bottom: 0 }}
+              >
+                <CartesianGrid
+                  horizontal={false}
+                  stroke="#334155"
+                  strokeOpacity={0.15}
+                  strokeDasharray="4 8"
+                />
+                <XAxis
+                  type="number"
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) =>
+                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                  }
+                />
+                <YAxis
+                  dataKey="customerName"
+                  type="category"
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  width={110}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) =>
+                    active && payload?.length ? (
+                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
+                        <p className="font-bold">{label}</p>
+                        <p className="font-mono text-sm font-black">
+                          {currency(Number(payload[0].value))}
+                        </p>
+                      </div>
+                    ) : null
+                  }
+                />
+                <Bar
+                  dataKey="totalRevenue"
+                  fill="#6366F1"
+                  radius={[0, 8, 8, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 4. Monthly Revenue (12-Month Trend) Card */}
+        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
+          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+              Monthly Revenue Trend
+            </h2>
+            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+              Full-year historical collections performance
+            </p>
+          </div>
+          <div className="pt-6 h-64 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={metrics?.monthlyRevenue || []}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  stroke="#334155"
+                  strokeOpacity={0.15}
+                  strokeDasharray="4 8"
+                />
+                <XAxis
+                  dataKey="month"
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={50}
+                />
+                <YAxis
+                  stroke="#94A3B8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  width={48}
+                  tickFormatter={(v) =>
+                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                  }
+                />
+                <Tooltip
+                  content={({ active, payload, label }) =>
+                    active && payload?.length ? (
+                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
+                        <p className="font-bold">{label}</p>
+                        <p className="font-mono text-sm font-black">
+                          {currency(Number(payload[0].value))}
+                        </p>
+                      </div>
+                    ) : null
+                  }
+                />
+                <Bar dataKey="amount" fill="#D97706" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* ----------------------------------------------------------------- */}
       {/* DETAILS MODAL OVERLAY                                            */}
       {/* ----------------------------------------------------------------- */}
       {activeModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-[#DB9A28] dark:text-amber-400 flex items-center justify-center font-bold">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold border border-amber-200 dark:border-amber-800/60 shrink-0">
                   {activeModal === "revenue" && (
-                    <TrendingUp className="w-5 h-5" />
+                    <TrendingUp className="w-4 h-4" />
                   )}
-                  {activeModal === "unpaid" && <Clock className="w-5 h-5" />}
+                  {activeModal === "unpaid" && <Clock className="w-4 h-4" />}
                   {activeModal === "activeQuotes" && (
-                    <FileText className="w-5 h-5" />
+                    <FileText className="w-4 h-4" />
                   )}
                   {activeModal === "acceptedQuotes" && (
-                    <CheckCircle2 className="w-5 h-5" />
+                    <CheckCircle2 className="w-4 h-4" />
                   )}
-                  {activeModal === "customers" && <Users className="w-5 h-5" />}
+                  {activeModal === "customers" && <Users className="w-4 h-4" />}
                   {activeModal === "performance" && (
-                    <Activity className="w-5 h-5" />
+                    <Activity className="w-4 h-4" />
                   )}
                   {activeModal === "demographics" && (
-                    <Building2 className="w-5 h-5" />
+                    <Building2 className="w-4 h-4" />
                   )}
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
                     {activeModal === "revenue" && "Paid Revenue Breakdown"}
                     {activeModal === "unpaid" && "Unpaid Invoices Breakdown"}
                     {activeModal === "activeQuotes" &&
@@ -755,7 +1114,7 @@ export const Dashboard: React.FC = () => {
                     {activeModal === "demographics" &&
                       "Client Demographics Analysis"}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
                     Detailed statistics and records summary
                   </p>
                 </div>
@@ -763,9 +1122,9 @@ export const Dashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="w-9 h-9 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -773,12 +1132,12 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               {activeModal === "revenue" && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
                         Total Settled Amount
                       </span>
-                      <p className="text-2xl font-black font-mono text-emerald-900 dark:text-emerald-100 mt-1">
+                      <p className="text-2xl font-bold font-mono text-emerald-900 dark:text-emerald-100 mt-1">
                         {currency(metrics?.totalRevenue || 0)}
                       </p>
                     </div>
@@ -794,12 +1153,12 @@ export const Dashboard: React.FC = () => {
 
               {activeModal === "unpaid" && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
                         Pending Remittances
                       </span>
-                      <p className="text-2xl font-black font-mono text-amber-900 dark:text-amber-100 mt-1">
+                      <p className="text-2xl font-bold font-mono text-amber-900 dark:text-amber-100 mt-1">
                         {metrics?.unpaidCount || 0} Invoices
                       </p>
                     </div>
@@ -815,12 +1174,12 @@ export const Dashboard: React.FC = () => {
 
               {activeModal === "activeQuotes" && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
                         Active Quotations
                       </span>
-                      <p className="text-2xl font-black font-mono text-blue-900 dark:text-blue-100 mt-1">
+                      <p className="text-2xl font-bold font-mono text-blue-900 dark:text-blue-100 mt-1">
                         {metrics?.activeQuotesCount || 0} Draft/Sent
                       </p>
                     </div>
@@ -836,12 +1195,12 @@ export const Dashboard: React.FC = () => {
 
               {activeModal === "acceptedQuotes" && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
                         Accepted Proposals
                       </span>
-                      <p className="text-2xl font-black font-mono text-emerald-900 dark:text-emerald-100 mt-1">
+                      <p className="text-2xl font-bold font-mono text-emerald-900 dark:text-emerald-100 mt-1">
                         {metrics?.acceptedQuotesCount || 0} Approved
                       </p>
                     </div>
@@ -856,31 +1215,31 @@ export const Dashboard: React.FC = () => {
 
               {activeModal === "customers" && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
                         Total Active Accounts
                       </span>
-                      <p className="text-2xl font-black font-mono text-indigo-900 dark:text-indigo-100 mt-1">
+                      <p className="text-2xl font-bold font-mono text-indigo-900 dark:text-indigo-100 mt-1">
                         {totalCustomers} Clients
                       </p>
                     </div>
                     <Users className="w-8 h-8 text-indigo-500" />
                   </div>
                   <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold text-slate-400 uppercase">
                         Corporate
                       </span>
-                      <p className="text-lg font-black font-mono text-slate-800 dark:text-slate-100 mt-0.5">
+                      <p className="text-lg font-bold font-mono text-slate-800 dark:text-slate-100 mt-0.5">
                         {corporateCount}
                       </p>
                     </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold text-slate-400 uppercase">
                         Personal
                       </span>
-                      <p className="text-lg font-black font-mono text-slate-800 dark:text-slate-100 mt-0.5">
+                      <p className="text-lg font-bold font-mono text-slate-800 dark:text-slate-100 mt-0.5">
                         {personalCount}
                       </p>
                     </div>
@@ -890,20 +1249,20 @@ export const Dashboard: React.FC = () => {
 
               {activeModal === "performance" && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-2">
-                    <div className="flex justify-between items-center text-xs font-bold">
+                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-2">
+                    <div className="flex justify-between items-center text-xs font-semibold">
                       <span className="text-slate-700 dark:text-slate-300">
                         Collection Rate Efficiency
                       </span>
-                      <span className="font-mono text-emerald-600">
+                      <span className="font-mono text-emerald-600 font-bold">
                         {collectionRate}%
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-bold">
+                    <div className="flex justify-between items-center text-xs font-semibold">
                       <span className="text-slate-700 dark:text-slate-300">
                         Estimate Acceptance Velocity
                       </span>
-                      <span className="font-mono text-blue-600">
+                      <span className="font-mono text-blue-600 font-bold">
                         {estimateAcceptanceRate}%
                       </span>
                     </div>
@@ -918,22 +1277,22 @@ export const Dashboard: React.FC = () => {
 
               {activeModal === "demographics" && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
-                    <div className="flex justify-between items-center text-xs font-bold">
+                  <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
+                    <div className="flex justify-between items-center text-xs font-semibold">
                       <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-amber-500" />{" "}
+                        <Building2 className="w-4 h-4 text-amber-600" />{" "}
                         Corporate Accounts
                       </span>
-                      <span className="font-mono">
+                      <span className="font-mono font-bold">
                         {corporateCount} ({Math.round(corporatePct)}%)
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-bold">
+                    <div className="flex justify-between items-center text-xs font-semibold">
                       <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                         <User className="w-4 h-4 text-indigo-500" /> Personal
                         Accounts
                       </span>
-                      <span className="font-mono">
+                      <span className="font-mono font-bold">
                         {personalCount} ({Math.round(personalPct)}%)
                       </span>
                     </div>
@@ -948,7 +1307,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => {
@@ -966,10 +1325,10 @@ export const Dashboard: React.FC = () => {
                     navigate("/customers");
                   else setActiveModal(null);
                 }}
-                className="px-5 py-2.5 text-xs font-extrabold bg-linear-to-r from-[#FFCB62] to-[#F9B53F] hover:from-[#F9B53F] hover:to-[#F4D158] text-slate-900 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-2 active:scale-95"
               >
                 <span>Go to Management Module</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
               </button>
             </div>
           </div>
