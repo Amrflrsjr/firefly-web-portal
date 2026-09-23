@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   CreditCard,
@@ -10,6 +10,8 @@ import {
   Loader2,
 } from "lucide-react";
 import type { InvoiceResponseDto } from "../../types/invoice";
+import api from "../../api/axios";
+import toast from "react-hot-toast";
 
 interface Props {
   invoice: InvoiceResponseDto | null;
@@ -19,6 +21,7 @@ interface Props {
   onOpenEmail: (inv: InvoiceResponseDto) => void;
   onOpenPayment: (inv: InvoiceResponseDto) => void;
   onDeleteInvoice: (invoiceId: number) => void;
+  onInvoiceUpdated?: () => void;
   loadingPdfId?: number | null;
   downloadingPdfId?: number | null;
 }
@@ -27,9 +30,11 @@ interface InvoiceDetailView extends Omit<
   InvoiceResponseDto,
   "vatType" | "VATType"
 > {
+  NoteToCustomer?: string;
   vatType?: string;
   VATType?: string;
   noteToCustomer?: string | null;
+  Notes?: string | null;
 }
 
 interface ExtendedInvoiceItem {
@@ -58,14 +63,43 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
   onOpenEmail,
   onOpenPayment,
   onDeleteInvoice,
+  onInvoiceUpdated,
   loadingPdfId,
   downloadingPdfId,
 }) => {
+  const detail = invoice as InvoiceDetailView | null;
+
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [currentNotes, setCurrentNotes] = useState(() => {
+    return (
+      invoice?.notes || detail?.NoteToCustomer || detail?.noteToCustomer || ""
+    );
+  });
+  const [savingNotes, setSavingNotes] = useState(false);
+
   if (!invoice) return null;
 
-  const detail = invoice as InvoiceDetailView;
   const isPdfLoading = loadingPdfId === invoice.invoiceId;
   const isDownloading = downloadingPdfId === invoice.invoiceId;
+
+  const handleSaveNotes = async () => {
+    try {
+      setSavingNotes(true);
+      await api.patch(`/invoices/${invoice.invoiceId}/notes`, {
+        notes: currentNotes,
+      });
+      toast.success("Invoice notes updated successfully!");
+      setIsEditingNotes(false);
+
+      if (onInvoiceUpdated) {
+        onInvoiceUpdated();
+      }
+    } catch {
+      toast.error("Failed to update invoice notes.");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -91,7 +125,7 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
     invoice.totalAmount ??
     0;
 
-  const vatType = detail.vatType || detail.VATType || "Exclusive";
+  const vatType = detail?.vatType || detail?.VATType || "Exclusive";
 
   let subtotal: number;
   let taxAmount: number;
@@ -114,7 +148,7 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
-        {/* Flat Modal Header matching QuotationDetailsModal */}
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div>
             <div className="flex items-center gap-2">
@@ -156,9 +190,9 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Modal Scrollable Body */}
+        {/* Scrollable Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-5 bg-slate-50/50 dark:bg-slate-950/50">
-          {/* Action Toolbar Card */}
+          {/* Action Toolbar */}
           <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <button
@@ -270,7 +304,7 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Line Items Table Section */}
+          {/* Line Items Table */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -310,20 +344,27 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
                     return (
                       <tr
                         key={item.invoiceItemId || idx}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
                       >
                         <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2">
-                            {item.sku && (
-                              <span className="font-mono text-[10px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg">
-                                {item.sku}
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {item.sku && (
+                                <span className="font-mono text-[10px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg">
+                                  {item.sku}
+                                </span>
+                              )}
+                              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                {item.productName || "Custom Item"}
                               </span>
-                            )}
-                            <span className="font-semibold text-slate-900 dark:text-slate-100">
-                              {item.productName ||
-                                item.description ||
-                                "Custom Item"}
-                            </span>
+                            </div>
+                            {item.description &&
+                              item.description !== item.productName &&
+                              !item.description.startsWith("Variant:") && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal whitespace-pre-line leading-relaxed pt-0.5">
+                                  {item.description}
+                                </p>
+                              )}
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
@@ -346,23 +387,80 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Financial Totals & Tax Computation Summary Box */}
+          {/* Financial Totals & Editable Notes Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+            {/* Notes / Terms Card */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 shadow-2xs flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Note / Payment Terms
-                </span>
-                <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-1.5 leading-relaxed">
-                  {detail.noteToCustomer ||
-                    "No specific terms provided for this invoice."}
-                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Note / Payment Terms
+                  </span>
+                  {!isEditingNotes ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentNotes(
+                          invoice.notes ||
+                            detail?.NoteToCustomer ||
+                            detail?.noteToCustomer ||
+                            "",
+                        );
+                        setIsEditingNotes(true);
+                      }}
+                      className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={savingNotes}
+                        onClick={handleSaveNotes}
+                        className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        {savingNotes ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingNotes}
+                        onClick={() => {
+                          setCurrentNotes(
+                            invoice.notes || detail?.NoteToCustomer || "",
+                          );
+                          setIsEditingNotes(false);
+                        }}
+                        className="text-[11px] font-semibold text-slate-400 hover:underline cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {isEditingNotes ? (
+                  <textarea
+                    rows={3}
+                    value={currentNotes}
+                    onChange={(e) => setCurrentNotes(e.target.value)}
+                    className="w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-y"
+                  />
+                ) : (
+                  <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-1.5 leading-relaxed whitespace-pre-line">
+                    {currentNotes ||
+                      invoice.notes ||
+                      detail?.NoteToCustomer ||
+                      "No specific terms provided for this invoice."}
+                  </p>
+                )}
               </div>
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                 Standard payment terms apply.
               </div>
             </div>
 
+            {/* Financial Totals Card */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 text-xs font-medium shadow-2xs">
               <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Subtotal:</span>
@@ -446,7 +544,7 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Modal Footer Actions */}
+        {/* Footer */}
         <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-2xs">
           <button
             type="button"

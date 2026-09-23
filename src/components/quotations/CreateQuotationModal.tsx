@@ -953,188 +953,241 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         </div>
 
                         {/* Grid Layout */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-                          {/* 1. Select Product */}
-                          <div className="lg:col-span-3 space-y-1 relative">
-                            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                              1. Select Product
-                            </label>
-                            <div className="relative">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                              <input
-                                type="text"
-                                placeholder="Search product..."
-                                value={prodQuery}
-                                onFocus={() => {
-                                  fetchProducts();
-                                  setActiveProductSearchIndex(idx);
-                                }}
-                                onChange={(e) => {
-                                  setProductSearchQueries({
-                                    ...productSearchQueries,
-                                    [idx]: e.target.value,
-                                  });
-                                  setActiveProductSearchIndex(idx);
-                                }}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                              />
-                            </div>
-
-                            {activeProductSearchIndex === idx && (
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
-                                <div
-                                  onClick={() => {
-                                    setQuickProductTargetIndex(idx);
-                                    setIsQuickProductModalOpen(true);
-                                    setActiveProductSearchIndex(null);
+                        <div className="space-y-3">
+                          {/* Row 1: Product, Variant, Qty, Price */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                            {/* 1. Select Product */}
+                            <div className="lg:col-span-4 space-y-1 relative">
+                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                1. Select Product
+                              </label>
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                                <input
+                                  type="text"
+                                  placeholder="Search product..."
+                                  value={prodQuery}
+                                  onFocus={() => {
+                                    fetchProducts();
+                                    setActiveProductSearchIndex(idx);
                                   }}
-                                  className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
-                                >
-                                  <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                  <span>+ Add New Product</span>
-                                </div>
-
-                                <div className="max-h-40 overflow-y-auto">
-                                  {filteredProducts.length > 0 ? (
-                                    filteredProducts.map((p) => (
-                                      <div
-                                        key={p.productId}
-                                        onClick={() =>
-                                          handleSelectProduct(idx, p)
-                                        }
-                                        className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
-                                      >
-                                        <span className="font-medium text-slate-800 dark:text-slate-200">
-                                          {p.name}
-                                        </span>
-                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
-                                      No products found
-                                    </div>
-                                  )}
-                                </div>
+                                  onChange={(e) => {
+                                    setProductSearchQueries({
+                                      ...productSearchQueries,
+                                      [idx]: e.target.value,
+                                    });
+                                    setActiveProductSearchIndex(idx);
+                                  }}
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                />
                               </div>
-                            )}
-                          </div>
 
-                          {/* 2. Select Variant */}
-                          <div className="lg:col-span-3 space-y-1 relative">
-                            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                              2. Select Variant
-                            </label>
-                            <div className="relative">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                              <input
-                                type="text"
-                                placeholder={
-                                  selectedProd
-                                    ? "Optional variant..."
-                                    : "Select product first"
-                                }
-                                disabled={!selectedProd}
-                                value={variantQuery}
-                                onFocus={() => setActiveVariantSearchIndex(idx)}
-                                onChange={(e) => {
-                                  setVariantSearchQueries({
-                                    ...variantSearchQueries,
-                                    [idx]: e.target.value,
-                                  });
-                                  setActiveVariantSearchIndex(idx);
-                                }}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
-                              />
-                            </div>
-
-                            {activeVariantSearchIndex === idx &&
-                              selectedProd && (
+                              {activeProductSearchIndex === idx && (
                                 <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
                                   <div
                                     onClick={() => {
-                                      setVariantModalTargetIndex(idx);
-                                      setTargetProductForVariants(selectedProd);
-                                      setIsVariantModalOpen(true);
-                                      setActiveVariantSearchIndex(null);
+                                      setQuickProductTargetIndex(idx);
+                                      setIsQuickProductModalOpen(true);
+                                      setActiveProductSearchIndex(null);
                                     }}
                                     className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                   >
-                                    <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    <span>
-                                      + Add Variant to {selectedProd.name}
-                                    </span>
+                                    <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                                    <span>+ Add New Product</span>
                                   </div>
 
                                   <div className="max-h-40 overflow-y-auto">
-                                    <div
-                                      onClick={() => {
-                                        const updated = [...items];
-                                        updated[idx] = {
-                                          ...updated[idx],
-                                          productVariantId: null,
-                                        };
-                                        setItems(updated);
-                                        setActiveVariantSearchIndex(null);
-                                        setVariantSearchQueries({
-                                          ...variantSearchQueries,
-                                          [idx]: "",
-                                        });
-                                      }}
-                                      className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
-                                    >
-                                      — None (No specific variant) —
-                                    </div>
-
-                                    {filteredVariants.length > 0 ? (
-                                      filteredVariants.map((variant) => {
-                                        const vLabel = formatVariantLabel(
-                                          variant.color,
-                                          variant.size,
-                                        );
-                                        return (
-                                          <div
-                                            key={variant.productVariantId}
-                                            onClick={() =>
-                                              handleSelectVariant(idx, variant)
-                                            }
-                                            className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
-                                          >
-                                            <div>
-                                              <span className="font-medium text-slate-800 dark:text-slate-200">
-                                                {vLabel || "Standard Variant"}
-                                              </span>
-                                              {variant.sku &&
-                                                variant.sku.trim() !== "" && (
-                                                  <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                                                    SKU: {variant.sku}
-                                                  </div>
-                                                )}
-                                            </div>
-                                            <span className="font-medium font-mono text-slate-700 dark:text-slate-300">
-                                              {currency(variant.unitPrice)}
-                                            </span>
-                                          </div>
-                                        );
-                                      })
+                                    {filteredProducts.length > 0 ? (
+                                      filteredProducts.map((p) => (
+                                        <div
+                                          key={p.productId}
+                                          onClick={() =>
+                                            handleSelectProduct(idx, p)
+                                          }
+                                          className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                        >
+                                          <span className="font-medium text-slate-800 dark:text-slate-200">
+                                            {p.name}
+                                          </span>
+                                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                                        </div>
+                                      ))
                                     ) : (
-                                      <div className="px-3 py-3 text-xs text-center font-medium text-slate-400 dark:text-slate-500">
-                                        No variants found
+                                      <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
+                                        No products found
                                       </div>
                                     )}
                                   </div>
                                 </div>
                               )}
+                            </div>
+
+                            {/* 2. Select Variant */}
+                            <div className="lg:col-span-4 space-y-1 relative">
+                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                2. Select Variant
+                              </label>
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                                <input
+                                  type="text"
+                                  placeholder={
+                                    selectedProd
+                                      ? "Optional variant..."
+                                      : "Select product first"
+                                  }
+                                  disabled={!selectedProd}
+                                  value={variantQuery}
+                                  onFocus={() =>
+                                    setActiveVariantSearchIndex(idx)
+                                  }
+                                  onChange={(e) => {
+                                    setVariantSearchQueries({
+                                      ...variantSearchQueries,
+                                      [idx]: e.target.value,
+                                    });
+                                    setActiveVariantSearchIndex(idx);
+                                  }}
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
+                                />
+                              </div>
+
+                              {activeVariantSearchIndex === idx &&
+                                selectedProd && (
+                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
+                                    <div
+                                      onClick={() => {
+                                        setVariantModalTargetIndex(idx);
+                                        setTargetProductForVariants(
+                                          selectedProd,
+                                        );
+                                        setIsVariantModalOpen(true);
+                                        setActiveVariantSearchIndex(null);
+                                      }}
+                                      className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                                    >
+                                      <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                                      <span>
+                                        + Add Variant to {selectedProd.name}
+                                      </span>
+                                    </div>
+
+                                    <div className="max-h-40 overflow-y-auto">
+                                      <div
+                                        onClick={() => {
+                                          const updated = [...items];
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            productVariantId: null,
+                                          };
+                                          setItems(updated);
+                                          setActiveVariantSearchIndex(null);
+                                          setVariantSearchQueries({
+                                            ...variantSearchQueries,
+                                            [idx]: "",
+                                          });
+                                        }}
+                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                      >
+                                        — None (No specific variant) —
+                                      </div>
+
+                                      {filteredVariants.length > 0 ? (
+                                        filteredVariants.map((variant) => {
+                                          const vLabel = formatVariantLabel(
+                                            variant.color,
+                                            variant.size,
+                                          );
+                                          return (
+                                            <div
+                                              key={variant.productVariantId}
+                                              onClick={() =>
+                                                handleSelectVariant(
+                                                  idx,
+                                                  variant,
+                                                )
+                                              }
+                                              className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                            >
+                                              <div>
+                                                <span className="font-medium text-slate-800 dark:text-slate-200">
+                                                  {vLabel || "Standard Variant"}
+                                                </span>
+                                                {variant.sku &&
+                                                  variant.sku.trim() !== "" && (
+                                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                                                      SKU: {variant.sku}
+                                                    </div>
+                                                  )}
+                                              </div>
+                                              <span className="font-medium font-mono text-slate-700 dark:text-slate-300">
+                                                {currency(variant.unitPrice)}
+                                              </span>
+                                            </div>
+                                          );
+                                        })
+                                      ) : (
+                                        <div className="px-3 py-3 text-xs text-center font-medium text-slate-400 dark:text-slate-500">
+                                          No variants found
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+
+                            {/* Qty & Price */}
+                            <div className="grid grid-cols-2 gap-2 lg:col-span-4">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                  Qty
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      idx,
+                                      "quantity",
+                                      Number(e.target.value),
+                                    )
+                                  }
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
+                                  Price (₱)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.unitPrice}
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      idx,
+                                      "unitPrice",
+                                      parseFloat(e.target.value) || 0,
+                                    )
+                                  }
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                />
+                              </div>
+                            </div>
                           </div>
 
-                          {/* Description */}
-                          <div className="sm:col-span-2 lg:col-span-4 space-y-1">
+                          {/* Row 2: Full-Width Description / Inclusions Textarea */}
+                          <div className="space-y-1 pt-1">
                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                              Description
+                              Description / Inclusions (Supports multi-line
+                              items)
                             </label>
-                            <input
-                              type="text"
-                              placeholder="Item specification..."
+                            <textarea
+                              rows={3}
+                              placeholder="Enter detailed description or inclusions (e.g. - 4-Hour Set-up...)"
                               value={item.description}
                               onChange={(e) =>
                                 handleItemChange(
@@ -1143,50 +1196,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                   e.target.value,
                                 )
                               }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-y"
                             />
-                          </div>
-
-                          {/* Qty & Price */}
-                          <div className="grid grid-cols-2 gap-2 lg:col-span-2">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                Qty
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    idx,
-                                    "quantity",
-                                    Number(e.target.value),
-                                  )
-                                }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
-                                Price (₱)
-                              </label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.unitPrice}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    idx,
-                                    "unitPrice",
-                                    parseFloat(e.target.value) || 0,
-                                  )
-                                }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                              />
-                            </div>
                           </div>
                         </div>
                       </div>

@@ -290,11 +290,11 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                     return (
                       <tr
                         key={item.quotationItemId || idx}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
                       >
                         <td className="py-3.5 px-4">
                           <div className="space-y-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {item.sku && (
                                 <span className="font-mono text-[10px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg">
                                   {item.sku}
@@ -307,7 +307,7 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                             {item.description &&
                               item.description !== item.productName &&
                               !item.description.startsWith("Variant:") && (
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal whitespace-pre-line leading-relaxed pt-0.5">
                                   {item.description}
                                 </p>
                               )}
@@ -340,7 +340,7 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   Note / Payment Terms
                 </span>
-                <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-1.5 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-1.5 leading-relaxed whitespace-pre-line">
                   {detail.noteToCustomer ||
                     "No specific terms provided for this quotation."}
                 </p>

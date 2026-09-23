@@ -32,6 +32,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
   const [selectedQuotationId, setSelectedQuotationId] = useState<number | null>(
     null,
   );
+  const [invoiceNotes, setInvoiceNotes] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -86,11 +87,19 @@ export const ConvertQuotationModal: React.FC<Props> = ({
     setSearchFilter("");
     setAvailableQuotations([]);
     setSelectedQuotationId(null);
+    setInvoiceNotes("");
     setFormError("");
     onClose();
   };
 
   if (!isOpen) return null;
+
+  const handleSelectQuotation = (q: QuotationResponseDto) => {
+    setSelectedQuotationId(q.quotationId);
+    // Pre-fill invoice notes with the quotation's NoteToCustomer
+    const detail = q as QuotationResponseDto & { noteToCustomer?: string };
+    setInvoiceNotes(detail.noteToCustomer || "");
+  };
 
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +115,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
       await api.post("/invoices/from-quotation", {
         quotationId: selectedQuotationId,
         dueDate: defaultDueDate.toISOString(),
-        notes:
-          "Thank you for choosing us! We appreciate your business and kindly ask that you settle this invoice by the due date.",
+        notes: invoiceNotes, // Sends the custom or inherited note
       });
 
       try {
@@ -136,6 +144,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
       }
 
       setSelectedQuotationId(null);
+      setInvoiceNotes("");
       setSearchFilter("");
       toast.success(
         "Invoice generated successfully and quotation marked as approved!",
@@ -162,7 +171,6 @@ export const ConvertQuotationModal: React.FC<Props> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
-        {/* Flat Modal Header matching Quotation/Invoice Details Modals */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
@@ -205,7 +213,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
             />
           </div>
 
-          <div className="max-h-80 sm:max-h-96 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar flex-1">
+          <div className="max-h-64 sm:max-h-80 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar flex-1">
             {loading ? (
               <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-xs font-medium flex flex-col items-center justify-center gap-2">
                 <Loader2 className="w-5 h-5 text-slate-600 dark:text-slate-300 animate-spin" />
@@ -221,7 +229,7 @@ export const ConvertQuotationModal: React.FC<Props> = ({
                 return (
                   <div
                     key={q.quotationId}
-                    onClick={() => setSelectedQuotationId(q.quotationId)}
+                    onClick={() => handleSelectQuotation(q)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                       isSelected
                         ? "bg-slate-100 dark:bg-slate-800 border-slate-400 dark:border-slate-600 shadow-2xs"
@@ -272,6 +280,22 @@ export const ConvertQuotationModal: React.FC<Props> = ({
               })
             )}
           </div>
+
+          {/* Editable Invoice Notes Field (Appears once a quotation is selected) */}
+          {selectedQuotationId && (
+            <div className="space-y-1.5 shrink-0 pt-2 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-150">
+              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Invoice Note / Payment Terms (Editable)
+              </label>
+              <textarea
+                rows={2}
+                value={invoiceNotes}
+                onChange={(e) => setInvoiceNotes(e.target.value)}
+                placeholder="Enter specific invoice notes or payment terms..."
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-y"
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-slate-800 shrink-0">
             <button
