@@ -1,6 +1,15 @@
 import React from "react";
 import type { QuotationResponseDto } from "../../types/quotation";
-import { X, Eye, Download, Mail, Edit, Trash2, Loader2 } from "lucide-react";
+import {
+  X,
+  Eye,
+  Download,
+  Mail,
+  Edit,
+  Trash2,
+  Loader2,
+  Calendar,
+} from "lucide-react";
 
 interface QuotationDetailsModalProps {
   quotation: QuotationResponseDto;
@@ -209,8 +218,8 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Info Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Info Cards Grid (4 Columns) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
               <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Customer
@@ -239,6 +248,24 @@ export const QuotationDetailsModal: React.FC<QuotationDetailsModalProps> = ({
               <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs font-mono pt-0.5">
                 {quotation.createdAt
                   ? new Date(quotation.createdAt).toLocaleDateString(
+                      undefined,
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      },
+                    )
+                  : "N/A"}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-slate-400" /> Validity Period
+              </span>
+              <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs font-mono pt-0.5">
+                {quotation.validUntil
+                  ? new Date(quotation.validUntil).toLocaleDateString(
                       undefined,
                       {
                         year: "numeric",

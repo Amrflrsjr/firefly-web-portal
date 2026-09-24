@@ -42,10 +42,10 @@ interface EditQuotationModalProps {
   refreshTrigger?: number;
 }
 
-interface QuotationFullDetail extends QuotationResponseDto {
+interface QuotationFullDetail extends Omit<QuotationResponseDto, "validUntil"> {
   customerId?: number;
   contactId?: number | null;
-  validUntil?: string;
+  validUntil: string;
   vatType?: string;
   VATType?: string;
   noteToCustomer?: string | null;
@@ -1373,7 +1373,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       <span className="text-xs font-bold text-slate-900 dark:text-white uppercase">
                         Total
                       </span>
-                      {/* Standard dark text for total price instead of accent color */}
                       <span className="font-mono text-base font-bold text-slate-900 dark:text-white">
                         {currency(calculatedTotal)}
                       </span>

@@ -41,6 +41,10 @@ export interface QuotationResponseDto {
   totalAmount: number;
   status: string;
   createdAt: string;
+  validUntil: string;
+  vatType?: string;
+  VATType?: string;
+  noteToCustomer?: string | null;
   items: QuotationItemResponseDto[];
 }
 
