@@ -87,6 +87,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
 
   const [vatType, setVatType] = useState<string>("Exclusive");
+  const [validityDays, setValidityDays] = useState<number>(7);
   const [validUntil, setValidUntil] = useState<string>("");
   const [noteToCustomer, setNoteToCustomer] = useState("");
   const [contactNameSnapshot, setContactNameSnapshot] = useState("");
@@ -126,6 +127,14 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   >(null);
 
   const searchRef = useRef<HTMLFormElement>(null);
+  const textareaRefs = useRef<{ [key: number]: HTMLTextAreaElement | null }>(
+    {},
+  );
+  const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const [submittingAction, setSubmittingAction] = useState<
+    "save" | "draft" | null
+  >(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,6 +210,19 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     [allCustomers, contactId],
   );
 
+  const adjustTextareaHeight = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    items.forEach((_, idx) => {
+      adjustTextareaHeight(textareaRefs.current[idx]);
+    });
+    adjustTextareaHeight(notesTextareaRef.current);
+  }, [items, noteToCustomer]);
+
   useEffect(() => {
     const fetchQuotationData = async () => {
       try {
@@ -223,11 +245,17 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
           setContactSearchQuery(detail.contactNameSnapshot || "");
 
           if (detail.validUntil) {
-            setValidUntil(detail.validUntil.split("T")[0]);
-          } else {
-            const defaultDate = new Date();
-            defaultDate.setDate(defaultDate.getDate() + 7);
-            setValidUntil(defaultDate.toISOString().split("T")[0]);
+            const parsedDate = new Date(detail.validUntil);
+            setValidUntil(parsedDate.toISOString().split("T")[0]);
+
+            const diffTime = parsedDate.getTime() - new Date().getTime();
+            const diffDays = Math.max(
+              7,
+              Math.ceil(diffTime / (1000 * 60 * 60 * 24)),
+            );
+            if ([7, 14, 30, 60].includes(diffDays)) {
+              setValidityDays(diffDays);
+            }
           }
 
           setVatType(detail.vatType || detail.VATType || "Exclusive");
@@ -423,7 +451,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     setContactEmailSnapshot(contact.email || "");
     setContactSearchQuery(contact.name || "");
     setIsContactSearchOpen(false);
-    loadCustomerDetails(parentCustomer.customerId);
   };
 
   const allAvailableContacts = allCustomers.flatMap((cust) =>
@@ -433,8 +460,16 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     })),
   );
 
-  const filteredContacts = allAvailableContacts.filter(({ contact }) =>
-    contact.name.toLowerCase().includes(contactSearchQuery.toLowerCase()),
+  const filteredContacts = allAvailableContacts.filter(
+    ({ contact, customer }) => {
+      const matchesSearch = contact.name
+        .toLowerCase()
+        .includes(contactSearchQuery.toLowerCase());
+      if (customerId > 0) {
+        return matchesSearch && customer.customerId === customerId;
+      }
+      return matchesSearch;
+    },
   );
 
   const handleItemChange = (
@@ -445,6 +480,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
     setItems(updated);
+
+    if (field === "description") {
+      adjustTextareaHeight(textareaRefs.current[index]);
+    }
   };
 
   const handleSelectProduct = async (index: number, product: Product) => {
@@ -475,26 +514,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       });
 
       setActiveVariantSearchIndex(index);
+      setTimeout(() => adjustTextareaHeight(textareaRefs.current[index]), 0);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to load product variants."));
-
-      const updatedProducts = { ...selectedProducts, [index]: product };
-      setSelectedProducts(updatedProducts);
-      setActiveProductSearchIndex(null);
-      setProductSearchQueries({
-        ...productSearchQueries,
-        [index]: product.name,
-      });
-
-      const updated = [...items];
-      updated[index] = {
-        ...updated[index],
-        productId: product.productId,
-        productVariantId: null,
-        description: product.description || product.name,
-      };
-      setItems(updated);
-      setActiveVariantSearchIndex(index);
     }
   };
 
@@ -527,6 +549,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       ...variantSearchQueries,
       [index]: `${variantLabel || "Standard Variant"}${skuLabel}`,
     });
+    setTimeout(() => adjustTextareaHeight(textareaRefs.current[index]), 0);
   };
 
   const handleQuickSaveProduct = async (dto: CreateProductDto) => {
@@ -542,10 +565,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
       if (quickProductTargetIndex !== null) {
         handleSelectProduct(quickProductTargetIndex, createdProd);
-        const firstVariant = createdProd.variants?.[0];
-        if (firstVariant) {
-          handleSelectVariant(quickProductTargetIndex, firstVariant);
-        }
       }
 
       setIsQuickProductModalOpen(false);
@@ -569,16 +588,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       );
 
       if (refreshedProd) {
-        setSelectedProducts((prev) => {
-          const updatedMap = { ...prev };
-          Object.keys(updatedMap).forEach((key) => {
-            const indexKey = Number(key);
-            if (updatedMap[indexKey]?.productId === productId) {
-              updatedMap[indexKey] = refreshedProd;
-            }
-          });
-          return updatedMap;
-        });
+        setSelectedProducts((prev) => ({
+          ...prev,
+          [variantModalTargetIndex!]: refreshedProd,
+        }));
 
         if (variantModalTargetIndex !== null) {
           const latestVariant =
@@ -667,14 +680,15 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       Math.round((calculatedSubtotal + calculatedVat) * 100) / 100;
   }
 
+  const computedValidUntilDate = new Date();
+  computedValidUntilDate.setDate(
+    computedValidUntilDate.getDate() + validityDays,
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerId) {
       setError("Please select a customer.");
-      return;
-    }
-    if (!validUntil) {
-      setError("Please specify a validity date.");
       return;
     }
     if (items.some((i) => i.quantity <= 0 || i.unitPrice < 0)) {
@@ -686,13 +700,21 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     setError(null);
 
     try {
+      const finalValidUntil =
+        validityDays > 0
+          ? computedValidUntilDate.toISOString()
+          : new Date(validUntil).toISOString();
+
+      const statusOverride = submittingAction === "draft" ? "Draft" : undefined;
+
       const payload = {
         customerId,
         contactId: contactId > 0 ? contactId : null,
         contactNameSnapshot,
         contactEmailSnapshot: contactEmailSnapshot.trim(),
-        validUntil: new Date(validUntil).toISOString(),
+        validUntil: finalValidUntil,
         vatType,
+        status: statusOverride,
         noteToCustomer: noteToCustomer.trim() || undefined,
         items: items.map((i) => ({
           productId:
@@ -722,15 +744,15 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       }
     } finally {
       setSaving(false);
+      setSubmittingAction(null);
     }
   };
 
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-        {/* Modal Shell with standardized rounded-xl (12px) */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-500 overflow-hidden my-auto flex flex-col max-h-[95vh]">
-          {/* Flat Modal Header */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-7xl overflow-hidden my-auto flex flex-col max-h-[95vh]">
+          {/* Modal Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
@@ -746,6 +768,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 {items.length} {items.length === 1 ? "item" : "items"}
               </span>
               <button
+                type="button"
                 onClick={onClose}
                 className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95"
               >
@@ -775,7 +798,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 </div>
               )}
 
-              {/* Expanded Main Column (9 Cols) */}
+              {/* Main Column */}
               <div className="lg:col-span-9 space-y-5">
                 {/* Proposal & Customer Details Card */}
                 <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
@@ -784,7 +807,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Customer Searchable Dropdown */}
+                    {/* Customer Selection */}
                     <div className="space-y-1.5 relative">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Customer <span className="text-rose-500">*</span>
@@ -805,7 +828,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               setContactId(0);
                             }
                           }}
-                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 transition-all shadow-2xs"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                         />
                         <button
                           type="button"
@@ -826,7 +849,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                 setIsCustomerSearchOpen(false);
                                 onTriggerAddCustomer();
                               }}
-                              className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                              className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                             >
                               <Building2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                               <span>+ Add New Customer</span>
@@ -844,7 +867,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                 <div
                                   key={c.customerId}
                                   onClick={() => handleSelectCustomer(c)}
-                                  className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                  className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                 >
                                   <span className="font-medium text-slate-800 dark:text-slate-200">
                                     {c.companyName}
@@ -880,7 +903,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       </select>
                     </div>
 
-                    {/* Contact Person Field */}
+                    {/* Contact Person */}
                     <div className="space-y-1.5 relative">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -944,7 +967,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                           customer,
                                         )
                                       }
-                                      className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                      className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                     >
                                       <div>
                                         <span className="font-medium text-slate-800 dark:text-slate-200">
@@ -988,7 +1011,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                   </div>
                 </div>
 
-                {/* Line Items & Products Section */}
+                {/* Line Items Section */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-1">
                     <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -997,7 +1020,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     <button
                       type="button"
                       onClick={addItemRow}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                     >
                       <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Item
                     </button>
@@ -1009,9 +1032,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       const variantQuery = variantSearchQueries[idx] || "";
                       const selectedProd = selectedProducts[idx];
 
-                      const filteredProducts = products.filter((p) =>
-                        p.name.toLowerCase().includes(prodQuery.toLowerCase()),
-                      );
+                      const filteredProducts = products.filter((p) => {
+                        const matchesQuery = p.name
+                          .toLowerCase()
+                          .includes(prodQuery.toLowerCase());
+                        return matchesQuery && p.isActive === true;
+                      });
 
                       const filteredVariants = (
                         selectedProd?.variants || []
@@ -1040,10 +1066,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                           key={idx}
                           className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-3 shadow-2xs relative group"
                         >
-                          {/* Line Header Controls */}
                           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                             <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">
+                              <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">
                                 {idx + 1}
                               </span>
                               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -1058,7 +1083,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => duplicateItemRow(idx)}
-                                className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                                className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
                                 title="Duplicate Item"
                               >
                                 <Copy className="w-3.5 h-3.5" />
@@ -1066,7 +1091,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => removeItemRow(idx)}
-                                className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-500 dark:text-rose-400 rounded-lg transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+                                className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-lg transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
                                 title="Remove Item"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1074,9 +1099,8 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Grid Layout */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-                            {/* 1. Select Product */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-start">
+                            {/* Select Product */}
                             <div className="lg:col-span-3 space-y-1 relative">
                               <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                                 1. Select Product
@@ -1090,9 +1114,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                   onFocus={() => {
                                     fetchProducts();
                                     setActiveProductSearchIndex(idx);
-                                    setActiveVariantSearchIndex(null);
-                                    setIsCustomerSearchOpen(false);
-                                    setIsContactSearchOpen(false);
                                   }}
                                   onChange={(e) => {
                                     setProductSearchQueries({
@@ -1113,7 +1134,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                       setIsQuickProductModalOpen(true);
                                       setActiveProductSearchIndex(null);
                                     }}
-                                    className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                                    className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                   >
                                     <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                     <span>+ Add New Product</span>
@@ -1127,7 +1148,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                           onClick={() =>
                                             handleSelectProduct(idx, p)
                                           }
-                                          className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                          className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                         >
                                           <span className="font-medium text-slate-800 dark:text-slate-200">
                                             {p.name}
@@ -1145,10 +1166,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               )}
                             </div>
 
-                            {/* 2. Select Variant */}
-                            <div className="lg:col-span-3 space-y-1 relative">
+                            {/* Select Variant */}
+                            <div className="lg:col-span-2 space-y-1 relative">
                               <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                2. Select Variant
+                                2. Variant
                               </label>
                               <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
@@ -1156,17 +1177,14 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                   type="text"
                                   placeholder={
                                     selectedProd
-                                      ? "Optional variant..."
-                                      : "Select product first"
+                                      ? "Optional..."
+                                      : "Product first"
                                   }
                                   disabled={!selectedProd}
                                   value={variantQuery}
-                                  onFocus={() => {
-                                    setActiveVariantSearchIndex(idx);
-                                    setActiveProductSearchIndex(null);
-                                    setIsCustomerSearchOpen(false);
-                                    setIsContactSearchOpen(false);
-                                  }}
+                                  onFocus={() =>
+                                    setActiveVariantSearchIndex(idx)
+                                  }
                                   onChange={(e) => {
                                     setVariantSearchQueries({
                                       ...variantSearchQueries,
@@ -1190,7 +1208,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                         setIsVariantModalOpen(true);
                                         setActiveVariantSearchIndex(null);
                                       }}
-                                      className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                                      className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                     >
                                       <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                       <span>
@@ -1213,9 +1231,9 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                             [idx]: "",
                                           });
                                         }}
-                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
                                       >
-                                        — None (No specific variant) —
+                                        — None —
                                       </div>
 
                                       {filteredVariants.length > 0 ? (
@@ -1233,18 +1251,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                                   variant,
                                                 )
                                               }
-                                              className="px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                              className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                             >
                                               <div>
                                                 <span className="font-medium text-slate-800 dark:text-slate-200">
                                                   {vLabel || "Standard Variant"}
                                                 </span>
-                                                {variant.sku &&
-                                                  variant.sku.trim() !== "" && (
-                                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                                                      SKU: {variant.sku}
-                                                    </div>
-                                                  )}
                                               </div>
                                               <span className="font-medium font-mono text-slate-700 dark:text-slate-300">
                                                 {currency(variant.unitPrice)}
@@ -1263,14 +1275,22 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                             </div>
 
                             {/* Description */}
-                            <div className="sm:col-span-2 lg:col-span-4 space-y-1">
+                            <div className="lg:col-span-3 space-y-1">
                               <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                Description
+                                Description / Inclusions
                               </label>
-                              <input
-                                type="text"
-                                placeholder="Item specification..."
+                              <textarea
+                                rows={1}
+                                ref={(el) => {
+                                  textareaRefs.current[idx] = el;
+                                }}
+                                placeholder="Description or details..."
                                 value={item.description}
+                                onInput={(e) =>
+                                  adjustTextareaHeight(
+                                    e.currentTarget as HTMLTextAreaElement,
+                                  )
+                                }
                                 onChange={(e) =>
                                   handleItemChange(
                                     idx,
@@ -1278,12 +1298,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                     e.target.value,
                                   )
                                 }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-19.5 leading-relaxed"
                               />
                             </div>
 
                             {/* Qty & Price */}
-                            <div className="grid grid-cols-2 gap-2 lg:col-span-2">
+                            <div className="grid grid-cols-2 gap-2 lg:col-span-4">
                               <div className="space-y-1">
                                 <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                                   Qty
@@ -1299,7 +1319,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                       Number(e.target.value),
                                     )
                                   }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
                               </div>
 
@@ -1319,7 +1339,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                       parseFloat(e.target.value) || 0,
                                     )
                                   }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
                               </div>
                             </div>
@@ -1336,18 +1356,24 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     Note to Customer
                   </label>
                   <textarea
-                    rows={3}
+                    rows={1}
+                    ref={notesTextareaRef}
                     placeholder="Payment instructions, bank details, or delivery terms..."
                     value={noteToCustomer}
+                    onInput={(e) =>
+                      adjustTextareaHeight(
+                        e.currentTarget as HTMLTextAreaElement,
+                      )
+                    }
                     onChange={(e) => setNoteToCustomer(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none transition-all shadow-2xs"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none overflow-y-auto max-h-24 transition-all shadow-2xs leading-relaxed"
                   />
                 </div>
               </div>
 
-              {/* Compact Right Sidebar Column (3 Cols) */}
+              {/* Right Sidebar */}
               <div className="lg:col-span-3 space-y-4">
-                {/* Order Summary Card */}
+                {/* Order Summary */}
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
                   <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
                     <Calculator className="w-3.5 h-3.5 text-slate-400" />
@@ -1380,40 +1406,66 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                   </div>
                 </div>
 
-                {/* Validity Period Card */}
+                {/* Validity Period */}
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Valid Until Date
+                      Validity Period
                     </label>
                   </div>
-                  <input
-                    type="date"
-                    required
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
+                  <select
+                    value={validityDays}
+                    onChange={(e) => setValidityDays(Number(e.target.value))}
                     className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
-                  />
+                  >
+                    <option value={7}>7 days</option>
+                    <option value={14}>14 days</option>
+                    <option value={30}>30 days</option>
+                    <option value={60}>60 days</option>
+                  </select>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-400">
+                    Valid until{" "}
+                    {computedValidUntilDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </div>
                 </div>
 
-                {/* Stacked Primary Actions */}
+                {/* Action Buttons */}
                 <div className="space-y-2 pt-1">
                   <button
                     form="edit-quotation-form"
                     type="submit"
+                    onClick={() => setSubmittingAction("save")}
                     disabled={saving}
-                    className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                    className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-white rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                   >
                     <Calculator className="w-4 h-4" />
-                    {saving ? "Saving Changes..." : "Save Changes"}
+                    {saving && submittingAction === "save"
+                      ? "Saving Changes..."
+                      : "Save Changes"}
+                  </button>
+
+                  <button
+                    form="edit-quotation-form"
+                    type="submit"
+                    onClick={() => setSubmittingAction("draft")}
+                    disabled={saving}
+                    className="w-full px-3.5 py-2 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-900 dark:hover:bg-amber-950/20 dark:hover:border-amber-900/40 dark:hover:text-amber-200 rounded-lg transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                  >
+                    {saving && submittingAction === "draft"
+                      ? "Saving..."
+                      : "Save as Draft"}
                   </button>
 
                   <button
                     type="button"
                     onClick={onClose}
                     disabled={saving}
-                    className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                    className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                   >
                     Cancel
                   </button>
@@ -1424,7 +1476,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         </div>
       </div>
 
-      {/* Backend Product Modal */}
       {isQuickProductModalOpen && (
         <CreateProductModal
           saving={false}
@@ -1437,7 +1488,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         />
       )}
 
-      {/* Backend Variant Modal */}
       {isVariantModalOpen && targetProductForVariants && (
         <ProductVariantsModal
           product={targetProductForVariants}

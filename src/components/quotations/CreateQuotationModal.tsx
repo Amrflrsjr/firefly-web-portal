@@ -137,8 +137,11 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   // Track the most recently typed customer query so we can match and auto-select it after refresh
   const [lastTypedCustomerQuery, setLastTypedCustomerQuery] = useState("");
 
-  // Ref to track if user explicitly clicked "+ Add New Customer"
+  // Refs to track if user explicitly clicked creation/add actions
   const isCreatingCustomerRef = useRef(false);
+  const isCreatingContactRef = useRef(false);
+  // Ref to track if the user intentionally cleared/dismissed the contact selection
+  const userClearedContactRef = useRef(false);
 
   // Helper to safely format variant attributes without stray slashes
   const formatVariantLabel = (color?: string, size?: string) => {
@@ -178,7 +181,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   }, []);
 
   const loadCustomerDetails = useCallback(
-    async (customerId: number, keepExistingContact = false) => {
+    async (customerId: number, overrideContactId?: number) => {
       if (!customerId) return;
       try {
         const res = await api.get<Customer>(`/customers/${customerId}`);
@@ -189,11 +192,27 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
           fullCustomer.contacts &&
           fullCustomer.contacts.length > 0
         ) {
-          if (keepExistingContact && selectedContactId > 0) {
+          // If the user intentionally cleared the contact, don't auto-select primary or new contacts
+          if (userClearedContactRef.current) {
+            setSelectedContactId(0);
+            setContactNameSnapshot("");
+            setContactEmailSnapshot("");
+            setContactSearchQuery("");
+            return;
+          }
+
+          // Check if we have an explicit override or an existing selection
+          const targetContactId =
+            overrideContactId !== undefined
+              ? overrideContactId
+              : selectedContactId;
+
+          if (targetContactId > 0) {
             const currentContact = fullCustomer.contacts.find(
-              (c) => c.contactId === selectedContactId,
+              (c) => c.contactId === targetContactId,
             );
             if (currentContact) {
+              setSelectedContactId(currentContact.contactId ?? 0);
               setContactNameSnapshot(currentContact.name || "");
               setContactEmailSnapshot(currentContact.email || "");
               setContactSearchQuery(currentContact.name || "");
@@ -201,6 +220,22 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
             }
           }
 
+          // If the user was actively creating a new contact, pick the newest one by ID
+          if (isCreatingContactRef.current) {
+            const newestContact = [...fullCustomer.contacts].sort(
+              (a, b) => (b.contactId ?? 0) - (a.contactId ?? 0),
+            )[0];
+            if (newestContact) {
+              setSelectedContactId(newestContact.contactId ?? 0);
+              setContactNameSnapshot(newestContact.name || "");
+              setContactEmailSnapshot(newestContact.email || "");
+              setContactSearchQuery(newestContact.name || "");
+              isCreatingContactRef.current = false;
+              return;
+            }
+          }
+
+          // Default fallback: primary contact or first contact
           const primaryContact =
             fullCustomer.contacts.find((c) => c.isPrimary) ||
             fullCustomer.contacts[0];
@@ -248,7 +283,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         const freshCustomers = await fetchAllCustomers();
         if (!isMounted) return;
 
-        // Only auto-select the newest/matched customer if the user was actively creating one via the modal button
         if (
           isCreatingCustomerRef.current &&
           freshCustomers &&
@@ -256,7 +290,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         ) {
           let matched: Customer | undefined;
 
-          // 1. Try matching by exact or partial typed query
           if (lastTypedCustomerQuery.trim()) {
             const queryLower = lastTypedCustomerQuery.trim().toLowerCase();
             matched = freshCustomers.find(
@@ -264,7 +297,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
             );
           }
 
-          // 2. Fallback: If no exact string match is found, assume the newest customer was just created
           if (!matched) {
             matched = [...freshCustomers].sort(
               (a, b) => b.customerId - a.customerId,
@@ -274,14 +306,16 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
           if (matched) {
             setSelectedCustomerId(matched.customerId);
             setCustomerSearchQuery(matched.companyName);
+            userClearedContactRef.current = false;
             await loadCustomerDetails(matched.customerId);
             toast.success(
               `Successfully selected customer: ${matched.companyName}`,
             );
           }
-          isCreatingCustomerRef.current = false; // Reset flag after handling
+          isCreatingCustomerRef.current = false;
         } else if (selectedCustomerId > 0) {
-          await loadCustomerDetails(selectedCustomerId, true);
+          isCreatingContactRef.current = true;
+          await loadCustomerDetails(selectedCustomerId);
         }
       };
 
@@ -336,7 +370,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     return () => clearTimeout(timer);
   }, [customerSearchQuery, allCustomers]);
 
-  // Helper to adjust textarea height dynamically (up to ~4 lines, then scrolls)
   const adjustTextareaHeight = (el: HTMLTextAreaElement | null) => {
     if (!el) return;
     el.style.height = "auto";
@@ -354,6 +387,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     setSelectedCustomerId(customer.customerId);
     setCustomerSearchQuery(customer.companyName);
     setIsCustomerSearchOpen(false);
+    userClearedContactRef.current = false;
     await loadCustomerDetails(customer.customerId);
   };
 
@@ -367,6 +401,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     setContactNameSnapshot(contact.name || "");
     setContactEmailSnapshot(contact.email || "");
     setContactSearchQuery(contact.name || "");
+    userClearedContactRef.current = false;
     setIsContactSearchOpen(false);
   };
 
@@ -383,7 +418,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         .toLowerCase()
         .includes(contactSearchQuery.toLowerCase());
 
-      // If a customer is selected, restrict contacts strictly to that customer ID
       if (selectedCustomerId > 0) {
         return matchesSearch && customer.customerId === selectedCustomerId;
       }
@@ -664,9 +698,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-        {/* Modal Shell with standardized rounded-xl (12px) */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-7xl overflow-hidden my-auto flex flex-col max-h-[95vh]">
-          {/* Flat Modal Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
@@ -691,7 +723,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
             </div>
           </div>
 
-          {/* Form Body - 9 / 3 Split Ratio Layout */}
           <form
             id="create-quotation-form"
             onSubmit={handleSubmit}
@@ -705,16 +736,13 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
               </div>
             )}
 
-            {/* Expanded Main Column (9 Cols) */}
             <div className="lg:col-span-9 space-y-5">
-              {/* Proposal & Customer Details Card */}
               <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
                 <div className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2.5">
                   Proposal & Customer Details
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Row 1: Customer & VAT Computation */}
                   <div className="space-y-1.5 relative">
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Customer <span className="text-rose-500">*</span>
@@ -761,7 +789,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             setLastTypedCustomerQuery(customerSearchQuery);
                             onTriggerAddCustomer();
                           }}
-                          className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                          className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                         >
                           <Building2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                           <span>+ Add New Customer</span>
@@ -778,7 +806,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                               <div
                                 key={c.customerId}
                                 onClick={() => handleSelectCustomer(c)}
-                                className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                               >
                                 <span className="font-medium text-slate-800 dark:text-slate-200">
                                   {c.companyName}
@@ -811,7 +839,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     </select>
                   </div>
 
-                  {/* Row 2: Contact Person & Contact Email */}
                   <div className="space-y-1.5 relative">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -821,6 +848,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => {
+                            isCreatingContactRef.current = true;
+                            userClearedContactRef.current = false;
                             const currentCust = allCustomers.find(
                               (c) => c.customerId === selectedCustomerId,
                             );
@@ -847,6 +876,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             setSelectedContactId(0);
                             setContactNameSnapshot("");
                             setContactEmailSnapshot("");
+                            userClearedContactRef.current = true;
+                            isCreatingContactRef.current = false;
                           }
                         }}
                         className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
@@ -874,7 +905,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                       customer,
                                     )
                                   }
-                                  className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                  className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                 >
                                   <div>
                                     <span className="font-medium text-slate-800 dark:text-slate-200">
@@ -916,7 +947,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                 </div>
               </div>
 
-              {/* Line Items & Products Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -925,7 +955,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                   <button
                     type="button"
                     onClick={addItemRow}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                   >
                     <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Item
                   </button>
@@ -971,7 +1001,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         key={idx}
                         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-3 shadow-2xs relative group"
                       >
-                        {/* Line Header Controls */}
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                           <div className="flex items-center gap-2">
                             <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">
@@ -989,7 +1018,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             <button
                               type="button"
                               onClick={() => duplicateItemRow(idx)}
-                              className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                              className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
                               title="Duplicate Item"
                             >
                               <Copy className="w-3.5 h-3.5" />
@@ -997,7 +1026,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             <button
                               type="button"
                               onClick={() => removeItemRow(idx)}
-                              className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-500 dark:text-rose-400 rounded-lg transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+                              className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-lg transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
                               title="Remove Item"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1005,9 +1034,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Inline Compact Grid Layout with auto-growing multiline textarea */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-start">
-                          {/* 1. Select Product */}
                           <div className="lg:col-span-3 space-y-1 relative">
                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                               1. Select Product
@@ -1041,7 +1068,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                     setIsQuickProductModalOpen(true);
                                     setActiveProductSearchIndex(null);
                                   }}
-                                  className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                                  className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                 >
                                   <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                   <span>+ Add New Product</span>
@@ -1055,7 +1082,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                         onClick={() =>
                                           handleSelectProduct(idx, p)
                                         }
-                                        className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                        className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                       >
                                         <span className="font-medium text-slate-800 dark:text-slate-200">
                                           {p.name}
@@ -1073,7 +1100,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                             )}
                           </div>
 
-                          {/* 2. Select Variant */}
                           <div className="lg:col-span-2 space-y-1 relative">
                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                               2. Variant
@@ -1109,7 +1135,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                       setIsVariantModalOpen(true);
                                       setActiveVariantSearchIndex(null);
                                     }}
-                                    className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                                    className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                   >
                                     <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                     <span>
@@ -1132,7 +1158,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                           [idx]: "",
                                         });
                                       }}
-                                      className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                      className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
                                     >
                                       — None —
                                     </div>
@@ -1149,7 +1175,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                             onClick={() =>
                                               handleSelectVariant(idx, variant)
                                             }
-                                            className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                            className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
                                           >
                                             <div>
                                               <span className="font-medium text-slate-800 dark:text-slate-200">
@@ -1172,7 +1198,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                               )}
                           </div>
 
-                          {/* 3. Description / Inclusions (Auto-growing Textarea) */}
                           <div className="lg:col-span-3 space-y-1">
                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                               Description / Inclusions
@@ -1196,11 +1221,10 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                   e.target.value,
                                 )
                               }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 pr-6 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-19.5 leading-relaxed"
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-19.5 leading-relaxed"
                             />
                           </div>
 
-                          {/* Qty & Price */}
                           <div className="grid grid-cols-2 gap-2 lg:col-span-4">
                             <div className="space-y-1">
                               <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
@@ -1248,7 +1272,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                 </div>
               </div>
 
-              {/* Note to Customer (Auto-growing Textarea) */}
               <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
                 <label className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider block">
                   Note to Customer
@@ -1262,14 +1285,12 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     adjustTextareaHeight(e.currentTarget as HTMLTextAreaElement)
                   }
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 pr-6 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none overflow-y-auto max-h-24 transition-all shadow-2xs leading-relaxed"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none overflow-y-auto max-h-24 transition-all shadow-2xs leading-relaxed"
                 />
               </div>
             </div>
 
-            {/* Compact Right Sidebar Column (3 Cols) */}
             <div className="lg:col-span-3 space-y-4">
-              {/* Order Summary Card */}
               <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
                 <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
                   <Calculator className="w-3.5 h-3.5 text-slate-400" />
@@ -1302,7 +1323,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                 </div>
               </div>
 
-              {/* Validity Period Card */}
               <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
@@ -1330,9 +1350,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                 </div>
               </div>
 
-              {/* Standardized Button Hierarchy */}
               <div className="space-y-2 pt-1">
-                {/* 1. Primary Filled Action Button (Amber/Orange) */}
                 <button
                   form="create-quotation-form"
                   type="submit"
@@ -1346,7 +1364,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     : "Create Quotation"}
                 </button>
 
-                {/* 2. Semantic Secondary Action ("Save & Send Email" with blue tint) */}
                 {onSubmitAndSend && (
                   <button
                     form="create-quotation-form"
@@ -1362,7 +1379,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                   </button>
                 )}
 
-                {/* 3. In-Flow Secondary Action ("Save as Draft" with warm amber hover tint) */}
                 <button
                   form="create-quotation-form"
                   type="submit"
@@ -1375,12 +1391,11 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                     : "Save as Draft"}
                 </button>
 
-                {/* 4. Neutral Dismiss Action ("Cancel") */}
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={saving}
-                  className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                  className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                 >
                   Cancel
                 </button>
@@ -1390,7 +1405,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         </div>
       </div>
 
-      {/* Backend Product Modal */}
       {isQuickProductModalOpen && (
         <CreateProductModal
           saving={false}
@@ -1403,7 +1417,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
         />
       )}
 
-      {/* Backend Variant Modal */}
       {isVariantModalOpen && targetProductForVariants && (
         <ProductVariantsModal
           product={targetProductForVariants}
