@@ -677,6 +677,20 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       setLocalError("Please select a customer.");
       return;
     }
+
+    const hasInvalidItem = items.some(
+      (item) =>
+        !item.productId &&
+        (!item.description || item.description.trim() === ""),
+    );
+
+    if (hasInvalidItem) {
+      setLocalError(
+        "Each item must have either a selected Product or a Description entered.",
+      );
+      return;
+    }
+
     if (items.some((i) => i.quantity <= 0 || i.unitPrice < 0)) {
       setLocalError("Please ensure all items have a valid quantity and price.");
       return;
