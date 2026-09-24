@@ -691,6 +691,21 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       setError("Please select a customer.");
       return;
     }
+
+    // Added check to match CreateQuotationModal validations
+    const hasInvalidItem = items.some(
+      (item) =>
+        !item.productId &&
+        (!item.description || item.description.trim() === ""),
+    );
+
+    if (hasInvalidItem) {
+      setError(
+        "Each item must have either a selected Product or a Description entered.",
+      );
+      return;
+    }
+
     if (items.some((i) => i.quantity <= 0 || i.unitPrice < 0)) {
       setError("Please ensure all items have a valid quantity and price.");
       return;
