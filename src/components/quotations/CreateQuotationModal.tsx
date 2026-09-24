@@ -123,6 +123,11 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   >(null);
 
   const searchRef = useRef<HTMLFormElement>(null);
+  const textareaRefs = useRef<{ [key: number]: HTMLTextAreaElement | null }>(
+    {},
+  );
+  const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   const [submittingAction, setSubmittingAction] = useState<
     "draft" | "create" | "send" | null
   >(null);
@@ -172,36 +177,53 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     }
   }, []);
 
-  const loadCustomerDetails = useCallback(async (customerId: number) => {
-    if (!customerId) return;
-    try {
-      const res = await api.get<Customer>(`/customers/${customerId}`);
-      const fullCustomer = res.data;
+  const loadCustomerDetails = useCallback(
+    async (customerId: number, keepExistingContact = false) => {
+      if (!customerId) return;
+      try {
+        const res = await api.get<Customer>(`/customers/${customerId}`);
+        const fullCustomer = res.data;
 
-      if (
-        fullCustomer &&
-        fullCustomer.contacts &&
-        fullCustomer.contacts.length > 0
-      ) {
-        const primaryContact =
-          fullCustomer.contacts.find((c) => c.isPrimary) ||
-          fullCustomer.contacts[0];
-        if (primaryContact) {
-          setSelectedContactId(primaryContact.contactId ?? 0);
-          setContactNameSnapshot(primaryContact.name || "");
-          setContactEmailSnapshot(primaryContact.email || "");
-          setContactSearchQuery(primaryContact.name || "");
+        if (
+          fullCustomer &&
+          fullCustomer.contacts &&
+          fullCustomer.contacts.length > 0
+        ) {
+          if (keepExistingContact && selectedContactId > 0) {
+            const currentContact = fullCustomer.contacts.find(
+              (c) => c.contactId === selectedContactId,
+            );
+            if (currentContact) {
+              setContactNameSnapshot(currentContact.name || "");
+              setContactEmailSnapshot(currentContact.email || "");
+              setContactSearchQuery(currentContact.name || "");
+              return;
+            }
+          }
+
+          const primaryContact =
+            fullCustomer.contacts.find((c) => c.isPrimary) ||
+            fullCustomer.contacts[0];
+          if (primaryContact) {
+            setSelectedContactId(primaryContact.contactId ?? 0);
+            setContactNameSnapshot(primaryContact.name || "");
+            setContactEmailSnapshot(primaryContact.email || "");
+            setContactSearchQuery(primaryContact.name || "");
+          }
+        } else {
+          setSelectedContactId(0);
+          setContactNameSnapshot(fullCustomer?.companyName || "");
+          setContactEmailSnapshot("");
+          setContactSearchQuery(fullCustomer?.companyName || "");
         }
-      } else {
-        setSelectedContactId(0);
-        setContactNameSnapshot(fullCustomer?.companyName || "");
-        setContactEmailSnapshot("");
-        setContactSearchQuery(fullCustomer?.companyName || "");
+      } catch (err: unknown) {
+        toast.error(
+          getErrorMessage(err, "Failed to reload customer contacts."),
+        );
       }
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Failed to reload customer contacts."));
-    }
-  }, []);
+    },
+    [selectedContactId],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -259,7 +281,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
           }
           isCreatingCustomerRef.current = false; // Reset flag after handling
         } else if (selectedCustomerId > 0) {
-          await loadCustomerDetails(selectedCustomerId);
+          await loadCustomerDetails(selectedCustomerId, true);
         }
       };
 
@@ -314,6 +336,20 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     return () => clearTimeout(timer);
   }, [customerSearchQuery, allCustomers]);
 
+  // Helper to adjust textarea height dynamically (up to ~4 lines, then scrolls)
+  const adjustTextareaHeight = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    items.forEach((_, idx) => {
+      adjustTextareaHeight(textareaRefs.current[idx]);
+    });
+    adjustTextareaHeight(notesTextareaRef.current);
+  }, [items, notes]);
+
   const handleSelectCustomer = async (customer: Customer) => {
     setSelectedCustomerId(customer.customerId);
     setCustomerSearchQuery(customer.companyName);
@@ -332,7 +368,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     setContactEmailSnapshot(contact.email || "");
     setContactSearchQuery(contact.name || "");
     setIsContactSearchOpen(false);
-    loadCustomerDetails(parentCustomer.customerId);
   };
 
   const allAvailableContacts = allCustomers.flatMap((cust) =>
@@ -342,8 +377,19 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     })),
   );
 
-  const filteredContacts = allAvailableContacts.filter(({ contact }) =>
-    contact.name.toLowerCase().includes(contactSearchQuery.toLowerCase()),
+  const filteredContacts = allAvailableContacts.filter(
+    ({ contact, customer }) => {
+      const matchesSearch = contact.name
+        .toLowerCase()
+        .includes(contactSearchQuery.toLowerCase());
+
+      // If a customer is selected, restrict contacts strictly to that customer ID
+      if (selectedCustomerId > 0) {
+        return matchesSearch && customer.customerId === selectedCustomerId;
+      }
+
+      return matchesSearch;
+    },
   );
 
   const handleItemChange = (
@@ -354,6 +400,10 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
     setItems(updated);
+
+    if (field === "description") {
+      adjustTextareaHeight(textareaRefs.current[index]);
+    }
   };
 
   const handleSelectProduct = (index: number, product: Product) => {
@@ -375,6 +425,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       ...variantSearchQueries,
       [index]: "",
     });
+
+    setTimeout(() => adjustTextareaHeight(textareaRefs.current[index]), 0);
   };
 
   const handleSelectVariant = (index: number, variant: ProductVariant) => {
@@ -406,6 +458,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       ...variantSearchQueries,
       [index]: `${variantLabel || "Standard Variant"}${skuLabel}`,
     });
+
+    setTimeout(() => adjustTextareaHeight(textareaRefs.current[index]), 0);
   };
 
   const handleQuickSaveProduct = async (dto: CreateProductDto) => {
@@ -920,7 +974,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         {/* Line Header Controls */}
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                           <div className="flex items-center gap-2">
-                            {/* Updated from rounded-md to rounded-lg */}
                             <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">
                               {idx + 1}
                             </span>
@@ -952,243 +1005,190 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Grid Layout */}
-                        <div className="space-y-3">
-                          {/* Row 1: Product, Variant, Qty, Price */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-                            {/* 1. Select Product */}
-                            <div className="lg:col-span-4 space-y-1 relative">
-                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                1. Select Product
-                              </label>
-                              <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                <input
-                                  type="text"
-                                  placeholder="Search product..."
-                                  value={prodQuery}
-                                  onFocus={() => {
-                                    fetchProducts();
-                                    setActiveProductSearchIndex(idx);
-                                  }}
-                                  onChange={(e) => {
-                                    setProductSearchQueries({
-                                      ...productSearchQueries,
-                                      [idx]: e.target.value,
-                                    });
-                                    setActiveProductSearchIndex(idx);
-                                  }}
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                                />
-                              </div>
+                        {/* Inline Compact Grid Layout with auto-growing multiline textarea */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-start">
+                          {/* 1. Select Product */}
+                          <div className="lg:col-span-3 space-y-1 relative">
+                            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                              1. Select Product
+                            </label>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                              <input
+                                type="text"
+                                placeholder="Search product..."
+                                value={prodQuery}
+                                onFocus={() => {
+                                  fetchProducts();
+                                  setActiveProductSearchIndex(idx);
+                                }}
+                                onChange={(e) => {
+                                  setProductSearchQueries({
+                                    ...productSearchQueries,
+                                    [idx]: e.target.value,
+                                  });
+                                  setActiveProductSearchIndex(idx);
+                                }}
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                              />
+                            </div>
 
-                              {activeProductSearchIndex === idx && (
+                            {activeProductSearchIndex === idx && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
+                                <div
+                                  onClick={() => {
+                                    setQuickProductTargetIndex(idx);
+                                    setIsQuickProductModalOpen(true);
+                                    setActiveProductSearchIndex(null);
+                                  }}
+                                  className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
+                                >
+                                  <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                                  <span>+ Add New Product</span>
+                                </div>
+
+                                <div className="max-h-40 overflow-y-auto">
+                                  {filteredProducts.length > 0 ? (
+                                    filteredProducts.map((p) => (
+                                      <div
+                                        key={p.productId}
+                                        onClick={() =>
+                                          handleSelectProduct(idx, p)
+                                        }
+                                        className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                      >
+                                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                                          {p.name}
+                                        </span>
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
+                                      No products found
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 2. Select Variant */}
+                          <div className="lg:col-span-2 space-y-1 relative">
+                            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                              2. Variant
+                            </label>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                              <input
+                                type="text"
+                                placeholder={
+                                  selectedProd ? "Optional..." : "Product first"
+                                }
+                                disabled={!selectedProd}
+                                value={variantQuery}
+                                onFocus={() => setActiveVariantSearchIndex(idx)}
+                                onChange={(e) => {
+                                  setVariantSearchQueries({
+                                    ...variantSearchQueries,
+                                    [idx]: e.target.value,
+                                  });
+                                  setActiveVariantSearchIndex(idx);
+                                }}
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
+                              />
+                            </div>
+
+                            {activeVariantSearchIndex === idx &&
+                              selectedProd && (
                                 <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
                                   <div
                                     onClick={() => {
-                                      setQuickProductTargetIndex(idx);
-                                      setIsQuickProductModalOpen(true);
-                                      setActiveProductSearchIndex(null);
+                                      setVariantModalTargetIndex(idx);
+                                      setTargetProductForVariants(selectedProd);
+                                      setIsVariantModalOpen(true);
+                                      setActiveVariantSearchIndex(null);
                                     }}
                                     className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
                                   >
-                                    <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    <span>+ Add New Product</span>
+                                    <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                                    <span>
+                                      + Add Variant to {selectedProd.name}
+                                    </span>
                                   </div>
 
                                   <div className="max-h-40 overflow-y-auto">
-                                    {filteredProducts.length > 0 ? (
-                                      filteredProducts.map((p) => (
-                                        <div
-                                          key={p.productId}
-                                          onClick={() =>
-                                            handleSelectProduct(idx, p)
-                                          }
-                                          className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
-                                        >
-                                          <span className="font-medium text-slate-800 dark:text-slate-200">
-                                            {p.name}
-                                          </span>
-                                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                        </div>
-                                      ))
+                                    <div
+                                      onClick={() => {
+                                        const updated = [...items];
+                                        updated[idx] = {
+                                          ...updated[idx],
+                                          productVariantId: null,
+                                        };
+                                        setItems(updated);
+                                        setActiveVariantSearchIndex(null);
+                                        setVariantSearchQueries({
+                                          ...variantSearchQueries,
+                                          [idx]: "",
+                                        });
+                                      }}
+                                      className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                    >
+                                      — None —
+                                    </div>
+
+                                    {filteredVariants.length > 0 ? (
+                                      filteredVariants.map((variant) => {
+                                        const vLabel = formatVariantLabel(
+                                          variant.color,
+                                          variant.size,
+                                        );
+                                        return (
+                                          <div
+                                            key={variant.productVariantId}
+                                            onClick={() =>
+                                              handleSelectVariant(idx, variant)
+                                            }
+                                            className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                          >
+                                            <div>
+                                              <span className="font-medium text-slate-800 dark:text-slate-200">
+                                                {vLabel || "Standard Variant"}
+                                              </span>
+                                            </div>
+                                            <span className="font-medium font-mono text-slate-700 dark:text-slate-300">
+                                              {currency(variant.unitPrice)}
+                                            </span>
+                                          </div>
+                                        );
+                                      })
                                     ) : (
-                                      <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
-                                        No products found
+                                      <div className="px-3 py-3 text-xs text-center font-medium text-slate-400 dark:text-slate-500">
+                                        No variants found
                                       </div>
                                     )}
                                   </div>
                                 </div>
                               )}
-                            </div>
-
-                            {/* 2. Select Variant */}
-                            <div className="lg:col-span-4 space-y-1 relative">
-                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                2. Select Variant
-                              </label>
-                              <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                <input
-                                  type="text"
-                                  placeholder={
-                                    selectedProd
-                                      ? "Optional variant..."
-                                      : "Select product first"
-                                  }
-                                  disabled={!selectedProd}
-                                  value={variantQuery}
-                                  onFocus={() =>
-                                    setActiveVariantSearchIndex(idx)
-                                  }
-                                  onChange={(e) => {
-                                    setVariantSearchQueries({
-                                      ...variantSearchQueries,
-                                      [idx]: e.target.value,
-                                    });
-                                    setActiveVariantSearchIndex(idx);
-                                  }}
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
-                                />
-                              </div>
-
-                              {activeVariantSearchIndex === idx &&
-                                selectedProd && (
-                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
-                                    <div
-                                      onClick={() => {
-                                        setVariantModalTargetIndex(idx);
-                                        setTargetProductForVariants(
-                                          selectedProd,
-                                        );
-                                        setIsVariantModalOpen(true);
-                                        setActiveVariantSearchIndex(null);
-                                      }}
-                                      className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
-                                    >
-                                      <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                      <span>
-                                        + Add Variant to {selectedProd.name}
-                                      </span>
-                                    </div>
-
-                                    <div className="max-h-40 overflow-y-auto">
-                                      <div
-                                        onClick={() => {
-                                          const updated = [...items];
-                                          updated[idx] = {
-                                            ...updated[idx],
-                                            productVariantId: null,
-                                          };
-                                          setItems(updated);
-                                          setActiveVariantSearchIndex(null);
-                                          setVariantSearchQueries({
-                                            ...variantSearchQueries,
-                                            [idx]: "",
-                                          });
-                                        }}
-                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
-                                      >
-                                        — None (No specific variant) —
-                                      </div>
-
-                                      {filteredVariants.length > 0 ? (
-                                        filteredVariants.map((variant) => {
-                                          const vLabel = formatVariantLabel(
-                                            variant.color,
-                                            variant.size,
-                                          );
-                                          return (
-                                            <div
-                                              key={variant.productVariantId}
-                                              onClick={() =>
-                                                handleSelectVariant(
-                                                  idx,
-                                                  variant,
-                                                )
-                                              }
-                                              className="px-3.5 py-2 text-xs hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
-                                            >
-                                              <div>
-                                                <span className="font-medium text-slate-800 dark:text-slate-200">
-                                                  {vLabel || "Standard Variant"}
-                                                </span>
-                                                {variant.sku &&
-                                                  variant.sku.trim() !== "" && (
-                                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                                                      SKU: {variant.sku}
-                                                    </div>
-                                                  )}
-                                              </div>
-                                              <span className="font-medium font-mono text-slate-700 dark:text-slate-300">
-                                                {currency(variant.unitPrice)}
-                                              </span>
-                                            </div>
-                                          );
-                                        })
-                                      ) : (
-                                        <div className="px-3 py-3 text-xs text-center font-medium text-slate-400 dark:text-slate-500">
-                                          No variants found
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                            </div>
-
-                            {/* Qty & Price */}
-                            <div className="grid grid-cols-2 gap-2 lg:col-span-4">
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                  Qty
-                                </label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={item.quantity}
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      idx,
-                                      "quantity",
-                                      Number(e.target.value),
-                                    )
-                                  }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                                />
-                              </div>
-
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
-                                  Price (₱)
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={item.unitPrice}
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      idx,
-                                      "unitPrice",
-                                      parseFloat(e.target.value) || 0,
-                                    )
-                                  }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                                />
-                              </div>
-                            </div>
                           </div>
 
-                          {/* Row 2: Full-Width Description / Inclusions Textarea */}
-                          <div className="space-y-1 pt-1">
+                          {/* 3. Description / Inclusions (Auto-growing Textarea) */}
+                          <div className="lg:col-span-3 space-y-1">
                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                              Description / Inclusions (Supports multi-line
-                              items)
+                              Description / Inclusions
                             </label>
                             <textarea
-                              rows={3}
-                              placeholder="Enter detailed description or inclusions (e.g. - 4-Hour Set-up...)"
+                              rows={1}
+                              ref={(el) => {
+                                textareaRefs.current[idx] = el;
+                              }}
+                              placeholder="Description or details..."
                               value={item.description}
+                              onInput={(e) =>
+                                adjustTextareaHeight(
+                                  e.currentTarget as HTMLTextAreaElement,
+                                )
+                              }
                               onChange={(e) =>
                                 handleItemChange(
                                   idx,
@@ -1196,8 +1196,50 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                   e.target.value,
                                 )
                               }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-y"
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 pr-6 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-19.5 leading-relaxed"
                             />
+                          </div>
+
+                          {/* Qty & Price */}
+                          <div className="grid grid-cols-2 gap-2 lg:col-span-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                Qty
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    idx,
+                                    "quantity",
+                                    Number(e.target.value),
+                                  )
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
+                                Price (₱)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.unitPrice}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    idx,
+                                    "unitPrice",
+                                    parseFloat(e.target.value) || 0,
+                                  )
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1206,17 +1248,21 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                 </div>
               </div>
 
-              {/* Note to Customer */}
+              {/* Note to Customer (Auto-growing Textarea) */}
               <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
                 <label className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider block">
                   Note to Customer
                 </label>
                 <textarea
-                  rows={3}
+                  rows={1}
+                  ref={notesTextareaRef}
                   placeholder="Payment instructions, bank details, or delivery terms..."
                   value={notes}
+                  onInput={(e) =>
+                    adjustTextareaHeight(e.currentTarget as HTMLTextAreaElement)
+                  }
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none transition-all shadow-2xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 pr-6 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none overflow-y-auto max-h-24 transition-all shadow-2xs leading-relaxed"
                 />
               </div>
             </div>
