@@ -692,7 +692,11 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       return;
     }
 
-    // Added check to match CreateQuotationModal validations
+    if (!contactId) {
+      setError("Please select a valid contact person.");
+      return;
+    }
+
     const hasInvalidItem = items.some(
       (item) =>
         !item.productId &&
@@ -768,12 +772,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-7xl overflow-hidden my-auto flex flex-col max-h-[95vh]">
           {/* Modal Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 Edit Quotation #{quotation.quotationNumber}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 Modify proposal parameters and itemized product selections
               </p>
             </div>
@@ -803,32 +807,32 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             <form
               id="edit-quotation-form"
               onSubmit={handleSubmit}
-              className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6"
+              className="p-3 sm:p-4 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4"
               ref={searchRef}
             >
               {error && (
-                <div className="lg:col-span-12 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-3.5 rounded-xl flex items-center gap-3 text-xs shadow-2xs">
+                <div className="lg:col-span-12 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-3 rounded-xl flex items-center gap-3 text-xs shadow-2xs">
                   <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Main Column */}
-              <div className="lg:col-span-9 space-y-5">
+              <div className="lg:col-span-10 space-y-3">
                 {/* Proposal & Customer Details Card */}
-                <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+                  <div className="text-[11px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2">
                     Proposal & Customer Details
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Customer Selection */}
-                    <div className="space-y-1.5 relative">
+                    <div className="space-y-1 relative">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Customer <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                         <input
                           type="text"
                           required
@@ -841,9 +845,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                             if (!e.target.value) {
                               setCustomerId(0);
                               setContactId(0);
+                              setContactEmailSnapshot("");
+                              setContactNameSnapshot("");
+                              setContactSearchQuery("");
                             }
                           }}
-                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-8 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                         />
                         <button
                           type="button"
@@ -852,7 +859,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                           }
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
                         >
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
@@ -901,14 +908,14 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     </div>
 
                     {/* VAT Computation */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        VAT Computation
+                        VAT Computation <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={vatType}
                         onChange={(e) => setVatType(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
                       >
                         <option value="Exclusive">VAT Exclusive (12%)</option>
                         <option value="Inclusive">VAT Inclusive (12%)</option>
@@ -919,10 +926,11 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     </div>
 
                     {/* Contact Person */}
-                    <div className="space-y-1.5 relative">
+                    <div className="space-y-1 relative">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Contact Person
+                          Contact Person{" "}
+                          <span className="text-rose-500">*</span>
                         </label>
                         {customerId > 0 && onTriggerAddContact && (
                           <button
@@ -941,9 +949,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       </div>
 
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                         <input
                           type="text"
+                          required
                           placeholder="Search contact person..."
                           value={contactSearchQuery}
                           onFocus={() => setIsContactSearchOpen(true)}
@@ -956,7 +965,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                               setContactEmailSnapshot("");
                             }
                           }}
-                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-8 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                         />
                         <button
                           type="button"
@@ -965,7 +974,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                           }
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
                         >
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-3.5 h-3.5" />
                         </button>
 
                         {isContactSearchOpen && (
@@ -1008,321 +1017,305 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     </div>
 
                     {/* Contact Email */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Contact Email
                       </label>
                       <div className="relative flex items-center">
-                        <Mail className="absolute left-3 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                        <Mail className="absolute left-3 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
                         <input
                           type="email"
                           value={contactEmailSnapshot}
                           disabled
-                          placeholder="contact@company.com"
-                          className="w-full border rounded-lg pl-9 pr-3 py-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-850 cursor-not-allowed border-slate-200 dark:border-slate-700 shadow-2xs"
+                          placeholder="No email provided"
+                          className="w-full border rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-850 cursor-not-allowed border-slate-200 dark:border-slate-700 shadow-2xs"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Line Items Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
-                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Line Items & Products
-                    </h3>
+                {/* Single Unified Card for Line Items & Products Table */}
+                <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                        Line Items & Products
+                      </h3>
+                      <span className="text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+                        {items.length} {items.length === 1 ? "item" : "items"}
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={addItemRow}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
                     >
-                      <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Item
+                      <Plus className="w-3.5 h-3.5" /> Add Item
                     </button>
                   </div>
 
-                  <div className="space-y-3">
-                    {items.map((item, idx) => {
-                      const prodQuery = productSearchQueries[idx] || "";
-                      const variantQuery = variantSearchQueries[idx] || "";
-                      const selectedProd = selectedProducts[idx];
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-visible shadow-2xs">
+                    <table className="w-full text-left text-xs border-collapse min-w-215">
+                      <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-400 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="py-2 px-2.5 w-10 text-center">#</th>
+                          <th className="py-2 px-2.5 w-[20%]">Product</th>
+                          <th className="py-2 px-2.5 w-[15%]">Variant</th>
+                          <th className="py-2 px-2.5 w-[23%]">
+                            Description / Inclusions
+                          </th>
+                          <th className="py-2 px-2.5 w-[12%] text-center">
+                            Qty
+                          </th>
+                          <th className="py-2 px-2.5 w-[14%] text-right">
+                            Price (₱)
+                          </th>
+                          <th className="py-2 px-2.5 w-[12%] text-right">
+                            Line Total
+                          </th>
+                          <th className="py-2 px-2.5 w-20 text-right">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {items.map((item, idx) => {
+                          const prodQuery = productSearchQueries[idx] || "";
+                          const variantQuery = variantSearchQueries[idx] || "";
+                          const selectedProd = selectedProducts[idx];
 
-                      const filteredProducts = products.filter((p) => {
-                        const matchesQuery = p.name
-                          .toLowerCase()
-                          .includes(prodQuery.toLowerCase());
-                        return matchesQuery && p.isActive === true;
-                      });
-
-                      const filteredVariants = (
-                        selectedProd?.variants || []
-                      ).filter(
-                        (v) =>
-                          (v.sku &&
-                            v.sku
+                          const filteredProducts = products.filter((p) => {
+                            const matchesQuery = p.name
                               .toLowerCase()
-                              .includes(variantQuery.toLowerCase())) ||
-                          (v.color &&
-                            v.color
-                              .toLowerCase()
-                              .includes(variantQuery.toLowerCase())) ||
-                          (v.size &&
-                            v.size
-                              .toLowerCase()
-                              .includes(variantQuery.toLowerCase())),
-                      );
+                              .includes(prodQuery.toLowerCase());
+                            return matchesQuery && p.isActive === true;
+                          });
 
-                      const rowTotal =
-                        (Number(item.quantity) || 0) *
-                        (Number(item.unitPrice) || 0);
+                          const filteredVariants = (
+                            selectedProd?.variants || []
+                          ).filter(
+                            (v) =>
+                              (v.sku &&
+                                v.sku
+                                  .toLowerCase()
+                                  .includes(variantQuery.toLowerCase())) ||
+                              (v.color &&
+                                v.color
+                                  .toLowerCase()
+                                  .includes(variantQuery.toLowerCase())) ||
+                              (v.size &&
+                                v.size
+                                  .toLowerCase()
+                                  .includes(variantQuery.toLowerCase())),
+                          );
 
-                      return (
-                        <div
-                          key={idx}
-                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-3 shadow-2xs relative group"
-                        >
-                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">
-                                {idx + 1}
-                              </span>
-                              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                Item
-                              </span>
-                            </div>
+                          const rowTotal =
+                            (Number(item.quantity) || 0) *
+                            (Number(item.unitPrice) || 0);
 
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-semibold text-xs text-slate-800 dark:text-slate-200 pr-1">
-                                {currency(rowTotal)}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => duplicateItemRow(idx)}
-                                className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
-                                title="Duplicate Item"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeItemRow(idx)}
-                                className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-lg transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
-                                title="Remove Item"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
+                          return (
+                            <tr
+                              key={idx}
+                              className="even:bg-slate-50/40 dark:even:bg-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
+                            >
+                              <td className="py-2.5 px-2.5 text-center">
+                                <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 inline-flex items-center justify-center text-[10px] font-bold mt-1">
+                                  {idx + 1}
+                                </span>
+                              </td>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-start">
-                            {/* Select Product */}
-                            <div className="lg:col-span-3 space-y-1 relative">
-                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                1. Select Product
-                              </label>
-                              <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                <input
-                                  type="text"
-                                  placeholder="Search product..."
-                                  value={prodQuery}
-                                  onFocus={() => {
-                                    fetchProducts();
-                                    setActiveProductSearchIndex(idx);
-                                  }}
-                                  onChange={(e) => {
-                                    setProductSearchQueries({
-                                      ...productSearchQueries,
-                                      [idx]: e.target.value,
-                                    });
-                                    setActiveProductSearchIndex(idx);
-                                  }}
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                                />
-                              </div>
-
-                              {activeProductSearchIndex === idx && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
-                                  <div
-                                    onClick={() => {
-                                      setQuickProductTargetIndex(idx);
-                                      setIsQuickProductModalOpen(true);
-                                      setActiveProductSearchIndex(null);
+                              {/* Product Cell */}
+                              <td className="py-2 px-2.5 relative overflow-visible">
+                                <div className="relative">
+                                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                                  <input
+                                    type="text"
+                                    placeholder="Search product..."
+                                    value={prodQuery}
+                                    onFocus={() => {
+                                      fetchProducts();
+                                      setActiveProductSearchIndex(idx);
                                     }}
-                                    className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
-                                  >
-                                    <PackagePlus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    <span>+ Add New Product</span>
-                                  </div>
+                                    onChange={(e) => {
+                                      setProductSearchQueries({
+                                        ...productSearchQueries,
+                                        [idx]: e.target.value,
+                                      });
+                                      setActiveProductSearchIndex(idx);
+                                    }}
+                                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  />
 
-                                  <div className="max-h-40 overflow-y-auto">
-                                    {filteredProducts.length > 0 ? (
-                                      filteredProducts.map((p) => (
-                                        <div
-                                          key={p.productId}
-                                          onClick={() =>
-                                            handleSelectProduct(idx, p)
-                                          }
-                                          className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
-                                        >
-                                          <span className="font-medium text-slate-800 dark:text-slate-200">
-                                            {p.name}
-                                          </span>
-                                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
-                                        No products found
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Select Variant */}
-                            <div className="lg:col-span-2 space-y-1 relative">
-                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                2. Variant
-                              </label>
-                              <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                <input
-                                  type="text"
-                                  placeholder={
-                                    selectedProd
-                                      ? "Optional..."
-                                      : "Product first"
-                                  }
-                                  disabled={!selectedProd}
-                                  value={variantQuery}
-                                  onFocus={() =>
-                                    setActiveVariantSearchIndex(idx)
-                                  }
-                                  onChange={(e) => {
-                                    setVariantSearchQueries({
-                                      ...variantSearchQueries,
-                                      [idx]: e.target.value,
-                                    });
-                                    setActiveVariantSearchIndex(idx);
-                                  }}
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
-                                />
-                              </div>
-
-                              {activeVariantSearchIndex === idx &&
-                                selectedProd && (
-                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
-                                    <div
-                                      onClick={() => {
-                                        setVariantModalTargetIndex(idx);
-                                        setTargetProductForVariants(
-                                          selectedProd,
-                                        );
-                                        setIsVariantModalOpen(true);
-                                        setActiveVariantSearchIndex(null);
-                                      }}
-                                      className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
-                                    >
-                                      <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                      <span>
-                                        + Add Variant to {selectedProd.name}
-                                      </span>
-                                    </div>
-
-                                    <div className="max-h-40 overflow-y-auto">
+                                  {activeProductSearchIndex === idx && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
                                       <div
                                         onClick={() => {
-                                          const updated = [...items];
-                                          updated[idx] = {
-                                            ...updated[idx],
-                                            productVariantId: null,
-                                          };
-                                          setItems(updated);
-                                          setActiveVariantSearchIndex(null);
-                                          setVariantSearchQueries({
-                                            ...variantSearchQueries,
-                                            [idx]: "",
-                                          });
+                                          setQuickProductTargetIndex(idx);
+                                          setIsQuickProductModalOpen(true);
+                                          setActiveProductSearchIndex(null);
                                         }}
-                                        className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 italic"
+                                        className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 cursor-pointer flex items-center gap-2 border-b border-slate-200 shrink-0"
                                       >
-                                        — None —
+                                        <PackagePlus className="w-3.5 h-3.5 text-slate-600" />
+                                        <span>+ Add New Product</span>
                                       </div>
-
-                                      {filteredVariants.length > 0 ? (
-                                        filteredVariants.map((variant) => {
-                                          const vLabel = formatVariantLabel(
-                                            variant.color,
-                                            variant.size,
-                                          );
-                                          return (
+                                      <div className="max-h-48 overflow-y-auto">
+                                        {filteredProducts.length > 0 ? (
+                                          filteredProducts.map((p) => (
                                             <div
-                                              key={variant.productVariantId}
+                                              key={p.productId}
                                               onClick={() =>
-                                                handleSelectVariant(
-                                                  idx,
-                                                  variant,
-                                                )
+                                                handleSelectProduct(idx, p)
                                               }
-                                              className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
+                                              className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 last:border-none"
                                             >
-                                              <div>
-                                                <span className="font-medium text-slate-800 dark:text-slate-200">
-                                                  {vLabel || "Standard Variant"}
-                                                </span>
-                                              </div>
-                                              <span className="font-medium font-mono text-slate-700 dark:text-slate-300">
-                                                {currency(variant.unitPrice)}
+                                              <span className="font-medium text-slate-800 dark:text-slate-200">
+                                                {p.name}
                                               </span>
+                                              <ChevronRight className="w-3 h-3 text-slate-400" />
                                             </div>
-                                          );
-                                        })
-                                      ) : (
-                                        <div className="px-3 py-3 text-xs text-center font-medium text-slate-400 dark:text-slate-500">
-                                          No variants found
-                                        </div>
-                                      )}
+                                          ))
+                                        ) : (
+                                          <div className="px-3 py-2 text-xs text-slate-400 text-center">
+                                            No products found
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                            </div>
+                                  )}
+                                </div>
+                              </td>
 
-                            {/* Description */}
-                            <div className="lg:col-span-3 space-y-1">
-                              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                Description / Inclusions
-                              </label>
-                              <textarea
-                                rows={1}
-                                ref={(el) => {
-                                  textareaRefs.current[idx] = el;
-                                }}
-                                placeholder="Description or details..."
-                                value={item.description}
-                                onInput={(e) =>
-                                  adjustTextareaHeight(
-                                    e.currentTarget as HTMLTextAreaElement,
-                                  )
-                                }
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    idx,
-                                    "description",
-                                    e.target.value,
-                                  )
-                                }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-19.5 leading-relaxed"
-                              />
-                            </div>
+                              {/* Variant Cell */}
+                              <td className="py-2 px-2.5 relative overflow-visible">
+                                <div className="relative">
+                                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                                  <input
+                                    type="text"
+                                    placeholder={
+                                      selectedProd
+                                        ? "Select variant..."
+                                        : "Product first"
+                                    }
+                                    disabled={!selectedProd}
+                                    value={variantQuery}
+                                    onFocus={() =>
+                                      setActiveVariantSearchIndex(idx)
+                                    }
+                                    onChange={(e) => {
+                                      setVariantSearchQueries({
+                                        ...variantSearchQueries,
+                                        [idx]: e.target.value,
+                                      });
+                                      setActiveVariantSearchIndex(idx);
+                                    }}
+                                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
+                                  />
 
-                            {/* Qty & Price */}
-                            <div className="grid grid-cols-2 gap-2 lg:col-span-4">
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                                  Qty
-                                </label>
+                                  {activeVariantSearchIndex === idx &&
+                                    selectedProd && (
+                                      <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                                        <div
+                                          onClick={() => {
+                                            setVariantModalTargetIndex(idx);
+                                            setTargetProductForVariants(
+                                              selectedProd,
+                                            );
+                                            setIsVariantModalOpen(true);
+                                            setActiveVariantSearchIndex(null);
+                                          }}
+                                          className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 cursor-pointer flex items-center gap-2 border-b shrink-0"
+                                        >
+                                          <Plus className="w-3.5 h-3.5 text-slate-600" />
+                                          <span>+ Add Variant</span>
+                                        </div>
+                                        <div className="max-h-48 overflow-y-auto">
+                                          <div
+                                            onClick={() => {
+                                              const updated = [...items];
+                                              updated[idx] = {
+                                                ...updated[idx],
+                                                productVariantId: null,
+                                              };
+                                              setItems(updated);
+                                              setActiveVariantSearchIndex(null);
+                                              setVariantSearchQueries({
+                                                ...variantSearchQueries,
+                                                [idx]: "",
+                                              });
+                                            }}
+                                            className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 cursor-pointer border-b italic"
+                                          >
+                                            — None —
+                                          </div>
+                                          {filteredVariants.length > 0 ? (
+                                            filteredVariants.map((variant) => {
+                                              const vLabel = formatVariantLabel(
+                                                variant.color,
+                                                variant.size,
+                                              );
+                                              return (
+                                                <div
+                                                  key={variant.productVariantId}
+                                                  onClick={() =>
+                                                    handleSelectVariant(
+                                                      idx,
+                                                      variant,
+                                                    )
+                                                  }
+                                                  className="px-3.5 py-2 text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-between border-b last:border-none"
+                                                >
+                                                  <span className="font-medium text-slate-800">
+                                                    {vLabel ||
+                                                      "Standard Variant"}
+                                                  </span>
+                                                  <span className="font-mono text-slate-600">
+                                                    {currency(
+                                                      variant.unitPrice,
+                                                    )}
+                                                  </span>
+                                                </div>
+                                              );
+                                            })
+                                          ) : (
+                                            <div className="px-3 py-2 text-xs text-center text-slate-400">
+                                              No variants found
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
+                              </td>
+
+                              {/* Description / Inclusions Cell (Auto-expanding Multiline) */}
+                              <td className="py-2 px-2.5">
+                                <textarea
+                                  rows={1}
+                                  ref={(el) => {
+                                    textareaRefs.current[idx] = el;
+                                  }}
+                                  placeholder="Description..."
+                                  value={item.description}
+                                  onInput={(e) =>
+                                    adjustTextareaHeight(
+                                      e.currentTarget as HTMLTextAreaElement,
+                                    )
+                                  }
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      idx,
+                                      "description",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-24 leading-relaxed"
+                                />
+                              </td>
+
+                              {/* Quantity Cell */}
+                              <td className="py-2 px-2.5 text-center">
                                 <input
                                   type="number"
                                   min="1"
@@ -1331,17 +1324,17 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                     handleItemChange(
                                       idx,
                                       "quantity",
-                                      Number(e.target.value),
+                                      e.target.value === ""
+                                        ? 0
+                                        : Number(e.target.value),
                                     )
                                   }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
-                              </div>
+                              </td>
 
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap">
-                                  Price (₱)
-                                </label>
+                              {/* Unit Price Cell */}
+                              <td className="py-2 px-2.5 text-right">
                                 <input
                                   type="number"
                                   step="0.01"
@@ -1351,22 +1344,50 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                     handleItemChange(
                                       idx,
                                       "unitPrice",
-                                      parseFloat(e.target.value) || 0,
+                                      e.target.value === ""
+                                        ? 0
+                                        : parseFloat(e.target.value) || 0,
                                     )
                                   }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                              </td>
+
+                              {/* Line Total Cell */}
+                              <td className="py-2.5 px-2.5 text-right font-mono font-bold text-xs text-slate-900 dark:text-white whitespace-nowrap">
+                                {currency(rowTotal)}
+                              </td>
+
+                              {/* Actions Cell */}
+                              <td className="py-2 px-2.5 text-right">
+                                <div className="flex items-center justify-end gap-1 pt-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => duplicateItemRow(idx)}
+                                    className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                                    title="Duplicate Item"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeItemRow(idx)}
+                                    className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-md transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+                                    title="Remove Item"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                {/* Note to Customer */}
-                <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
+                <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
                   <label className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider block">
                     Note to Customer
                   </label>
@@ -1381,65 +1402,63 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       )
                     }
                     onChange={(e) => setNoteToCustomer(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none overflow-y-auto max-h-24 transition-all shadow-2xs leading-relaxed"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 resize-none overflow-y-auto max-h-24 transition-all shadow-2xs leading-relaxed"
                   />
                 </div>
               </div>
 
               {/* Right Sidebar */}
-              <div className="lg:col-span-3 space-y-4">
-                {/* Order Summary */}
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
-                  <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+              <div className="lg:col-span-2 space-y-3">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
+                  <div className="flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-1.5">
                     <Calculator className="w-3.5 h-3.5 text-slate-400" />
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                      Order Summary
+                    <h3 className="text-[11px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                      Summary
                     </h3>
                   </div>
 
-                  <div className="space-y-2 text-xs font-medium">
+                  <div className="space-y-1.5 text-xs font-medium">
                     <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                      <span>Subtotal</span>
-                      <span className="font-mono text-slate-900 dark:text-slate-100">
+                      <span className="text-[11px]">Subtotal</span>
+                      <span className="font-mono text-xs text-slate-900 dark:text-slate-100">
                         {currency(calculatedSubtotal)}
                       </span>
                     </div>
                     <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                      <span>VAT ({vatType})</span>
-                      <span className="font-mono text-slate-900 dark:text-slate-100">
+                      <span className="text-[11px]">VAT</span>
+                      <span className="font-mono text-xs text-slate-900 dark:text-slate-100">
                         {currency(calculatedVat)}
                       </span>
                     </div>
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-baseline">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase">
+                      <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase">
                         Total
                       </span>
-                      <span className="font-mono text-base font-bold text-slate-900 dark:text-white">
+                      <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">
                         {currency(calculatedTotal)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Validity Period */}
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5">
+                  <div className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Validity Period
+                      Validity
                     </label>
                   </div>
                   <select
                     value={validityDays}
                     onChange={(e) => setValidityDays(Number(e.target.value))}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all cursor-pointer shadow-2xs"
                   >
                     <option value={7}>7 days</option>
                     <option value={14}>14 days</option>
                     <option value={30}>30 days</option>
                     <option value={60}>60 days</option>
                   </select>
-                  <div className="text-[10px] text-slate-400 dark:text-slate-400">
+                  <div className="text-[10px] text-slate-400 dark:text-slate-400 truncate">
                     Valid until{" "}
                     {computedValidUntilDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -1449,18 +1468,17 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="space-y-2 pt-1">
+                <div className="space-y-1.5 pt-1">
                   <button
                     form="edit-quotation-form"
                     type="submit"
                     onClick={() => setSubmittingAction("save")}
                     disabled={saving}
-                    className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-white rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                   >
-                    <Calculator className="w-4 h-4" />
+                    <Calculator className="w-3.5 h-3.5" />
                     {saving && submittingAction === "save"
-                      ? "Saving Changes..."
+                      ? "Saving..."
                       : "Save Changes"}
                   </button>
 
@@ -1469,7 +1487,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     type="submit"
                     onClick={() => setSubmittingAction("draft")}
                     disabled={saving}
-                    className="w-full px-3.5 py-2 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-900 dark:hover:bg-amber-950/20 dark:hover:border-amber-900/40 dark:hover:text-amber-200 rounded-lg transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                    className="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-amber-50 rounded-lg transition-all cursor-pointer shadow-2xs disabled:opacity-50"
                   >
                     {saving && submittingAction === "draft"
                       ? "Saving..."
@@ -1480,7 +1498,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     type="button"
                     onClick={onClose}
                     disabled={saving}
-                    className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
                   >
                     Cancel
                   </button>
