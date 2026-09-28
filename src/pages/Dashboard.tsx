@@ -22,10 +22,6 @@ import { AlertCircle, BarChart3, Plus, RefreshCw, X } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
-/* -------------------------------------------------------------------------- */
-/* Types                                                                      */
-/* -------------------------------------------------------------------------- */
-
 interface ChartPoint {
   date: string;
   amount: number;
@@ -69,7 +65,6 @@ interface DashboardMetrics {
   agingBuckets: AgingBucket[];
   topCustomers: TopCustomer[];
   monthlyRevenue: MonthlyRevenue[];
-  /** Optional backend-computed totals. The UI derives them when absent. */
   totalInvoiced?: number;
   totalOutstanding?: number;
   overdueAmount?: number;
@@ -86,10 +81,6 @@ type ModalState =
   | { kind: "customer"; name: string }
   | { kind: "estimates"; focus: "active" | "accepted" | "all" }
   | { kind: "clients" };
-
-/* -------------------------------------------------------------------------- */
-/* Helpers                                                                    */
-/* -------------------------------------------------------------------------- */
 
 const currency = (value: number) =>
   `₱${(value || 0).toLocaleString("en-PH", {
@@ -422,6 +413,10 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [chartTimeRange, setChartTimeRange] = useState<ChartTimeRange>("30d");
+
+  // Backend Month Filter state (defaults to empty so it loads all history or matches existing mock data unless chosen)
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+
   const [reloadKey, setReloadKey] = useState(0);
   const [modal, setModal] = useState<ModalState | null>(null);
   const closeModal = useCallback(() => setModal(null), []);
@@ -431,12 +426,15 @@ export const Dashboard: React.FC = () => {
     let isMounted = true;
 
     const fetchDashboardMetrics = async () => {
-      if (metrics) setRefreshing(true);
-      else setLoading(true);
+      setRefreshing((prev) => (metrics !== null ? true : prev));
+      if (!metrics) setLoading(true);
       setError(null);
       try {
         const response = await api.get("/dashboard/metrics", {
-          params: { timeRange: chartTimeRange },
+          params: {
+            timeRange: chartTimeRange,
+            month: selectedMonth || undefined,
+          },
         });
         if (isMounted) setMetrics(response.data);
       } catch (err: unknown) {
@@ -461,7 +459,7 @@ export const Dashboard: React.FC = () => {
       isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartTimeRange, reloadKey]);
+  }, [chartTimeRange, selectedMonth, reloadKey]);
 
   /* ---- Receivables summary (amount based, not count based) -------------- */
   const summary = useMemo(() => {
@@ -963,7 +961,27 @@ export const Dashboard: React.FC = () => {
             {getGreeting()}, {username || "Admin"}
           </h1>
         </div>
-        <div className="flex w-full items-center gap-3 sm:w-auto">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Backend Month Filter */}
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-amber-500 shadow-2xs cursor-pointer"
+            />
+            {selectedMonth && (
+              <button
+                type="button"
+                onClick={() => setSelectedMonth("")}
+                className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline cursor-pointer"
+                title="Clear month filter"
+              >
+                All
+              </button>
+            )}
+          </div>
+
           {refreshing && (
             <span
               role="status"
@@ -976,7 +994,7 @@ export const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate("/quotations")}
-            className={`inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm sm:flex-none sm:py-2 font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
+            className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
           >
             <Plus className="h-4 w-4" aria-hidden />
             Create estimate
