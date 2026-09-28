@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import api from "../../api/axios";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -22,15 +28,16 @@ import {
   Mail,
   AlertCircle,
   Calculator,
-  PackagePlus,
   RefreshCw,
   Copy,
   Calendar,
   ChevronDown,
   Building2,
+  Check,
 } from "lucide-react";
 import { CreateProductModal } from "../products/CreateProductModal";
 import { ProductVariantsModal } from "../products/ProductVariantsModal";
+import { ProductPickerModal } from "../products/Productpickermodal";
 
 interface CreateQuotationModalProps {
   saving: boolean;
@@ -43,11 +50,267 @@ interface CreateQuotationModalProps {
   refreshTrigger?: number;
 }
 
+// Standalone Variant Picker Modal Component
+interface VariantPickerModalProps {
+  variants: ProductVariant[];
+  selectedVariantId?: number | null;
+  productName: string;
+  lineNumber: number;
+  onSelect: (variant: ProductVariant | null) => void;
+  onAddNewVariant: () => void;
+  onClose: () => void;
+}
+
 const currency = (value: number) =>
   `₱${(value || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+
+const VariantPickerModal: React.FC<VariantPickerModalProps> = ({
+  variants,
+  selectedVariantId = null,
+  productName,
+  lineNumber,
+  onSelect,
+  onAddNewVariant,
+  onClose,
+}) => {
+  const [query, setQuery] = useState("");
+  const [highlight, setHighlight] = useState(0);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const formatVariantLabel = (color?: string, size?: string) => {
+    const parts = [color, size].filter((p) => p && p.trim() !== "");
+    return parts.length > 0 ? parts.join(" / ") : "";
+  };
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return variants.filter((v) => {
+      const label = formatVariantLabel(v.color, v.size).toLowerCase();
+      const sku = (v.sku || "").toLowerCase();
+      return label.includes(q) || sku.includes(q);
+    });
+  }, [variants, query]);
+
+  const totalOptions = results.length + 1;
+  const activeIndex = Math.min(highlight, Math.max(totalOptions - 1, 0));
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    inputRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button, input, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [onClose]);
+
+  const moveHighlight = (next: number) => {
+    setHighlight(next);
+    listRef.current?.children[next]?.scrollIntoView({ block: "nearest" });
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      moveHighlight(Math.min(activeIndex + 1, totalOptions - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      moveHighlight(Math.max(activeIndex - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex === 0) {
+        onSelect(null);
+      } else if (results[activeIndex - 1]) {
+        onSelect(results[activeIndex - 1]);
+      }
+    }
+  };
+
+  const optionId = (index: number) => `variant-picker-option-${index}`;
+
+  return (
+    <div
+      className="fixed inset-0 z-60 flex items-end justify-center overscroll-contain bg-slate-900/60 backdrop-blur-xs sm:items-center sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="variant-picker-title"
+        className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[min(36rem,85dvh)] sm:max-w-md sm:rounded-xl dark:border-slate-800 dark:bg-slate-900"
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div className="min-w-0">
+            <h3
+              id="variant-picker-title"
+              className="text-sm font-bold text-slate-900 dark:text-white truncate"
+            >
+              Select variant ({productName})
+            </h3>
+            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+              Line item {lineNumber}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all hover:bg-slate-200 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="shrink-0 space-y-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <input
+              ref={inputRef}
+              type="text"
+              role="combobox"
+              aria-expanded="true"
+              aria-controls="variant-picker-list"
+              aria-activedescendant={optionId(activeIndex)}
+              autoComplete="off"
+              placeholder="Search variants by name or SKU..."
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setHighlight(0);
+              }}
+              onKeyDown={handleSearchKeyDown}
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-3 text-xs text-slate-800 shadow-2xs transition-all focus:border-slate-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              {variants.length} {variants.length === 1 ? "variant" : "variants"}{" "}
+              available
+            </span>
+            <button
+              type="button"
+              onClick={onAddNewVariant}
+              className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add new variant
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-40 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+          <ul
+            ref={listRef}
+            id="variant-picker-list"
+            role="listbox"
+            className="divide-y divide-slate-100 dark:divide-slate-800"
+          >
+            <li
+              id={optionId(0)}
+              role="option"
+              aria-selected={selectedVariantId === null}
+              onMouseEnter={() => setHighlight(0)}
+              onClick={() => onSelect(null)}
+              className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 px-4 py-2.5 ${
+                0 === activeIndex
+                  ? "bg-slate-100 dark:bg-slate-800"
+                  : "bg-white dark:bg-slate-900"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold italic text-slate-500 dark:text-slate-400">
+                  — None / Standard Item —
+                </p>
+              </div>
+              {selectedVariantId === null && (
+                <Check
+                  className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-label="Currently selected"
+                />
+              )}
+            </li>
+
+            {results.map((v, i) => {
+              const optionIndex = i + 1;
+              const isSelected = selectedVariantId === v.productVariantId;
+              const vLabel = formatVariantLabel(v.color, v.size);
+              const skuLabel = v.sku ? `SKU: ${v.sku}` : "";
+
+              return (
+                <li
+                  key={v.productVariantId ?? i}
+                  id={optionId(optionIndex)}
+                  role="option"
+                  aria-selected={isSelected}
+                  onMouseEnter={() => setHighlight(optionIndex)}
+                  onClick={() => onSelect(v)}
+                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 px-4 py-2.5 ${
+                    optionIndex === activeIndex
+                      ? "bg-slate-100 dark:bg-slate-800"
+                      : "bg-white dark:bg-slate-900"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                      {vLabel || "Standard Variant"}
+                    </p>
+                    {skuLabel && (
+                      <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
+                        {skuLabel}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-xs font-medium text-slate-700 dark:text-slate-300">
+                      {currency(v.unitPrice)}
+                    </span>
+                    {isSelected && (
+                      <Check
+                        className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                        aria-label="Currently selected"
+                      />
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   saving,
@@ -94,10 +357,9 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     [key: number]: Product | null;
   }>({});
 
-  const [activeProductSearchIndex, setActiveProductSearchIndex] = useState<
-    number | null
-  >(null);
-  const [activeVariantSearchIndex, setActiveVariantSearchIndex] = useState<
+  // Product Picker Modal State
+  const [pickerModalIndex, setPickerModalIndex] = useState<number | null>(null);
+  const [pickerVariantModalIndex, setPickerVariantModalIndex] = useState<
     number | null
   >(null);
 
@@ -336,8 +598,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setActiveProductSearchIndex(null);
-        setActiveVariantSearchIndex(null);
         setIsCustomerSearchOpen(false);
         setIsContactSearchOpen(false);
       }
@@ -440,10 +700,26 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
     }
   };
 
-  const handleSelectProduct = (index: number, product: Product) => {
+  const handleSelectProduct = (index: number, product: Product | null) => {
+    if (!product) {
+      const updatedProducts = { ...selectedProducts, [index]: null };
+      setSelectedProducts(updatedProducts);
+      setProductSearchQueries({ ...productSearchQueries, [index]: "" });
+
+      const updated = [...items];
+      updated[index] = {
+        ...updated[index],
+        productId: null,
+        productVariantId: null,
+      };
+      setItems(updated);
+      setPickerModalIndex(null);
+      setVariantSearchQueries({ ...variantSearchQueries, [index]: "" });
+      return;
+    }
+
     const updatedProducts = { ...selectedProducts, [index]: product };
     setSelectedProducts(updatedProducts);
-    setActiveProductSearchIndex(null);
     setProductSearchQueries({ ...productSearchQueries, [index]: product.name });
 
     const updated = [...items];
@@ -460,10 +736,28 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       [index]: "",
     });
 
+    setPickerModalIndex(null);
     setTimeout(() => adjustTextareaHeight(textareaRefs.current[index]), 0);
   };
 
-  const handleSelectVariant = (index: number, variant: ProductVariant) => {
+  const handleSelectVariant = (
+    index: number,
+    variant: ProductVariant | null,
+  ) => {
+    if (!variant) {
+      const updated = [...items];
+      updated[index] = {
+        ...updated[index],
+        productVariantId: null,
+      };
+      setItems(updated);
+      setVariantSearchQueries({
+        ...variantSearchQueries,
+        [index]: "",
+      });
+      return;
+    }
+
     const variantLabel = formatVariantLabel(variant.color, variant.size);
     const skuLabel =
       variant.sku && variant.sku.trim() !== "" ? ` - SKU: ${variant.sku}` : "";
@@ -487,7 +781,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
       unitPrice: variant.unitPrice,
     };
     setItems(updated);
-    setActiveVariantSearchIndex(null);
     setVariantSearchQueries({
       ...variantSearchQueries,
       [index]: `${variantLabel || "Standard Variant"}${skuLabel}`,
@@ -717,8 +1010,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-7xl overflow-hidden my-auto flex flex-col max-h-[95vh]">
-          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-7xl overflow-hidden my-auto flex flex-col max-h-[95vh]">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 rounded-t-2xl">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 Create New Quotation
@@ -745,7 +1038,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
           <form
             id="create-quotation-form"
             onSubmit={handleSubmit}
-            className="p-3 sm:p-4 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4"
+            className="p-3 sm:p-4 overflow-y-auto overflow-x-visible flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4"
             ref={searchRef}
           >
             {activeError && (
@@ -968,7 +1261,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
               </div>
 
               {/* Single Unified Card for Line Items & Products Table */}
-              <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+              <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3 overflow-visible">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
@@ -987,8 +1280,183 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                   </button>
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-visible shadow-2xs">
-                  <table className="w-full text-left text-xs border-collapse min-w-215">
+                {/* Mobile View: Stacked Cards */}
+                <div className="block sm:hidden space-y-3 overflow-visible">
+                  {items.map((item, idx) => {
+                    const prodQuery = productSearchQueries[idx] || "";
+                    const variantQuery = variantSearchQueries[idx] || "";
+                    const selectedProd = selectedProducts[idx];
+
+                    const rowTotal =
+                      (Number(item.quantity) || 0) *
+                      (Number(item.unitPrice) || 0);
+
+                    return (
+                      <div
+                        key={`mobile-item-${idx}`}
+                        className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2.5 relative overflow-visible"
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                          <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 inline-flex items-center justify-center text-[10px] font-bold">
+                            {idx + 1}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => duplicateItemRow(idx)}
+                              className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                              title="Duplicate Item"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeItemRow(idx)}
+                              className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-md transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+                              title="Remove Item"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Product Field */}
+                        <div className="space-y-1 relative">
+                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Product
+                          </label>
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                            <input
+                              type="text"
+                              readOnly
+                              placeholder="Select product..."
+                              value={prodQuery}
+                              onClick={() => {
+                                fetchProducts();
+                                setPickerModalIndex(idx);
+                              }}
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs cursor-pointer"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Variant Field */}
+                        <div className="space-y-1 relative">
+                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Variant
+                          </label>
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                            <input
+                              type="text"
+                              readOnly
+                              placeholder={
+                                selectedProd
+                                  ? "Select variant..."
+                                  : "Product first"
+                              }
+                              disabled={!selectedProd}
+                              value={variantQuery}
+                              onClick={() => {
+                                if (selectedProd) {
+                                  setPickerVariantModalIndex(idx);
+                                }
+                              }}
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs cursor-pointer"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Description Field */}
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Description / Inclusions
+                          </label>
+                          <textarea
+                            rows={1}
+                            ref={(el) => {
+                              textareaRefs.current[idx] = el;
+                            }}
+                            placeholder="Description..."
+                            value={item.description}
+                            onInput={(e) =>
+                              adjustTextareaHeight(
+                                e.currentTarget as HTMLTextAreaElement,
+                              )
+                            }
+                            onChange={(e) =>
+                              handleItemChange(
+                                idx,
+                                "description",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-24 leading-relaxed"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                              Qty
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  idx,
+                                  "quantity",
+                                  e.target.value === ""
+                                    ? 0
+                                    : Number(e.target.value),
+                                )
+                              }
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                              Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={item.unitPrice}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  idx,
+                                  "unitPrice",
+                                  e.target.value === ""
+                                    ? 0
+                                    : parseFloat(e.target.value) || 0,
+                                )
+                              }
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-xs">
+                          <span className="font-semibold text-slate-600 dark:text-slate-400">
+                            Line Total:
+                          </span>
+                          <span className="font-mono font-bold text-slate-900 dark:text-white">
+                            {currency(rowTotal)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop View: Table Layout */}
+                <div className="hidden sm:block border border-slate-200 dark:border-slate-800 rounded-xl overflow-visible shadow-2xs">
+                  <table className="w-full text-left text-xs border-collapse min-w-215 overflow-visible">
                     <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-400 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[10px]">
                       <tr>
                         <th className="py-2 px-2.5 w-10 text-center">#</th>
@@ -1007,36 +1475,11 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         <th className="py-2 px-2.5 w-20 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 overflow-visible">
                       {items.map((item, idx) => {
                         const prodQuery = productSearchQueries[idx] || "";
                         const variantQuery = variantSearchQueries[idx] || "";
                         const selectedProd = selectedProducts[idx];
-
-                        const filteredProducts = products.filter((p) => {
-                          const matchesQuery = p.name
-                            .toLowerCase()
-                            .includes(prodQuery.toLowerCase());
-                          return matchesQuery && p.isActive === true;
-                        });
-
-                        const filteredVariants = (
-                          selectedProd?.variants || []
-                        ).filter(
-                          (v) =>
-                            (v.sku &&
-                              v.sku
-                                .toLowerCase()
-                                .includes(variantQuery.toLowerCase())) ||
-                            (v.color &&
-                              v.color
-                                .toLowerCase()
-                                .includes(variantQuery.toLowerCase())) ||
-                            (v.size &&
-                              v.size
-                                .toLowerCase()
-                                .includes(variantQuery.toLowerCase())),
-                        );
 
                         const rowTotal =
                           (Number(item.quantity) || 0) *
@@ -1045,7 +1488,7 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                         return (
                           <tr
                             key={idx}
-                            className="even:bg-slate-50/40 dark:even:bg-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
+                            className="even:bg-slate-50/40 dark:even:bg-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top overflow-visible"
                           >
                             <td className="py-2.5 px-2.5 text-center">
                               <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 inline-flex items-center justify-center text-[10px] font-bold mt-1">
@@ -1055,72 +1498,29 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
 
                             {/* Product Cell */}
                             <td className="py-2 px-2.5 relative overflow-visible">
-                              <div className="relative">
+                              <div className="relative overflow-visible">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
                                 <input
                                   type="text"
-                                  placeholder="Search product..."
+                                  readOnly
+                                  placeholder="Select product..."
                                   value={prodQuery}
-                                  onFocus={() => {
+                                  onClick={() => {
                                     fetchProducts();
-                                    setActiveProductSearchIndex(idx);
+                                    setPickerModalIndex(idx);
                                   }}
-                                  onChange={(e) => {
-                                    setProductSearchQueries({
-                                      ...productSearchQueries,
-                                      [idx]: e.target.value,
-                                    });
-                                    setActiveProductSearchIndex(idx);
-                                  }}
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs cursor-pointer"
                                 />
-
-                                {activeProductSearchIndex === idx && (
-                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
-                                    <div
-                                      onClick={() => {
-                                        setQuickProductTargetIndex(idx);
-                                        setIsQuickProductModalOpen(true);
-                                        setActiveProductSearchIndex(null);
-                                      }}
-                                      className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 cursor-pointer flex items-center gap-2 border-b border-slate-200 shrink-0"
-                                    >
-                                      <PackagePlus className="w-3.5 h-3.5 text-slate-600" />
-                                      <span>+ Add New Product</span>
-                                    </div>
-                                    <div className="max-h-48 overflow-y-auto">
-                                      {filteredProducts.length > 0 ? (
-                                        filteredProducts.map((p) => (
-                                          <div
-                                            key={p.productId}
-                                            onClick={() =>
-                                              handleSelectProduct(idx, p)
-                                            }
-                                            className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 last:border-none"
-                                          >
-                                            <span className="font-medium text-slate-800 dark:text-slate-200">
-                                              {p.name}
-                                            </span>
-                                            <ChevronRight className="w-3 h-3 text-slate-400" />
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <div className="px-3 py-2 text-xs text-slate-400 text-center">
-                                          No products found
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             </td>
 
                             {/* Variant Cell */}
                             <td className="py-2 px-2.5 relative overflow-visible">
-                              <div className="relative">
+                              <div className="relative overflow-visible">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
                                 <input
                                   type="text"
+                                  readOnly
                                   placeholder={
                                     selectedProd
                                       ? "Select variant..."
@@ -1128,93 +1528,16 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                                   }
                                   disabled={!selectedProd}
                                   value={variantQuery}
-                                  onFocus={() =>
-                                    setActiveVariantSearchIndex(idx)
-                                  }
-                                  onChange={(e) => {
-                                    setVariantSearchQueries({
-                                      ...variantSearchQueries,
-                                      [idx]: e.target.value,
-                                    });
-                                    setActiveVariantSearchIndex(idx);
+                                  onClick={() => {
+                                    if (selectedProd) {
+                                      setPickerVariantModalIndex(idx);
+                                    }
                                   }}
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs cursor-pointer"
                                 />
-
-                                {activeVariantSearchIndex === idx &&
-                                  selectedProd && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
-                                      <div
-                                        onClick={() => {
-                                          setVariantModalTargetIndex(idx);
-                                          setTargetProductForVariants(
-                                            selectedProd,
-                                          );
-                                          setIsVariantModalOpen(true);
-                                          setActiveVariantSearchIndex(null);
-                                        }}
-                                        className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 cursor-pointer flex items-center gap-2 border-b shrink-0"
-                                      >
-                                        <Plus className="w-3.5 h-3.5 text-slate-600" />
-                                        <span>+ Add Variant</span>
-                                      </div>
-                                      <div className="max-h-48 overflow-y-auto">
-                                        <div
-                                          onClick={() => {
-                                            const updated = [...items];
-                                            updated[idx] = {
-                                              ...updated[idx],
-                                              productVariantId: null,
-                                            };
-                                            setItems(updated);
-                                            setActiveVariantSearchIndex(null);
-                                            setVariantSearchQueries({
-                                              ...variantSearchQueries,
-                                              [idx]: "",
-                                            });
-                                          }}
-                                          className="px-3.5 py-2 text-xs text-slate-400 hover:bg-slate-100 cursor-pointer border-b italic"
-                                        >
-                                          — None —
-                                        </div>
-                                        {filteredVariants.length > 0 ? (
-                                          filteredVariants.map((variant) => {
-                                            const vLabel = formatVariantLabel(
-                                              variant.color,
-                                              variant.size,
-                                            );
-                                            return (
-                                              <div
-                                                key={variant.productVariantId}
-                                                onClick={() =>
-                                                  handleSelectVariant(
-                                                    idx,
-                                                    variant,
-                                                  )
-                                                }
-                                                className="px-3.5 py-2 text-xs hover:bg-slate-100 cursor-pointer flex items-center justify-between border-b last:border-none"
-                                              >
-                                                <span className="font-medium text-slate-800">
-                                                  {vLabel || "Standard Variant"}
-                                                </span>
-                                                <span className="font-mono text-slate-600">
-                                                  {currency(variant.unitPrice)}
-                                                </span>
-                                              </div>
-                                            );
-                                          })
-                                        ) : (
-                                          <div className="px-3 py-2 text-xs text-center text-slate-400">
-                                            No variants found
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
                               </div>
                             </td>
 
-                            {/* Description / Inclusions Cell (Auto-expanding Multiline) */}
                             <td className="py-2 px-2.5">
                               <textarea
                                 rows={1}
@@ -1239,7 +1562,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                               />
                             </td>
 
-                            {/* Quantity Cell */}
                             <td className="py-2 px-2.5 text-center">
                               <input
                                 type="number"
@@ -1258,7 +1580,6 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                               />
                             </td>
 
-                            {/* Unit Price Cell */}
                             <td className="py-2 px-2.5 text-right">
                               <input
                                 type="number"
@@ -1278,12 +1599,10 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
                               />
                             </td>
 
-                            {/* Line Total Cell */}
                             <td className="py-2.5 px-2.5 text-right font-mono font-bold text-xs text-slate-900 dark:text-white whitespace-nowrap">
                               {currency(rowTotal)}
                             </td>
 
-                            {/* Actions Cell */}
                             <td className="py-2 px-2.5 text-right">
                               <div className="flex items-center justify-end gap-1 pt-0.5">
                                 <button
@@ -1444,6 +1763,44 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({
           </form>
         </div>
       </div>
+
+      {pickerModalIndex !== null && (
+        <ProductPickerModal
+          products={products}
+          selectedProductId={items[pickerModalIndex]?.productId}
+          lineNumber={pickerModalIndex + 1}
+          onSelect={(product) => handleSelectProduct(pickerModalIndex, product)}
+          onAddNew={() => {
+            setQuickProductTargetIndex(pickerModalIndex);
+            setPickerModalIndex(null);
+            setIsQuickProductModalOpen(true);
+          }}
+          onClose={() => setPickerModalIndex(null)}
+        />
+      )}
+
+      {pickerVariantModalIndex !== null &&
+        selectedProducts[pickerVariantModalIndex] && (
+          <VariantPickerModal
+            variants={selectedProducts[pickerVariantModalIndex]?.variants || []}
+            selectedVariantId={items[pickerVariantModalIndex]?.productVariantId}
+            productName={selectedProducts[pickerVariantModalIndex]?.name || ""}
+            lineNumber={pickerVariantModalIndex + 1}
+            onSelect={(variant) => {
+              handleSelectVariant(pickerVariantModalIndex, variant);
+              setPickerVariantModalIndex(null);
+            }}
+            onAddNewVariant={() => {
+              setVariantModalTargetIndex(pickerVariantModalIndex);
+              setTargetProductForVariants(
+                selectedProducts[pickerVariantModalIndex],
+              );
+              setIsVariantModalOpen(true);
+              setPickerVariantModalIndex(null);
+            }}
+            onClose={() => setPickerVariantModalIndex(null)}
+          />
+        )}
 
       {isQuickProductModalOpen && (
         <CreateProductModal

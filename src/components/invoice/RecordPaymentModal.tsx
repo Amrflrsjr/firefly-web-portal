@@ -53,9 +53,9 @@ export const RecordPaymentModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
         {/* Flat Modal Header matching Quotation/Invoice Details Modals */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 rounded-t-2xl">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
@@ -92,24 +92,78 @@ export const RecordPaymentModal: React.FC<Props> = ({
           className="p-6 overflow-y-auto flex-1 space-y-4"
         >
           {/* Balance Display Box */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-center justify-between shadow-2xs">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Outstanding Balance
+          <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col gap-3 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Outstanding Balance
+                </div>
+                <div className="text-sm font-bold font-mono text-slate-900 dark:text-white mt-0.5">
+                  ₱{balanceDue.toFixed(2)}
+                </div>
               </div>
-              <div className="text-sm font-bold font-mono text-slate-900 dark:text-white mt-0.5">
-                ₱{balanceDue.toFixed(2)}
-              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setPaymentData({ ...paymentData, amountPaid: balanceDue })
+                }
+                className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
+              >
+                Pay Full Balance
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setPaymentData({ ...paymentData, amountPaid: balanceDue })
-              }
-              className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
-            >
-              Pay Full Balance
-            </button>
+
+            {/* Quick Percentage Selectors */}
+            <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+              <button
+                type="button"
+                onClick={() =>
+                  setPaymentData({
+                    ...paymentData,
+                    amountPaid: Number((balanceDue * 0.25).toFixed(2)),
+                  })
+                }
+                className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 py-1.5 rounded-md transition-colors cursor-pointer shadow-2xs"
+              >
+                25%
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPaymentData({
+                    ...paymentData,
+                    amountPaid: Number((balanceDue * 0.5).toFixed(2)),
+                  })
+                }
+                className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 py-1.5 rounded-md transition-colors cursor-pointer shadow-2xs"
+              >
+                50%
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPaymentData({
+                    ...paymentData,
+                    amountPaid: Number((balanceDue * 0.75).toFixed(2)),
+                  })
+                }
+                className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 py-1.5 rounded-md transition-colors cursor-pointer shadow-2xs"
+              >
+                75%
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPaymentData({
+                    ...paymentData,
+                    amountPaid: balanceDue,
+                  })
+                }
+                className="text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 border border-amber-200 dark:border-amber-900/60 py-1.5 rounded-md transition-colors cursor-pointer shadow-2xs"
+              >
+                100%
+              </button>
+            </div>
           </div>
 
           <div>
