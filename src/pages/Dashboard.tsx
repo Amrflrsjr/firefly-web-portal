@@ -1,43 +1,36 @@
-import React, { useEffect, useMemo, useState } from "react";
-import api from "../api/axios";
-import {
-  FileText,
-  Users,
-  TrendingUp,
-  Clock,
-  AlertCircle,
-  Receipt,
-  CheckCircle2,
-  ArrowUpRight,
-  Sparkles,
-  BarChart3,
-  Activity,
-  Percent,
-  User,
-  RefreshCw,
-  X,
-  ArrowRight,
-  Building2,
-} from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import axios from "axios";
-import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
-  AreaChart,
   Area,
-  BarChart,
+  AreaChart,
   Bar,
-  Cell,
+  BarChart,
   CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
 } from "recharts";
+import { AlertCircle, BarChart3, Plus, RefreshCw, X } from "lucide-react";
+import api from "../api/axios";
+import { useAuth } from "../context/AuthContext";
+
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
 
 interface ChartPoint {
   date: string;
   amount: number;
+  /** Optional: if the backend sends it, the trend chart shows a second series. */
+  collected?: number;
 }
 
 interface InvoiceStatusBreakdown {
@@ -76,24 +69,80 @@ interface DashboardMetrics {
   agingBuckets: AgingBucket[];
   topCustomers: TopCustomer[];
   monthlyRevenue: MonthlyRevenue[];
+  /** Optional backend-computed totals. The UI derives them when absent. */
+  totalInvoiced?: number;
+  totalOutstanding?: number;
+  overdueAmount?: number;
 }
 
 type ChartTimeRange = "7d" | "30d" | "90d" | "all";
-type ModalType =
-  | "revenue"
-  | "unpaid"
-  | "activeQuotes"
-  | "acceptedQuotes"
-  | "customers"
-  | "performance"
-  | "demographics"
-  | null;
+
+type ModalState =
+  | { kind: "receivables" }
+  | { kind: "aging"; range: AgingBucket["range"] }
+  | { kind: "status"; status: string }
+  | { kind: "billed" }
+  | { kind: "months" }
+  | { kind: "customer"; name: string }
+  | { kind: "estimates"; focus: "active" | "accepted" | "all" }
+  | { kind: "clients" };
+
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
 
 const currency = (value: number) =>
-  `₱${(value || 0).toLocaleString(undefined, {
+  `₱${(value || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+
+const axisMoney = (v: number) =>
+  `₱${v >= 1000 ? `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : v}`;
+
+const pct = (part: number, whole: number) =>
+  whole > 0 ? Math.round((part / whole) * 100) : 0;
+
+const plural = (n: number, one: string, many: string) =>
+  `${n} ${n === 1 ? one : many}`;
+
+const norm = (s: string) => s.toLowerCase().replace(/[\s_-]/g, "");
+
+const OPEN_STATUSES = new Set(["unpaid", "overdue", "partiallypaid"]);
+
+const STATUS_META: Record<string, { label: string; bar: string }> = {
+  paid: { label: "Paid", bar: "bg-emerald-500" },
+  unpaid: { label: "Unpaid", bar: "bg-amber-500" },
+  partiallypaid: { label: "Partially paid", bar: "bg-sky-500" },
+  overdue: { label: "Overdue", bar: "bg-rose-500" },
+};
+
+// The Invoices page filters on Paid / Unpaid / PartiallyPaid / Cancelled.
+const invoiceFilterFor = (status: string) => {
+  switch (norm(status)) {
+    case "paid":
+      return "Paid";
+    case "partiallypaid":
+      return "PartiallyPaid";
+    default:
+      return "Unpaid";
+  }
+};
+
+const AGING_META: Record<AgingBucket["range"], { label: string; bar: string }> =
+  {
+    "0-30": { label: "0–30 days", bar: "bg-amber-300" },
+    "31-60": { label: "31–60 days", bar: "bg-amber-500" },
+    "61-90": { label: "61–90 days", bar: "bg-orange-600" },
+    "90+": { label: "Over 90 days", bar: "bg-rose-600" },
+  };
+
+const RANGE_LABEL: Record<ChartTimeRange, string> = {
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+  all: "All time",
+};
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -102,45 +151,302 @@ const getGreeting = () => {
   return "Good evening";
 };
 
+const panel =
+  "rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900";
+const focusRing =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500";
+const gridLine = {
+  stroke: "#94A3B8",
+  strokeOpacity: 0.25,
+  strokeDasharray: "3 6",
+};
+
+/* -------------------------------------------------------------------------- */
+/* Small building blocks                                                      */
+/* -------------------------------------------------------------------------- */
+
+const Panel: React.FC<{
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ title, subtitle, action, className = "", children }) => (
+  <section className={`${panel} min-w-0 p-4 sm:p-6 ${className}`}>
+    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3">
+      <div className="min-w-0">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {action && <div className="ml-auto">{action}</div>}
+    </div>
+    <div className="mt-4 sm:mt-5">{children}</div>
+  </section>
+);
+
+const TextLink: React.FC<{
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ onClick, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center rounded px-1 text-sm font-medium text-amber-700 hover:underline sm:min-h-0 dark:text-amber-400 ${focusRing}`}
+  >
+    {children}
+  </button>
+);
+
+const EmptyState: React.FC<{ title: string; hint: string }> = ({
+  title,
+  hint,
+}) => (
+  <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 p-6 text-center dark:border-slate-700">
+    <BarChart3 className="h-5 w-5 text-slate-400" aria-hidden />
+    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+      {title}
+    </p>
+    <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
+      {hint}
+    </p>
+  </div>
+);
+
+interface TipProps {
+  active?: boolean;
+  label?: string | number;
+  payload?: ReadonlyArray<{ value?: number | string; name?: string }>;
+}
+
+const MoneyTip: React.FC<TipProps & { showName?: boolean }> = ({
+  active,
+  label,
+  payload,
+  showName,
+}) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-white shadow-lg">
+      <p className="mb-1 font-medium text-slate-300">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="tabular-nums">
+          {showName && p.name ? `${p.name}: ` : ""}
+          <span className="font-semibold">{currency(Number(p.value))}</span>
+        </p>
+      ))}
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Dashboard                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const useIsMobile = (query = "(max-width: 639px)") => {
+  const [matches, setMatches] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(query).matches,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
+};
+
+const Stat: React.FC<{
+  label: string;
+  value: string;
+  hint?: string;
+  className?: string;
+}> = ({ label, value, hint, className = "" }) => (
+  <div
+    className={`rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60 ${className}`}
+  >
+    <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+    <p className="mt-0.5 wrap-break-word text-base font-semibold tabular-nums text-slate-900 dark:text-white">
+      {value}
+    </p>
+    {hint && (
+      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+        {hint}
+      </p>
+    )}
+  </div>
+);
+
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
+  <h3 className="text-sm font-medium text-slate-900 dark:text-white">
+    {children}
+  </h3>
+);
+
+const BarRow: React.FC<{
+  label: string;
+  value: string;
+  share: number;
+  bar: string;
+  hint?: string;
+}> = ({ label, value, share, bar, hint }) => (
+  <li>
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="min-w-0 text-slate-700 dark:text-slate-200">
+        {label}
+      </span>
+      <span className="shrink-0 font-semibold tabular-nums text-slate-900 dark:text-white">
+        {value}
+      </span>
+    </div>
+    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <div
+        className={`h-full rounded-full ${bar}`}
+        style={{ width: `${Math.min(Math.max(share, 0), 100)}%` }}
+      />
+    </div>
+    {hint && (
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</p>
+    )}
+  </li>
+);
+
+const Modal: React.FC<{
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  footer: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, subtitle, onClose, footer, children }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center overscroll-contain bg-slate-950/60 backdrop-blur-xs sm:items-center sm:p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dashboard-modal-title"
+        className="flex max-h-[90dvh] w-full flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:max-w-lg sm:rounded-2xl dark:border-slate-800 dark:bg-slate-900"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4 sm:p-5 dark:border-slate-800">
+          <div className="min-w-0">
+            <h2
+              id="dashboard-modal-title"
+              className="wrap-break-word text-lg font-semibold text-slate-900 dark:text-white"
+            >
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                {subtitle}
+              </p>
+            )}
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 ${focusRing}`}
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+        <div className="space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          {children}
+        </div>
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end dark:border-slate-800">
+          {footer}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Dashboard: React.FC = () => {
   const { username } = useAuth();
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [chartTimeRange, setChartTimeRange] = useState<ChartTimeRange>("30d");
-  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [modal, setModal] = useState<ModalState | null>(null);
+  const closeModal = useCallback(() => setModal(null), []);
+  const isMobile = useIsMobile();
 
-  // Fetch pre-aggregated server-side metrics
   useEffect(() => {
     let isMounted = true;
 
     const fetchDashboardMetrics = async () => {
-      if (metrics) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      if (metrics) setRefreshing(true);
+      else setLoading(true);
       setError(null);
       try {
         const response = await api.get("/dashboard/metrics", {
           params: { timeRange: chartTimeRange },
         });
-
-        if (isMounted) {
-          setMetrics(response.data);
-        }
+        if (isMounted) setMetrics(response.data);
       } catch (err: unknown) {
         if (isMounted) {
-          if (axios.isAxiosError(err)) {
-            setError(
-              err.response?.data?.message || "Failed to load dashboard metrics",
-            );
-          } else {
-            setError("An unexpected error occurred");
-          }
+          setError(
+            axios.isAxiosError(err)
+              ? err.response?.data?.message ||
+                  "Failed to load dashboard metrics"
+              : "An unexpected error occurred",
+          );
         }
       } finally {
         if (isMounted) {
@@ -151,91 +457,86 @@ export const Dashboard: React.FC = () => {
     };
 
     fetchDashboardMetrics();
-
     return () => {
       isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartTimeRange]);
+  }, [chartTimeRange, reloadKey]);
 
-  const chartData = useMemo(
-    () => metrics?.chartData || [],
-    [metrics?.chartData],
+  /* ---- Receivables summary (amount based, not count based) -------------- */
+  const summary = useMemo(() => {
+    const rows = (metrics?.invoiceStatusBreakdown ?? []).filter(
+      (r) => norm(r.status) !== "cancelled",
+    );
+    const paidRow = rows.find((r) => norm(r.status) === "paid");
+    const openRows = rows.filter((r) => OPEN_STATUSES.has(norm(r.status)));
+    const overdueRow = rows.find((r) => norm(r.status) === "overdue");
+
+    const collected = paidRow?.amount ?? metrics?.totalRevenue ?? 0;
+    const outstanding =
+      metrics?.totalOutstanding ?? openRows.reduce((s, r) => s + r.amount, 0);
+    const totalInvoiced = metrics?.totalInvoiced ?? collected + outstanding;
+    const openCount =
+      openRows.reduce((s, r) => s + r.count, 0) || metrics?.unpaidCount || 0;
+    const segmentRows = [paidRow, ...openRows].filter(
+      (r): r is InvoiceStatusBreakdown => Boolean(r),
+    );
+
+    return {
+      rows,
+      segmentRows,
+      collected,
+      outstanding,
+      totalInvoiced,
+      openCount,
+      invoiceCount: rows.reduce((s, r) => s + r.count, 0),
+      overdueAmount: metrics?.overdueAmount ?? overdueRow?.amount ?? 0,
+      overdueCount: overdueRow?.count ?? 0,
+      collectionRate: pct(collected, totalInvoiced),
+    };
+  }, [metrics]);
+
+  const chartData = useMemo(() => metrics?.chartData ?? [], [metrics]);
+  const hasCollectedSeries = chartData.some(
+    (p) => typeof p.collected === "number",
+  );
+  const peakDay = useMemo(
+    () =>
+      chartData.length
+        ? chartData.reduce((max, p) => (p.amount > max.amount ? p : max))
+        : null,
+    [chartData],
   );
 
-  // Compute conversion rates or ratios for the Health Metrics Card
-  const totalInvoicesApprox =
-    (metrics?.totalRevenue ? 1 : 0) + (metrics?.unpaidCount || 0);
-  const collectionRate =
-    totalInvoicesApprox > 0
-      ? Math.round(
-          ((metrics?.totalRevenue ? 1 : 0) / totalInvoicesApprox) * 100,
-        )
-      : 100;
+  const topCustomers = metrics?.topCustomers ?? [];
+  const topMax = Math.max(...topCustomers.map((c) => c.totalRevenue), 1);
 
-  const totalQuotesApprox =
-    (metrics?.activeQuotesCount || 0) + (metrics?.acceptedQuotesCount || 0);
-  const estimateAcceptanceRate =
-    totalQuotesApprox > 0
-      ? Math.round(
-          ((metrics?.acceptedQuotesCount || 0) / totalQuotesApprox) * 100,
-        )
-      : 0;
+  const active = metrics?.activeQuotesCount ?? 0;
+  const accepted = metrics?.acceptedQuotesCount ?? 0;
+  const totalQuotes = active + accepted;
 
-  // Highest single collection day within the selected range
-  const peakDay = useMemo(() => {
-    if (chartData.length === 0) return null;
-    return chartData.reduce((max, point) =>
-      point.amount > max.amount ? point : max,
-    );
-  }, [chartData]);
+  const clients = metrics?.totalCustomersCount ?? 0;
+  const corporate = metrics?.corporateCustomersCount ?? 0;
+  const personal = metrics?.personalCustomersCount ?? 0;
 
-  const totalCustomers = metrics?.totalCustomersCount || 0;
-  const corporateCount = metrics?.corporateCustomersCount || 0;
-  const personalCount = metrics?.personalCustomersCount || 0;
-  const corporatePct =
-    totalCustomers > 0 ? (corporateCount / totalCustomers) * 100 : 0;
-  const personalPct =
-    totalCustomers > 0 ? (personalCount / totalCustomers) * 100 : 0;
-
-  const conversionBarData = [
-    {
-      category: "Draft/Sent",
-      count: metrics?.activeQuotesCount || 0,
-    },
-    {
-      category: "Approved",
-      count: metrics?.acceptedQuotesCount || 0,
-    },
-  ];
-
-  const today = new Date().toLocaleDateString(undefined, {
+  const today = new Date().toLocaleDateString("en-PH", {
     weekday: "long",
     month: "long",
     day: "numeric",
+    year: "numeric",
   });
 
-  // Loading skeleton
+  /* ---- Loading / error -------------------------------------------------- */
   if (loading && !metrics) {
+    const block = "animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/60";
     return (
-      <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0">
-        <div className="h-40 sm:h-44 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
-        <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className={`h-32 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse ${
-                i === 0 ? "col-span-2 xl:col-span-1" : ""
-              }`}
-            />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-96 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
-          <div className="space-y-6">
-            <div className="h-56 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
-            <div className="h-56 rounded-xl bg-slate-100 dark:bg-slate-850 animate-pulse" />
-          </div>
+      <div className="space-y-6 px-4 pb-10 sm:px-0" aria-busy="true">
+        <div className={`h-12 w-72 ${block}`} />
+        <div className={`h-80 ${block}`} />
+        <div className={`h-24 ${block}`} />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className={`h-96 lg:col-span-2 ${block}`} />
+          <div className={`h-96 ${block}`} />
         </div>
       </div>
     );
@@ -243,16 +544,20 @@ export const Dashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="mx-4 sm:mx-0 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-6 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+      <div
+        role="alert"
+        className="mx-4 flex flex-col items-start justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-700 sm:mx-0 sm:flex-row sm:items-center dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+      >
         <div className="flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
+          <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
           <span className="text-sm font-medium">{error}</span>
         </div>
         <button
-          onClick={() => window.location.reload()}
-          className="text-xs font-bold bg-white dark:bg-slate-800 px-4 py-2 rounded-lg border border-rose-200 dark:border-rose-800 shadow-2xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className={`cursor-pointer rounded-lg border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-rose-900/50 ${focusRing}`}
         >
-          Retry
+          Try again
         </button>
       </div>
     );
@@ -260,231 +565,661 @@ export const Dashboard: React.FC = () => {
 
   const kpis = [
     {
-      id: "revenue" as ModalType,
-      label: "Paid Revenue",
-      value: currency(metrics?.totalRevenue || 0),
-      caption: "Fully settled collections",
-      captionClass: "text-emerald-600 dark:text-emerald-400",
-      icon: TrendingUp,
-      iconClass:
-        "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60",
-      wide: true,
+      label: "Billed this period",
+      value: currency(metrics?.totalPeriodRevenue ?? 0),
+      caption: RANGE_LABEL[chartTimeRange],
+      modal: { kind: "billed" } as ModalState,
     },
     {
-      id: "unpaid" as ModalType,
-      label: "Unpaid Invoices",
-      value: metrics?.unpaidCount || 0,
-      caption: "Pending remittances",
-      captionClass: "text-slate-400 dark:text-slate-400",
-      icon: Clock,
-      iconClass:
-        "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60",
+      label: "Estimates awaiting a decision",
+      value: String(active),
+      caption: "Draft or sent",
+      modal: { kind: "estimates", focus: "active" } as ModalState,
     },
     {
-      id: "activeQuotes" as ModalType,
-      label: "Active Estimates",
-      value: metrics?.activeQuotesCount || 0,
-      caption: "Sent or draft quotes",
-      captionClass: "text-slate-400 dark:text-slate-400",
-      icon: FileText,
-      iconClass:
-        "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60",
+      label: "Accepted estimates",
+      value: String(accepted),
+      caption: "Ready to invoice",
+      modal: { kind: "estimates", focus: "accepted" } as ModalState,
     },
     {
-      id: "acceptedQuotes" as ModalType,
-      label: "Accepted Estimates",
-      value: metrics?.acceptedQuotesCount || 0,
-      caption: "Ready for invoice",
-      captionClass: "text-emerald-600 dark:text-emerald-400",
-      icon: CheckCircle2,
-      iconClass:
-        "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60",
-    },
-    {
-      id: "customers" as ModalType,
-      label: "Active Clients",
-      value: totalCustomers,
-      caption: "Registered accounts",
-      captionClass: "text-slate-400 dark:text-slate-400",
-      icon: Users,
-      iconClass:
-        "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60",
+      label: "Clients",
+      value: String(clients),
+      caption: `${corporate} corporate, ${personal} personal`,
+      modal: { kind: "clients" } as ModalState,
     },
   ];
 
-  return (
-    <div className="space-y-6 sm:space-y-8 pb-10 px-4 sm:px-0 animate-in fade-in duration-300">
-      {/* Executive Header Banner */}
-      <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 rounded-xl p-6 sm:p-8 text-white shadow-2xl border border-slate-800/80">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/10 text-amber-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Business Command Center</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-[11px] font-semibold">
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                </span>
-                <span className="truncate">{today}</span>
-              </div>
-            </div>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white wrap-break-word">
-              {getGreeting()}, {username || "Admin"}
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Here is your real-time business health metrics, financial
-              overview, and quick catalog shortcuts for today. Click any metric
-              card or chart block to inspect detailed analytics.
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            {refreshing && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Syncing
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => navigate("/quotations")}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
-            >
-              <span>Create Estimate</span>
-              <ArrowUpRight className="w-4 h-4 shrink-0" />
-            </button>
-          </div>
-        </div>
-      </div>
+  const goTo = (to: string) => {
+    setModal(null);
+    navigate(to);
+  };
 
-      {/* Top Key Performance Indicators Grid */}
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
-        {kpis.map((kpi) => (
-          <div
-            key={kpi.label}
-            onClick={() => setActiveModal(kpi.id)}
-            className={`relative overflow-hidden bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col justify-between group cursor-pointer ${
-              kpi.wide ? "col-span-2 xl:col-span-1" : ""
-            }`}
-          >
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-                {kpi.label}
-              </span>
-              <div
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center border group-hover:scale-105 transition-transform shrink-0 ${kpi.iconClass}`}
-              >
-                <kpi.icon className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3 sm:mt-4 min-w-0">
-              <h3 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white font-mono tracking-tight tabular-nums truncate">
-                {kpi.value}
-              </h3>
-              <p
-                className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 sm:mt-1 flex items-center justify-between gap-1 ${kpi.captionClass}`}
-              >
-                <span className="truncate">{kpi.caption}</span>
-                <span className="text-[10px] opacity-0 group-hover:opacity-100 text-amber-600 dark:text-amber-400 font-bold transition-opacity shrink-0">
-                  View &rarr;
-                </span>
+  const statusBar = (status: string) =>
+    STATUS_META[norm(status)]?.bar ?? "bg-slate-400";
+
+  let modalNode: React.ReactNode = null;
+  if (modal) {
+    let title = "";
+    let subtitle: string | undefined;
+    let body: React.ReactNode = null;
+    let action: { label: string; to: string } = {
+      label: "View invoices",
+      to: "/invoices",
+    };
+
+    switch (modal.kind) {
+      case "receivables": {
+        title = "Total to collect";
+        subtitle = "What clients still owe, and how old it is";
+        action = {
+          label: "Review unpaid invoices",
+          to: "/invoices?status=Unpaid",
+        };
+        body = (
+          <>
+            <div>
+              <p className="text-3xl font-semibold tabular-nums text-slate-900 dark:text-white">
+                {currency(summary.outstanding)}
+              </p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {plural(summary.openCount, "open invoice", "open invoices")}
               </p>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Stat
+                label="Total invoiced"
+                value={currency(summary.totalInvoiced)}
+              />
+              <Stat
+                label="Collected"
+                value={currency(summary.collected)}
+                hint={`${summary.collectionRate}% of invoiced`}
+              />
+              <Stat
+                label="Overdue"
+                value={currency(summary.overdueAmount)}
+                hint={plural(summary.overdueCount, "invoice", "invoices")}
+              />
+              <Stat
+                label="Average open invoice"
+                value={currency(
+                  summary.openCount > 0
+                    ? summary.outstanding / summary.openCount
+                    : 0,
+                )}
+              />
+            </div>
+            <div>
+              <SectionTitle>By status</SectionTitle>
+              <ul className="mt-3 space-y-3">
+                {summary.rows.map((r) => (
+                  <BarRow
+                    key={r.status}
+                    label={STATUS_META[norm(r.status)]?.label ?? r.status}
+                    value={currency(r.amount)}
+                    share={pct(r.amount, summary.totalInvoiced)}
+                    bar={statusBar(r.status)}
+                    hint={plural(r.count, "invoice", "invoices")}
+                  />
+                ))}
+              </ul>
+            </div>
+            <div>
+              <SectionTitle>By age</SectionTitle>
+              <ul className="mt-3 space-y-3">
+                {(metrics?.agingBuckets ?? []).map((b) => (
+                  <BarRow
+                    key={b.range}
+                    label={AGING_META[b.range].label}
+                    value={currency(b.amount)}
+                    share={pct(b.amount, summary.outstanding)}
+                    bar={AGING_META[b.range].bar}
+                    hint={plural(b.count, "invoice", "invoices")}
+                  />
+                ))}
+              </ul>
+            </div>
+          </>
+        );
+        break;
+      }
+
+      case "aging": {
+        const b = metrics?.agingBuckets.find((x) => x.range === modal.range);
+        const amount = b?.amount ?? 0;
+        const count = b?.count ?? 0;
+        title =
+          modal.range === "90+"
+            ? "Invoices over 90 days old"
+            : `Invoices ${AGING_META[modal.range].label} old`;
+        subtitle = "Unpaid invoices grouped by age";
+        action = {
+          label: "Review unpaid invoices",
+          to: "/invoices?status=Unpaid",
+        };
+        body =
+          count === 0 ? (
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Nothing is outstanding in this age range.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="Amount" value={currency(amount)} />
+              <Stat label="Invoices" value={String(count)} />
+              <Stat
+                label="Share of total to collect"
+                value={`${pct(amount, summary.outstanding)}%`}
+              />
+              <Stat label="Average invoice" value={currency(amount / count)} />
+            </div>
+          );
+        break;
+      }
+
+      case "status": {
+        const r = summary.rows.find((x) => x.status === modal.status);
+        const label = STATUS_META[norm(modal.status)]?.label ?? modal.status;
+        const filter = invoiceFilterFor(modal.status);
+        title = `${label} invoices`;
+        subtitle = `${pct(r?.amount ?? 0, summary.totalInvoiced)}% of everything invoiced`;
+        action = {
+          label: `View ${filter === "PartiallyPaid" ? "partially paid" : filter.toLowerCase()} invoices`,
+          to: `/invoices?status=${filter}`,
+        };
+        body = (
+          <div className="grid grid-cols-2 gap-3">
+            <Stat label="Amount" value={currency(r?.amount ?? 0)} />
+            <Stat label="Invoices" value={String(r?.count ?? 0)} />
+            <Stat
+              label="Share of total invoiced"
+              value={`${pct(r?.amount ?? 0, summary.totalInvoiced)}%`}
+            />
+            <Stat
+              label="Average invoice"
+              value={currency(r && r.count > 0 ? r.amount / r.count : 0)}
+            />
           </div>
+        );
+        break;
+      }
+
+      case "billed": {
+        const activeDays = chartData.filter((p) => p.amount > 0);
+        const dayMax = Math.max(...chartData.map((p) => p.amount), 1);
+        const total = metrics?.totalPeriodRevenue ?? 0;
+        title = "Billed this period";
+        subtitle = RANGE_LABEL[chartTimeRange];
+        body = (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="Total billed" value={currency(total)} />
+              <Stat
+                label="Best day"
+                value={peakDay ? peakDay.date : "None"}
+                hint={peakDay ? currency(peakDay.amount) : undefined}
+              />
+              <Stat
+                label="Days with invoices"
+                value={String(activeDays.length)}
+                hint={`of ${chartData.length} shown`}
+              />
+              <Stat
+                label="Average per active day"
+                value={currency(
+                  activeDays.length ? total / activeDays.length : 0,
+                )}
+              />
+            </div>
+            {chartData.length > 0 && (
+              <div>
+                <SectionTitle>By date</SectionTitle>
+                <ul className="mt-3 max-h-64 space-y-3 overflow-y-auto overscroll-contain pr-1">
+                  {[...chartData].reverse().map((p) => (
+                    <BarRow
+                      key={p.date}
+                      label={p.date}
+                      value={currency(p.amount)}
+                      share={(p.amount / dayMax) * 100}
+                      bar="bg-amber-500"
+                      hint={
+                        typeof p.collected === "number"
+                          ? `Collected ${currency(p.collected)}`
+                          : undefined
+                      }
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        );
+        break;
+      }
+
+      case "months": {
+        const months = metrics?.monthlyRevenue ?? [];
+        const total = months.reduce((s, m) => s + m.amount, 0);
+        const best = months.reduce(
+          (m, x) => (x.amount > m.amount ? x : m),
+          months[0] ?? { month: "None", amount: 0 },
+        );
+        const monthMax = Math.max(...months.map((m) => m.amount), 1);
+        title = "Monthly billing";
+        subtitle = "Invoiced amount, last 12 months";
+        body = (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="12-month total" value={currency(total)} />
+              <Stat
+                label="Best month"
+                value={best.amount > 0 ? best.month : "None"}
+                hint={best.amount > 0 ? currency(best.amount) : undefined}
+              />
+              <Stat
+                label="Average per month"
+                value={currency(months.length ? total / months.length : 0)}
+              />
+              <Stat
+                label="Months with invoices"
+                value={String(months.filter((m) => m.amount > 0).length)}
+              />
+            </div>
+            <ul className="max-h-64 space-y-3 overflow-y-auto overscroll-contain pr-1">
+              {[...months].reverse().map((m) => (
+                <BarRow
+                  key={m.month}
+                  label={m.month}
+                  value={currency(m.amount)}
+                  share={(m.amount / monthMax) * 100}
+                  bar="bg-amber-600"
+                />
+              ))}
+            </ul>
+          </>
+        );
+        break;
+      }
+
+      case "customer": {
+        const idx = topCustomers.findIndex(
+          (c) => c.customerName === modal.name,
+        );
+        const c = topCustomers[idx];
+        title = modal.name;
+        subtitle = "Paid revenue only. Open invoices are not counted here.";
+        action = { label: "View clients", to: "/customers" };
+        body = (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Stat
+                label="Paid revenue"
+                value={currency(c?.totalRevenue ?? 0)}
+              />
+              <Stat
+                label="Share of all collected"
+                value={`${pct(c?.totalRevenue ?? 0, summary.collected)}%`}
+              />
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Ranked {idx + 1} of {topCustomers.length} by paid revenue.
+            </p>
+          </>
+        );
+        break;
+      }
+
+      case "estimates": {
+        title =
+          modal.focus === "active"
+            ? "Estimates awaiting a decision"
+            : modal.focus === "accepted"
+              ? "Accepted estimates"
+              : "Estimates";
+        subtitle =
+          modal.focus === "active"
+            ? "Draft or sent, not yet accepted by the client"
+            : modal.focus === "accepted"
+              ? "Accepted by the client and ready to invoice"
+              : "Your estimate pipeline";
+        action = { label: "Open estimates", to: "/quotations" };
+        body = (
+          <div className="grid grid-cols-2 gap-3">
+            <Stat label="Draft or sent" value={String(active)} />
+            <Stat label="Accepted" value={String(accepted)} />
+            <Stat
+              label="Acceptance rate"
+              value={`${pct(accepted, totalQuotes)}%`}
+            />
+            <Stat label="Total estimates" value={String(totalQuotes)} />
+          </div>
+        );
+        break;
+      }
+
+      case "clients": {
+        title = "Clients";
+        subtitle = "Accounts in your directory";
+        action = { label: "View clients", to: "/customers" };
+        body = (
+          <div className="grid grid-cols-2 gap-3">
+            <Stat
+              className="col-span-2"
+              label="Total accounts"
+              value={String(clients)}
+            />
+            <Stat
+              label="Corporate"
+              value={String(corporate)}
+              hint={`${pct(corporate, clients)}% of accounts`}
+            />
+            <Stat
+              label="Personal"
+              value={String(personal)}
+              hint={`${pct(personal, clients)}% of accounts`}
+            />
+          </div>
+        );
+        break;
+      }
+    }
+
+    modalNode = (
+      <Modal
+        title={title}
+        subtitle={subtitle}
+        onClose={closeModal}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeModal}
+              className={`min-h-11 cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 sm:min-h-0 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 ${focusRing}`}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={() => goTo(action.to)}
+              className={`min-h-11 cursor-pointer rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 sm:min-h-0 ${focusRing}`}
+            >
+              {action.label}
+            </button>
+          </>
+        }
+      >
+        {body}
+      </Modal>
+    );
+  }
+
+  return (
+    <div className="space-y-6 px-4 pb-10 sm:px-0">
+      {/* Header */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{today}</p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
+            {getGreeting()}, {username || "Admin"}
+          </h1>
+        </div>
+        <div className="flex w-full items-center gap-3 sm:w-auto">
+          {refreshing && (
+            <span
+              role="status"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+            >
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              Updating
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate("/quotations")}
+            className={`inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm sm:flex-none sm:py-2 font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 ${focusRing}`}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Create estimate
+          </button>
+        </div>
+      </header>
+
+      {/* Receivables hero: the amount still to be collected */}
+      <section
+        aria-labelledby="receivables-heading"
+        className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 text-white dark:border-slate-700"
+      >
+        <div className="grid gap-8 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:items-end lg:gap-12">
+          <div className="min-w-0">
+            <h2
+              id="receivables-heading"
+              className="text-sm font-medium text-slate-300"
+            >
+              Total to collect
+            </h2>
+            <p className="mt-2 wrap-break-word text-3xl font-semibold tracking-tight tabular-nums sm:text-5xl">
+              {currency(summary.outstanding)}
+            </p>
+            <p className="mt-3 text-sm text-slate-300">
+              {summary.outstanding > 0
+                ? `${plural(summary.openCount, "open invoice", "open invoices")} awaiting payment`
+                : "Every invoice has been paid"}
+            </p>
+            {summary.overdueAmount > 0 && (
+              <p className="mt-1 text-sm font-medium text-rose-300">
+                {currency(summary.overdueAmount)} is overdue across{" "}
+                {plural(summary.overdueCount, "invoice", "invoices")}
+              </p>
+            )}
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    summary.outstanding > 0
+                      ? "/invoices?status=Unpaid"
+                      : "/invoices",
+                  )
+                }
+                className={`inline-flex cursor-pointer items-center justify-center rounded-lg bg-amber-500 px-4 py-3 text-sm sm:py-2.5 font-semibold text-slate-950 hover:bg-amber-400 ${focusRing}`}
+              >
+                {summary.outstanding > 0
+                  ? "Review unpaid invoices"
+                  : "View invoices"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setModal({ kind: "receivables" })}
+                className={`inline-flex cursor-pointer items-center justify-center rounded-lg border border-white/25 px-4 py-3 text-sm sm:py-2.5 font-medium text-white hover:bg-white/10 ${focusRing}`}
+              >
+                See breakdown
+              </button>
+            </div>
+          </div>
+
+          {/* Ledger: billed = collected + outstanding */}
+          <div className="min-w-0">
+            <div
+              className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-white/10"
+              role="img"
+              aria-label={`${summary.collectionRate}% of ${currency(summary.totalInvoiced)} invoiced has been collected`}
+            >
+              {summary.segmentRows
+                .filter((r) => r.amount > 0)
+                .map((r) => (
+                  <div
+                    key={r.status}
+                    className={
+                      STATUS_META[norm(r.status)]?.bar ?? "bg-amber-500"
+                    }
+                    style={{
+                      width: `${(r.amount / (summary.totalInvoiced || 1)) * 100}%`,
+                    }}
+                  />
+                ))}
+            </div>
+
+            <dl className="mt-5 divide-y divide-white/10 text-sm">
+              <div className="flex items-baseline justify-between gap-4 py-2.5">
+                <dt className="text-slate-300">Total invoiced</dt>
+                <dd className="text-right font-medium tabular-nums">
+                  {currency(summary.totalInvoiced)}
+                  <span className="ml-2 text-xs text-slate-400">
+                    {plural(summary.invoiceCount, "invoice", "invoices")}
+                  </span>
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2.5">
+                <dt className="flex items-center gap-2 text-slate-300">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  Collected
+                </dt>
+                <dd className="text-right font-medium tabular-nums">
+                  {currency(summary.collected)}
+                  <span className="ml-2 text-xs text-slate-400">
+                    {summary.collectionRate}%
+                  </span>
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2.5">
+                <dt className="flex items-center gap-2 text-slate-300">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                  Outstanding
+                </dt>
+                <dd className="text-right font-semibold tabular-nums">
+                  {currency(summary.outstanding)}
+                  <span className="ml-2 text-xs text-slate-400">
+                    {100 - summary.collectionRate}%
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        {/* Aging of what is still owed */}
+        <div className="border-t border-white/10">
+          <p className="px-4 pt-4 text-xs text-slate-400 sm:px-8">
+            Outstanding by invoice age
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-px bg-white/10 sm:grid-cols-4">
+            {(metrics?.agingBuckets ?? []).map((b) => {
+              const meta = AGING_META[b.range];
+              return (
+                <button
+                  key={b.range}
+                  type="button"
+                  onClick={() => setModal({ kind: "aging", range: b.range })}
+                  className={`cursor-pointer bg-slate-900 px-4 py-3.5 text-left hover:bg-slate-800 sm:px-8 sm:py-4 ${focusRing} focus-visible:-outline-offset-2`}
+                >
+                  <span className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className={`h-2 w-2 rounded-full ${meta.bar}`} />
+                    {meta.label}
+                  </span>
+                  <span
+                    className={`mt-1 block text-base font-semibold tabular-nums ${
+                      b.amount > 0 ? "text-white" : "text-slate-500"
+                    }`}
+                  >
+                    {currency(b.amount)}
+                  </span>
+                  <span className="block text-xs text-slate-400">
+                    {plural(b.count, "invoice", "invoices")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 lg:grid-cols-4 dark:border-slate-800 dark:bg-slate-800">
+        {kpis.map((kpi) => (
+          <button
+            key={kpi.label}
+            type="button"
+            onClick={() => setModal(kpi.modal)}
+            className={`cursor-pointer bg-white p-4 text-left hover:bg-slate-50 sm:p-5 dark:bg-slate-900 dark:hover:bg-slate-800/70 ${focusRing} focus-visible:-outline-offset-2`}
+          >
+            <span className="block text-sm text-slate-500 dark:text-slate-400">
+              {kpi.label}
+            </span>
+            <span className="mt-1 block wrap-break-word text-lg font-semibold tabular-nums text-slate-900 sm:text-2xl dark:text-white">
+              {kpi.value}
+            </span>
+            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+              {kpi.caption}
+            </span>
+          </button>
         ))}
       </div>
 
-      {/* Main Grid: Area Chart & Analytics Cards Stack */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Interactive Income Trend Area Chart */}
-        <div
-          onClick={() => setActiveModal("revenue")}
-          className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all min-w-0"
-        >
-          <div className="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
-                    Income &amp; Collection Trend
-                  </h2>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 opacity-0 group-hover:opacity-100 font-bold transition-opacity shrink-0">
-                    Inspect Report &rarr;
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    Collected:{" "}
-                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
-                      {currency(metrics?.totalPeriodRevenue || 0)}
-                    </span>
-                  </p>
-                  {peakDay && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      Peak day:{" "}
-                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
-                        {peakDay.date}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div
-                className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg self-start sm:self-auto border border-slate-200 dark:border-slate-700 shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {(
-                  [
-                    { id: "7d", label: "7D" },
-                    { id: "30d", label: "30D" },
-                    { id: "90d", label: "90D" },
-                    { id: "all", label: "All" },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setChartTimeRange(tab.id)}
-                    className={`px-3 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer ${
-                      chartTimeRange === tab.id
-                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs border border-slate-200 dark:border-slate-600"
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+      {/* Trend + invoice status */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Panel
+          className="lg:col-span-2"
+          title="Billing trend"
+          subtitle={`Invoiced per day, ${RANGE_LABEL[chartTimeRange].toLowerCase()}`}
+          action={
+            <div
+              className="flex shrink-0 items-center gap-0.5 rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800"
+              role="group"
+              aria-label="Time range"
+            >
+              {(
+                [
+                  ["7d", "7D"],
+                  ["30d", "30D"],
+                  ["90d", "90D"],
+                  ["all", "All"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={chartTimeRange === id}
+                  onClick={() => setChartTimeRange(id)}
+                  className={`min-h-10 cursor-pointer rounded-md px-3.5 text-xs font-medium sm:min-h-0 sm:px-3 sm:py-1 ${focusRing} ${
+                    chartTimeRange === id
+                      ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+          }
+        >
+          <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+            <span>
+              Billed{" "}
+              <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                {currency(metrics?.totalPeriodRevenue ?? 0)}
+              </span>
+            </span>
+            {peakDay && peakDay.amount > 0 && (
+              <span>
+                Best day{" "}
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {peakDay.date}
+                </span>{" "}
+                <span className="tabular-nums">
+                  ({currency(peakDay.amount)})
+                </span>
+              </span>
+            )}
+            <TextLink onClick={() => setModal({ kind: "billed" })}>
+              See amounts by date
+            </TextLink>
           </div>
-
-          <div className="pt-6 h-80 w-full min-w-0">
+          <div className="h-60 w-full min-w-0 sm:h-72">
             {chartData.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 text-xs bg-slate-50/50 dark:bg-slate-850/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4">
-                <div className="w-12 h-12 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 shrink-0">
-                  <BarChart3 className="w-6 h-6" />
-                </div>
-                <div className="text-center space-y-1">
-                  <p className="font-bold text-slate-700 dark:text-slate-300">
-                    No collection data recorded yet
-                  </p>
-                  <span className="text-[11px] text-slate-400">
-                    Settled payments will automatically populate this trend
-                    chart.
-                  </span>
-                </div>
-              </div>
+              <EmptyState
+                title="No invoices in this period"
+                hint="Billing activity will appear here as invoices are created."
+              />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -492,848 +1227,318 @@ export const Dashboard: React.FC = () => {
                   margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                 >
                   <defs>
-                    <linearGradient
-                      id="colorRevenue"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
+                    <linearGradient id="fillBilled" x1="0" y1="0" x2="0" y2="1">
                       <stop
                         offset="5%"
                         stopColor="#D97706"
-                        stopOpacity={0.25}
+                        stopOpacity={0.22}
                       />
-                      <stop
-                        offset="95%"
-                        stopColor="#D97706"
-                        stopOpacity={0.0}
-                      />
+                      <stop offset="95%" stopColor="#D97706" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid
-                    vertical={false}
-                    stroke="#334155"
-                    strokeOpacity={0.15}
-                    strokeDasharray="4 8"
-                  />
+                  <CartesianGrid vertical={false} {...gridLine} />
                   <XAxis
                     dataKey="date"
+                    minTickGap={24}
                     stroke="#94A3B8"
-                    fontSize={11}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
                   <YAxis
                     stroke="#94A3B8"
-                    fontSize={11}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     width={48}
-                    tickFormatter={(value) =>
-                      `₱${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`
-                    }
+                    tickFormatter={axisMoney}
                   />
                   <Tooltip
-                    cursor={{
-                      stroke: "#D97706",
-                      strokeWidth: 1,
-                      strokeDasharray: "4 4",
-                    }}
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-slate-900 text-white text-xs p-3 rounded-xl shadow-xl border border-slate-800 space-y-1">
-                            <p className="font-bold text-amber-400">{label}</p>
-                            <p className="font-mono text-sm font-bold tabular-nums">
-                              {currency(Number(payload[0].value))}
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
+                    content={<MoneyTip showName={hasCollectedSeries} />}
                   />
                   <Area
                     type="monotone"
+                    name="Billed"
                     dataKey="amount"
                     stroke="#D97706"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                    activeDot={{
-                      r: 5,
-                      fill: "#D97706",
-                      stroke: "#fff",
-                      strokeWidth: 2,
-                    }}
+                    strokeWidth={2}
+                    fill="url(#fillBilled)"
                   />
+                  {hasCollectedSeries && (
+                    <Area
+                      type="monotone"
+                      name="Collected"
+                      dataKey="collected"
+                      stroke="#10B981"
+                      strokeWidth={2}
+                      fill="none"
+                    />
+                  )}
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
-        </div>
+        </Panel>
 
-        {/* Right Column Stack: Performance Health & Client Demographics */}
-        <div className="space-y-6 flex flex-col justify-between min-w-0">
-          {/* Performance Health Ratios Card */}
-          <div
-            onClick={() => setActiveModal("performance")}
-            className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all min-w-0"
-          >
-            <div className="space-y-1 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
-              <div className="flex items-center justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
-                    Performance Health
-                  </h2>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 opacity-0 group-hover:opacity-100 font-bold transition-opacity shrink-0">
-                    Details &rarr;
-                  </span>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800/60 shrink-0">
-                  <Activity className="w-4 h-4" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                Key operational conversion benchmarks
-              </p>
-            </div>
-
-            <div className="py-5 space-y-4 min-w-0">
-              {/* Metric 1: Invoice Collection Efficiency */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate pr-2">
-                    <Receipt className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="truncate">Collection Rate</span>
-                  </span>
-                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums font-bold shrink-0">
-                    {collectionRate}%
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-lg overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-lg transition-all duration-500"
-                    style={{ width: `${collectionRate}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Metric 2: Estimate Conversion Velocity */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate pr-2">
-                    <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <span className="truncate">Estimate Acceptance</span>
-                  </span>
-                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums font-bold shrink-0">
-                    {estimateAcceptanceRate}%
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-lg overflow-hidden">
-                  <div
-                    className="bg-blue-500 h-full rounded-lg transition-all duration-500"
-                    style={{ width: `${estimateAcceptanceRate}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Metric 3: Active Portfolio Ratio */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate pr-2">
-                    <Percent className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="truncate">Pending Invoices Load</span>
-                  </span>
-                  <span className="font-mono text-slate-900 dark:text-slate-100 tabular-nums font-bold shrink-0">
-                    {metrics?.unpaidCount || 0} active
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-lg overflow-hidden">
-                  <div
-                    className="bg-amber-500 h-full rounded-lg transition-all duration-500"
-                    style={{
-                      width: `${Math.min(((metrics?.unpaidCount || 0) / 10) * 100, 100)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Quotation Conversion Chart */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 min-w-0">
-                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 truncate">
-                  Quotation Pipeline Distribution
-                </div>
-                <div className="h-24 w-full min-w-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={conversionBarData}
-                      layout="vertical"
-                      margin={{ top: 0, right: 10, left: -10, bottom: 0 }}
-                    >
-                      <XAxis type="number" hide />
-                      <YAxis
-                        dataKey="category"
-                        type="category"
-                        stroke="#94A3B8"
-                        fontSize={10}
-                        tickLine={false}
-                        axisLine={false}
-                        width={65}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "transparent" }}
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-slate-900 text-white text-[11px] p-2 rounded-lg shadow-xl border border-slate-800">
-                                <span className="font-semibold">
-                                  {payload[0].payload.category}:{" "}
-                                </span>
-                                <span className="font-mono font-bold">
-                                  {payload[0].value}
-                                </span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar
-                        dataKey="count"
-                        radius={[0, 4, 4, 0]}
-                        barSize={12}
-                        fill="#D97706"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Client Demographics Card */}
-          <div
-            onClick={() => setActiveModal("demographics")}
-            className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between cursor-pointer group hover:border-amber-400/50 hover:-translate-y-0.5 transition-all min-w-0"
-          >
-            <div className="space-y-1 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
-              <div className="flex items-center justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
-                    Client Demographics
-                  </h2>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 opacity-0 group-hover:opacity-100 font-bold transition-opacity shrink-0">
-                    Details &rarr;
-                  </span>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-900/60 shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                Corporate vs. Personal account ratio
-              </p>
-            </div>
-
-            <div className="py-5 flex items-center gap-4 sm:gap-5 min-w-0">
-              {/* Donut ring */}
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0">
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background:
-                      totalCustomers > 0
-                        ? `conic-gradient(#D97706 0% ${corporatePct}%, #6366F1 ${corporatePct}% 100%)`
-                        : "#334155",
-                  }}
-                />
-                <div className="absolute inset-1.5 rounded-full bg-white dark:bg-slate-900 flex flex-col items-center justify-center">
-                  <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-mono tabular-nums leading-none">
-                    {totalCustomers}
-                  </span>
-                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-1">
-                    Accounts
-                  </span>
-                </div>
-              </div>
-
-              {/* Legend */}
-              <div className="flex-1 space-y-3 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 min-w-0 pr-1">
-                    <Building2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">Corporate</span>
-                  </span>
-                  <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
-                    {corporateCount}
-                    <span className="text-slate-400 font-normal ml-1">
-                      ({Math.round(corporatePct)}%)
+        <Panel
+          title="Invoices by status"
+          subtitle="Amount and share of everything invoiced"
+          action={
+            <TextLink onClick={() => navigate("/invoices")}>View all</TextLink>
+          }
+        >
+          {summary.rows.length === 0 ? (
+            <EmptyState
+              title="No invoices yet"
+              hint="Convert an accepted estimate to create your first invoice."
+            />
+          ) : (
+            <div className="space-y-4">
+              {summary.rows.map((r) => {
+                const meta = STATUS_META[norm(r.status)];
+                const share = pct(r.amount, summary.totalInvoiced);
+                return (
+                  <button
+                    key={r.status}
+                    type="button"
+                    onClick={() =>
+                      setModal({ kind: "status", status: r.status })
+                    }
+                    className={`block w-full cursor-pointer rounded-lg text-left ${focusRing}`}
+                  >
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${meta?.bar ?? "bg-slate-400"}`}
+                        />
+                        {meta?.label ?? r.status}
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+                        {currency(r.amount)}
+                      </span>
                     </span>
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 min-w-0 pr-1">
-                    <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                    <span className="truncate">Personal</span>
-                  </span>
-                  <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
-                    {personalCount}
-                    <span className="text-slate-400 font-normal ml-1">
-                      ({Math.round(personalPct)}%)
+                    <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <span
+                        className={`block h-full rounded-full ${meta?.bar ?? "bg-slate-400"}`}
+                        style={{ width: `${share}%` }}
+                      />
                     </span>
-                  </span>
-                </div>
+                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                      {plural(r.count, "invoice", "invoices")}, {share}% of
+                      total
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="flex items-baseline justify-between border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
+                <span className="font-medium text-slate-600 dark:text-slate-300">
+                  Total invoiced
+                </span>
+                <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                  {currency(summary.totalInvoiced)}
+                </span>
               </div>
             </div>
-
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <span>Total Directory</span>
-              <span className="font-mono font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-                {totalCustomers} Accounts
-              </span>
-            </div>
-          </div>
-        </div>
+          )}
+        </Panel>
       </div>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* NEW DETAILED BREAKDOWN CHARDS SECTION                            */}
-      {/* ----------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-        {/* 1. Invoice Status Breakdown Card */}
-        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
-          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
-            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
-              Invoice Status Breakdown
-            </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
-              Paid, unpaid, and overdue by amount
-            </p>
-          </div>
-          <div className="pt-6 h-64 w-full min-w-0">
+      {/* Customers + monthly */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Panel
+          title="Top customers"
+          subtitle="By paid revenue"
+          action={
+            <TextLink onClick={() => navigate("/customers")}>View all</TextLink>
+          }
+        >
+          {topCustomers.length === 0 ? (
+            <EmptyState
+              title="No paid invoices yet"
+              hint="Your highest-paying clients will be ranked here."
+            />
+          ) : (
+            <ul className="space-y-4">
+              {topCustomers.map((c) => (
+                <li key={c.customerName}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModal({ kind: "customer", name: c.customerName })
+                    }
+                    className={`block w-full cursor-pointer rounded-lg text-left ${focusRing}`}
+                  >
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 wrap-break-word text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {c.customerName}
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+                        {currency(c.totalRevenue)}
+                      </span>
+                    </span>
+                    <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <span
+                        className="block h-full rounded-full bg-indigo-500"
+                        style={{ width: `${(c.totalRevenue / topMax) * 100}%` }}
+                      />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          className="lg:col-span-2"
+          title="Monthly billing"
+          subtitle="Invoiced amount over the last 12 months"
+          action={
+            <TextLink onClick={() => setModal({ kind: "months" })}>
+              View table
+            </TextLink>
+          }
+        >
+          <div className="h-56 w-full min-w-0 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={metrics?.invoiceStatusBreakdown || []}
+                data={metrics?.monthlyRevenue ?? []}
                 margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               >
-                <CartesianGrid
-                  vertical={false}
-                  stroke="#334155"
-                  strokeOpacity={0.15}
-                  strokeDasharray="4 8"
-                />
-                <XAxis
-                  dataKey="status"
-                  stroke="#94A3B8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#94A3B8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  width={48}
-                  tickFormatter={(v) =>
-                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
-                  }
-                />
-                <Tooltip
-                  content={({ active, payload, label }) =>
-                    active && payload?.length ? (
-                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
-                        <p className="font-bold">{label}</p>
-                        <p className="font-mono text-sm font-black">
-                          {currency(Number(payload[0].value))}
-                        </p>
-                        <p className="text-slate-400">
-                          {payload[0].payload.count} invoices
-                        </p>
-                      </div>
-                    ) : null
-                  }
-                />
-                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                  {(metrics?.invoiceStatusBreakdown || []).map((entry, i) => (
-                    <Cell
-                      key={i}
-                      fill={
-                        entry.status === "Paid"
-                          ? "#10B981"
-                          : entry.status === "Overdue"
-                            ? "#E11D48"
-                            : "#D97706"
-                      }
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* 2. Receivables Aging Card */}
-        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
-          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
-            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
-              Receivables Aging
-            </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
-              Unpaid invoices categorized by aging risk bucket
-            </p>
-          </div>
-          <div className="pt-6 h-64 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={metrics?.agingBuckets || []}
-                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  vertical={false}
-                  stroke="#334155"
-                  strokeOpacity={0.15}
-                  strokeDasharray="4 8"
-                />
-                <XAxis
-                  dataKey="range"
-                  stroke="#94A3B8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#94A3B8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  width={48}
-                  tickFormatter={(v) =>
-                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
-                  }
-                />
-                <Tooltip
-                  content={({ active, payload, label }) =>
-                    active && payload?.length ? (
-                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
-                        <p className="font-bold">{label} Days</p>
-                        <p className="font-mono text-sm font-black">
-                          {currency(Number(payload[0].value))}
-                        </p>
-                        <p className="text-slate-400">
-                          {payload[0].payload.count} invoices
-                        </p>
-                      </div>
-                    ) : null
-                  }
-                />
-                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                  {(metrics?.agingBuckets || []).map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={
-                        ["#FCD34D", "#F59E0B", "#DC2626", "#991B1B"][i] ||
-                        "#D97706"
-                      }
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* 3. Top Customers by Revenue Card */}
-        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
-          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
-            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
-              Top Customers by Revenue
-            </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
-              Highest contributing client accounts
-            </p>
-          </div>
-          <div className="pt-6 h-64 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={metrics?.topCustomers || []}
-                layout="vertical"
-                margin={{ top: 8, right: 24, left: 8, bottom: 0 }}
-              >
-                <CartesianGrid
-                  horizontal={false}
-                  stroke="#334155"
-                  strokeOpacity={0.15}
-                  strokeDasharray="4 8"
-                />
-                <XAxis
-                  type="number"
-                  stroke="#94A3B8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) =>
-                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
-                  }
-                />
-                <YAxis
-                  dataKey="customerName"
-                  type="category"
-                  stroke="#94A3B8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  width={110}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) =>
-                    active && payload?.length ? (
-                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
-                        <p className="font-bold">{label}</p>
-                        <p className="font-mono text-sm font-black">
-                          {currency(Number(payload[0].value))}
-                        </p>
-                      </div>
-                    ) : null
-                  }
-                />
-                <Bar
-                  dataKey="totalRevenue"
-                  fill="#6366F1"
-                  radius={[0, 8, 8, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* 4. Monthly Revenue (12-Month Trend) Card */}
-        <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100/60 dark:shadow-none min-w-0 flex flex-col justify-between">
-          <div className="space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
-            <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
-              Monthly Revenue Trend
-            </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
-              Full-year historical collections performance
-            </p>
-          </div>
-          <div className="pt-6 h-64 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={metrics?.monthlyRevenue || []}
-                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  vertical={false}
-                  stroke="#334155"
-                  strokeOpacity={0.15}
-                  strokeDasharray="4 8"
-                />
+                <CartesianGrid vertical={false} {...gridLine} />
                 <XAxis
                   dataKey="month"
                   stroke="#94A3B8"
-                  fontSize={11}
+                  fontSize={12}
                   tickLine={false}
                   axisLine={false}
-                  interval={0}
-                  angle={-35}
-                  textAnchor="end"
-                  height={50}
+                  interval={isMobile ? 1 : 0}
+                  tickFormatter={(v: string) => v.split(" ")[0]}
                 />
                 <YAxis
                   stroke="#94A3B8"
-                  fontSize={11}
+                  fontSize={12}
                   tickLine={false}
                   axisLine={false}
                   width={48}
-                  tickFormatter={(v) =>
-                    `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
-                  }
+                  tickFormatter={axisMoney}
                 />
                 <Tooltip
-                  content={({ active, payload, label }) =>
-                    active && payload?.length ? (
-                      <div className="bg-slate-900 text-white text-xs p-3 rounded-2xl shadow-xl border border-slate-800 space-y-1">
-                        <p className="font-bold">{label}</p>
-                        <p className="font-mono text-sm font-black">
-                          {currency(Number(payload[0].value))}
-                        </p>
-                      </div>
-                    ) : null
-                  }
+                  cursor={{ fill: "#94A3B8", fillOpacity: 0.12 }}
+                  content={<MoneyTip />}
                 />
-                <Bar dataKey="amount" fill="#D97706" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="amount"
+                  fill="#D97706"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={36}
+                  className="cursor-pointer"
+                  onClick={() => setModal({ kind: "months" })}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </Panel>
       </div>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* DETAILS MODAL OVERLAY                                            */}
-      {/* ----------------------------------------------------------------- */}
-      {activeModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold border border-amber-200 dark:border-amber-800/60 shrink-0">
-                  {activeModal === "revenue" && (
-                    <TrendingUp className="w-4 h-4" />
-                  )}
-                  {activeModal === "unpaid" && <Clock className="w-4 h-4" />}
-                  {activeModal === "activeQuotes" && (
-                    <FileText className="w-4 h-4" />
-                  )}
-                  {activeModal === "acceptedQuotes" && (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )}
-                  {activeModal === "customers" && <Users className="w-4 h-4" />}
-                  {activeModal === "performance" && (
-                    <Activity className="w-4 h-4" />
-                  )}
-                  {activeModal === "demographics" && (
-                    <Building2 className="w-4 h-4" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
-                    {activeModal === "revenue" && "Paid Revenue Breakdown"}
-                    {activeModal === "unpaid" && "Unpaid Invoices Breakdown"}
-                    {activeModal === "activeQuotes" &&
-                      "Active Estimates Breakdown"}
-                    {activeModal === "acceptedQuotes" &&
-                      "Accepted Estimates Breakdown"}
-                    {activeModal === "customers" &&
-                      "Customer Accounts Breakdown"}
-                    {activeModal === "performance" &&
-                      "Performance Health Metrics"}
-                    {activeModal === "demographics" &&
-                      "Client Demographics Analysis"}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
-                    Detailed statistics and records summary
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="w-8 h-8 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body Content */}
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-              {activeModal === "revenue" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-                        Total Settled Amount
-                      </span>
-                      <p className="text-2xl font-bold font-mono text-emerald-900 dark:text-emerald-100 mt-1">
-                        {currency(metrics?.totalRevenue || 0)}
-                      </p>
-                    </div>
-                    <TrendingUp className="w-8 h-8 text-emerald-500" />
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    This figure represents all successfully collected payments
-                    from completed invoices across your platform history. Review
-                    individual statements inside the Invoices module.
-                  </p>
-                </div>
-              )}
-
-              {activeModal === "unpaid" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
-                        Pending Remittances
-                      </span>
-                      <p className="text-2xl font-bold font-mono text-amber-900 dark:text-amber-100 mt-1">
-                        {metrics?.unpaidCount || 0} Invoices
-                      </p>
-                    </div>
-                    <Clock className="w-8 h-8 text-amber-500" />
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    These are invoices dispatched to clients awaiting payment
-                    clearance. Check the Invoices page to follow up or update
-                    statuses.
-                  </p>
-                </div>
-              )}
-
-              {activeModal === "activeQuotes" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                        Active Quotations
-                      </span>
-                      <p className="text-2xl font-bold font-mono text-blue-900 dark:text-blue-100 mt-1">
-                        {metrics?.activeQuotesCount || 0} Draft/Sent
-                      </p>
-                    </div>
-                    <FileText className="w-8 h-8 text-blue-500" />
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Quotations currently in draft or sent status awaiting client
-                    approval. Navigate to the Quotations hub to edit line items
-                    or resend proposals.
-                  </p>
-                </div>
-              )}
-
-              {activeModal === "acceptedQuotes" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-                        Accepted Proposals
-                      </span>
-                      <p className="text-2xl font-bold font-mono text-emerald-900 dark:text-emerald-100 mt-1">
-                        {metrics?.acceptedQuotesCount || 0} Approved
-                      </p>
-                    </div>
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Quotations approved by clients that are ready to be
-                    converted into binding billing invoices.
-                  </p>
-                </div>
-              )}
-
-              {activeModal === "customers" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
-                        Total Active Accounts
-                      </span>
-                      <p className="text-2xl font-bold font-mono text-indigo-900 dark:text-indigo-100 mt-1">
-                        {totalCustomers} Clients
-                      </p>
-                    </div>
-                    <Users className="w-8 h-8 text-indigo-500" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">
-                        Corporate
-                      </span>
-                      <p className="text-lg font-bold font-mono text-slate-800 dark:text-slate-100 mt-0.5">
-                        {corporateCount}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">
-                        Personal
-                      </span>
-                      <p className="text-lg font-bold font-mono text-slate-800 dark:text-slate-100 mt-0.5">
-                        {personalCount}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeModal === "performance" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-2">
-                    <div className="flex justify-between items-center text-xs font-semibold">
-                      <span className="text-slate-700 dark:text-slate-300">
-                        Collection Rate Efficiency
-                      </span>
-                      <span className="font-mono text-emerald-600 font-bold">
-                        {collectionRate}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs font-semibold">
-                      <span className="text-slate-700 dark:text-slate-300">
-                        Estimate Acceptance Velocity
-                      </span>
-                      <span className="font-mono text-blue-600 font-bold">
-                        {estimateAcceptanceRate}%
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Performance health scores measure how quickly estimates
-                    convert into paid revenue. Higher percentages indicate
-                    optimal cash flow.
-                  </p>
-                </div>
-              )}
-
-              {activeModal === "demographics" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
-                    <div className="flex justify-between items-center text-xs font-semibold">
-                      <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-amber-600" />{" "}
-                        Corporate Accounts
-                      </span>
-                      <span className="font-mono font-bold">
-                        {corporateCount} ({Math.round(corporatePct)}%)
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs font-semibold">
-                      <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        <User className="w-4 h-4 text-indigo-500" /> Personal
-                        Accounts
-                      </span>
-                      <span className="font-mono font-bold">
-                        {personalCount} ({Math.round(personalPct)}%)
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Demographic distribution helps track whether your customer
-                    acquisition strategy leans more towards B2B corporate
-                    contracts or direct consumer accounts.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => {
-                  if (activeModal === "revenue" || activeModal === "unpaid")
-                    navigate("/invoices");
-                  else if (
-                    activeModal === "activeQuotes" ||
-                    activeModal === "acceptedQuotes"
-                  )
-                    navigate("/quotations");
-                  else if (
-                    activeModal === "customers" ||
-                    activeModal === "demographics"
-                  )
-                    navigate("/customers");
-                  else setActiveModal(null);
-                }}
-                className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-2 active:scale-95"
-              >
-                <span>Go to Management Module</span>
-                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
-              </button>
-            </div>
+      {/* Estimates + clients */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Panel
+          title="Estimates"
+          subtitle={
+            totalQuotes > 0
+              ? `${pct(accepted, totalQuotes)}% of ${totalQuotes} estimates accepted`
+              : "No estimates yet"
+          }
+          action={
+            <TextLink
+              onClick={() => setModal({ kind: "estimates", focus: "all" })}
+            >
+              Details
+            </TextLink>
+          }
+        >
+          <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className="bg-emerald-500"
+              style={{ width: `${pct(accepted, totalQuotes)}%` }}
+            />
+            <div
+              className="bg-blue-500"
+              style={{ width: `${pct(active, totalQuotes)}%` }}
+            />
           </div>
-        </div>
-      )}
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                Accepted, ready to invoice
+              </dt>
+              <dd className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                {accepted}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                Draft or sent
+              </dt>
+              <dd className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                {active}
+              </dd>
+            </div>
+          </dl>
+        </Panel>
+
+        <Panel
+          title="Clients"
+          subtitle={`${plural(clients, "account", "accounts")} in your directory`}
+          action={
+            <TextLink onClick={() => setModal({ kind: "clients" })}>
+              Details
+            </TextLink>
+          }
+        >
+          <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className="bg-amber-500"
+              style={{ width: `${pct(corporate, clients)}%` }}
+            />
+            <div
+              className="bg-indigo-500"
+              style={{ width: `${pct(personal, clients)}%` }}
+            />
+          </div>
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                Corporate
+              </dt>
+              <dd className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                {corporate}
+                <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
+                  {pct(corporate, clients)}%
+                </span>
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
+                Personal
+              </dt>
+              <dd className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                {personal}
+                <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
+                  {pct(personal, clients)}%
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </Panel>
+      </div>
+
+      {modalNode}
     </div>
   );
 };
