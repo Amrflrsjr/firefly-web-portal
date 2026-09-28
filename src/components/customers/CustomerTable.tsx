@@ -58,7 +58,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
     left: number;
   } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const pageSize = 10;
+  const pageSize = 25;
 
   const [editingCustomerId, setEditingCustomerId] = useState<number | null>(
     null,

@@ -53,7 +53,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 }) => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 25;
 
   // Inline stock editing states
   const [editingProductId, setEditingProductId] = useState<number | null>(null);

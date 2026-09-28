@@ -67,7 +67,7 @@ export const QuotationTable: React.FC<QuotationTableProps> = ({
     left: number;
   } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const pageSize = 10;
+  const pageSize = 25;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
