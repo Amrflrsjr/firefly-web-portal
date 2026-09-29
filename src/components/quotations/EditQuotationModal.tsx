@@ -1,15 +1,10 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../api/axios";
 import type {
   QuotationResponseDto,
   QuotationItemDto,
   QuotationItemResponseDto,
+  CreateQuotationDto,
 } from "../../types/quotation";
 import type { Customer, CustomerContact } from "../../types/customer";
 import type {
@@ -22,21 +17,17 @@ import {
   Plus,
   Trash2,
   UserPlus,
-  Search,
-  ChevronRight,
   AlertCircle,
   Calculator,
-  RefreshCw,
   Copy,
   Calendar,
-  ChevronDown,
   Building2,
   Mail,
-  Check,
+  PackagePlus,
 } from "lucide-react";
 import { CreateProductModal } from "../products/CreateProductModal";
 import { ProductVariantsModal } from "../products/ProductVariantsModal";
-import { ProductPickerModal } from "../products/Productpickermodal";
+import { SearchableSelect, type SelectOption } from "./Searchableselect";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -44,6 +35,7 @@ interface EditQuotationModalProps {
   quotation: QuotationResponseDto;
   onClose: () => void;
   onSuccess: () => void;
+  onSubmitAndSend?: (dto: CreateQuotationDto) => void;
   onTriggerAddCustomer?: () => void;
   onTriggerAddContact?: (customer: Customer) => void;
   refreshTrigger?: number;
@@ -64,272 +56,39 @@ interface EditableLineItem extends QuotationItemDto {
   productVariantId: number | null;
 }
 
-// Standalone Variant Picker Modal Component
-interface VariantPickerModalProps {
-  variants: ProductVariant[];
-  selectedVariantId?: number | null;
-  productName: string;
-  lineNumber: number;
-  onSelect: (variant: ProductVariant | null) => void;
-  onAddNewVariant: () => void;
-  onClose: () => void;
-}
-
 const currency = (value: number) =>
   `₱${(value || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
-const VariantPickerModal: React.FC<VariantPickerModalProps> = ({
-  variants,
-  selectedVariantId = null,
-  productName,
-  lineNumber,
-  onSelect,
-  onAddNewVariant,
-  onClose,
-}) => {
-  const [query, setQuery] = useState("");
-  const [highlight, setHighlight] = useState(0);
+const formatVariantLabel = (color?: string, size?: string) => {
+  const parts = [color, size].filter((p) => p && p.trim() !== "");
+  return parts.length > 0 ? parts.join(" / ") : "";
+};
 
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
+const variantKey = (v: ProductVariant, index: number) =>
+  v.productVariantId ?? `variant-${index}`;
 
-  const formatVariantLabel = (color?: string, size?: string) => {
-    const parts = [color, size].filter((p) => p && p.trim() !== "");
-    return parts.length > 0 ? parts.join(" / ") : "";
-  };
-
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return variants.filter((v) => {
-      const label = formatVariantLabel(v.color, v.size).toLowerCase();
-      const sku = (v.sku || "").toLowerCase();
-      return label.includes(q) || sku.includes(q);
-    });
-  }, [variants, query]);
-
-  const totalOptions = results.length + 1;
-  const activeIndex = Math.min(highlight, Math.max(totalOptions - 1, 0));
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    inputRef.current?.focus();
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-        'button, input, [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      previouslyFocused?.focus();
-    };
-  }, [onClose]);
-
-  const moveHighlight = (next: number) => {
-    setHighlight(next);
-    listRef.current?.children[next]?.scrollIntoView({ block: "nearest" });
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      moveHighlight(Math.min(activeIndex + 1, totalOptions - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      moveHighlight(Math.max(activeIndex - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (activeIndex === 0) {
-        onSelect(null);
-      } else if (results[activeIndex - 1]) {
-        onSelect(results[activeIndex - 1]);
-      }
-    }
-  };
-
-  const optionId = (index: number) => `variant-picker-option-${index}`;
-
-  return (
-    <div
-      className="fixed inset-0 z-60 flex items-end justify-center overscroll-contain bg-slate-900/60 backdrop-blur-xs sm:items-center sm:p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="variant-picker-title"
-        className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[min(36rem,85dvh)] sm:max-w-md sm:rounded-xl dark:border-slate-800 dark:bg-slate-900"
-      >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-          <div className="min-w-0">
-            <h3
-              id="variant-picker-title"
-              className="text-sm font-bold text-slate-900 dark:text-white truncate"
-            >
-              Select variant ({productName})
-            </h3>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-              Line item {lineNumber}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all hover:bg-slate-200 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="shrink-0 space-y-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            <input
-              ref={inputRef}
-              type="text"
-              role="combobox"
-              aria-expanded="true"
-              aria-controls="variant-picker-list"
-              aria-activedescendant={optionId(activeIndex)}
-              autoComplete="off"
-              placeholder="Search variants by name or SKU..."
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setHighlight(0);
-              }}
-              onKeyDown={handleSearchKeyDown}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-3 text-xs text-slate-800 shadow-2xs transition-all focus:border-slate-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              {variants.length} {variants.length === 1 ? "variant" : "variants"}{" "}
-              available
-            </span>
-            <button
-              type="button"
-              onClick={onAddNewVariant}
-              className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add new variant
-            </button>
-          </div>
-        </div>
-
-        <div className="min-h-40 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
-          <ul
-            ref={listRef}
-            id="variant-picker-list"
-            role="listbox"
-            className="divide-y divide-slate-100 dark:divide-slate-800"
-          >
-            <li
-              id={optionId(0)}
-              role="option"
-              aria-selected={selectedVariantId === null}
-              onMouseEnter={() => setHighlight(0)}
-              onClick={() => onSelect(null)}
-              className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 px-4 py-2.5 ${
-                0 === activeIndex
-                  ? "bg-slate-100 dark:bg-slate-800"
-                  : "bg-white dark:bg-slate-900"
-              }`}
-            >
-              <div className="min-w-0">
-                <p className="text-xs font-semibold italic text-slate-500 dark:text-slate-400">
-                  — None / Standard Item —
-                </p>
-              </div>
-              {selectedVariantId === null && (
-                <Check
-                  className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  aria-label="Currently selected"
-                />
-              )}
-            </li>
-
-            {results.map((v, i) => {
-              const optionIndex = i + 1;
-              const isSelected = selectedVariantId === v.productVariantId;
-              const vLabel = formatVariantLabel(v.color, v.size);
-              const skuLabel = v.sku ? `SKU: ${v.sku}` : "";
-
-              return (
-                <li
-                  key={v.productVariantId ?? i}
-                  id={optionId(optionIndex)}
-                  role="option"
-                  aria-selected={isSelected}
-                  onMouseEnter={() => setHighlight(optionIndex)}
-                  onClick={() => onSelect(v)}
-                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 px-4 py-2.5 ${
-                    optionIndex === activeIndex
-                      ? "bg-slate-100 dark:bg-slate-800"
-                      : "bg-white dark:bg-slate-900"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
-                      {vLabel || "Standard Variant"}
-                    </p>
-                    {skuLabel && (
-                      <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
-                        {skuLabel}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs font-medium text-slate-700 dark:text-slate-300">
-                      {currency(v.unitPrice)}
-                    </span>
-                    {isSelected && (
-                      <Check
-                        className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                        aria-label="Currently selected"
-                      />
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
-    </div>
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(query).matches,
   );
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
 };
 
 export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   quotation,
   onClose,
   onSuccess,
+  onSubmitAndSend,
   onTriggerAddCustomer,
   onTriggerAddContact,
   refreshTrigger = 0,
@@ -337,17 +96,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
 
-  const [customerId, setCustomerId] = useState<number>(0);
-  const [contactId, setContactId] = useState<number>(0);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(0);
+  const [selectedContactId, setSelectedContactId] = useState<number>(0);
 
-  // Search states for Customer and Contact Person
-  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
-  const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
-  const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
-  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
-
-  const [contactSearchQuery, setContactSearchQuery] = useState("");
-  const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
+  // Which header dropdown (Customer / Contact Person) is open
+  const [openHeaderField, setOpenHeaderField] = useState<
+    "customer" | "contact" | null
+  >(null);
 
   const [vatType, setVatType] = useState<string>("Exclusive");
   const [validityDays, setValidityDays] = useState<number>(7);
@@ -357,22 +112,14 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   const [contactEmailSnapshot, setContactEmailSnapshot] = useState("");
 
   const [items, setItems] = useState<EditableLineItem[]>([]);
-  const [selectedProducts, setSelectedProducts] = useState<{
-    [key: number]: Product | null;
-  }>({});
 
-  // Product & Variant Picker Modals
-  const [pickerModalIndex, setPickerModalIndex] = useState<number | null>(null);
-  const [pickerVariantModalIndex, setPickerVariantModalIndex] = useState<
-    number | null
-  >(null);
+  // Which line-item dropdown is open (only one at a time)
+  const [openDropdown, setOpenDropdown] = useState<{
+    index: number;
+    kind: "product" | "variant";
+  } | null>(null);
 
-  const [productSearchQueries, setProductSearchQueries] = useState<{
-    [key: number]: string;
-  }>({});
-  const [variantSearchQueries, setVariantSearchQueries] = useState<{
-    [key: number]: string;
-  }>({});
+  const isDesktop = useMediaQuery("(min-width: 640px)");
 
   // On-the-fly product creation modal state
   const [isQuickProductModalOpen, setIsQuickProductModalOpen] = useState(false);
@@ -388,23 +135,22 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     number | null
   >(null);
 
-  const searchRef = useRef<HTMLFormElement>(null);
   const textareaRefs = useRef<{ [key: number]: HTMLTextAreaElement | null }>(
     {},
   );
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [submittingAction, setSubmittingAction] = useState<
-    "save" | "draft" | null
+    "save" | "draft" | "send" | null
   >(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const formatVariantLabel = (color?: string, size?: string) => {
-    const parts = [color, size].filter((p) => p && p.trim() !== "");
-    return parts.length > 0 ? parts.join(" / ") : "";
-  };
+  const lastTypedCustomerQueryRef = useRef("");
+  const isCreatingCustomerRef = useRef(false);
+  const isCreatingContactRef = useRef(false);
+  const userClearedContactRef = useRef(false);
 
   const getErrorMessage = (err: unknown, defaultMsg: string): string => {
     if (axios.isAxiosError(err)) {
@@ -429,7 +175,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     try {
       const res = await api.get<Customer[]>("/customers");
       setAllCustomers(res.data);
-      setSearchedCustomers(res.data);
       return res.data;
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to load customers."));
@@ -438,16 +183,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   }, []);
 
   const loadCustomerDetails = useCallback(
-    async (targetCustomerId: number, loadedCustList?: Customer[]) => {
-      if (!targetCustomerId) return;
+    async (customerId: number, overrideContactId?: number) => {
+      if (!customerId) return;
       try {
-        const custs = loadedCustList || allCustomers;
-        const found = custs.find((c) => c.customerId === targetCustomerId);
-        if (found) {
-          setCustomerSearchQuery(found.companyName || "");
-        }
-
-        const res = await api.get<Customer>(`/customers/${targetCustomerId}`);
+        const res = await api.get<Customer>(`/customers/${customerId}`);
         const fullCustomer = res.data;
 
         if (
@@ -455,21 +194,61 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
           fullCustomer.contacts &&
           fullCustomer.contacts.length > 0
         ) {
+          if (userClearedContactRef.current) {
+            setSelectedContactId(0);
+            setContactNameSnapshot("");
+            setContactEmailSnapshot("");
+            return;
+          }
+
+          const targetContactId =
+            overrideContactId !== undefined
+              ? overrideContactId
+              : selectedContactId;
+
+          if (targetContactId > 0) {
+            const currentContact = fullCustomer.contacts.find(
+              (c) => c.contactId === targetContactId,
+            );
+            if (currentContact) {
+              setSelectedContactId(currentContact.contactId ?? 0);
+              setContactNameSnapshot(currentContact.name || "");
+              setContactEmailSnapshot(currentContact.email || "");
+              return;
+            }
+          }
+
+          if (isCreatingContactRef.current) {
+            const newestContact = [...fullCustomer.contacts].sort(
+              (a, b) => (b.contactId ?? 0) - (a.contactId ?? 0),
+            )[0];
+            if (newestContact) {
+              setSelectedContactId(newestContact.contactId ?? 0);
+              setContactNameSnapshot(newestContact.name || "");
+              setContactEmailSnapshot(newestContact.email || "");
+              isCreatingContactRef.current = false;
+              return;
+            }
+          }
+
           const primaryContact =
             fullCustomer.contacts.find((c) => c.isPrimary) ||
             fullCustomer.contacts[0];
-          if (primaryContact && !contactId) {
-            setContactId(primaryContact.contactId ?? 0);
+          if (primaryContact) {
+            setSelectedContactId(primaryContact.contactId ?? 0);
             setContactNameSnapshot(primaryContact.name || "");
             setContactEmailSnapshot(primaryContact.email || "");
-            setContactSearchQuery(primaryContact.name || "");
           }
+        } else {
+          setSelectedContactId(0);
+          setContactNameSnapshot(fullCustomer?.companyName || "");
+          setContactEmailSnapshot("");
         }
       } catch (err: unknown) {
         console.error("Failed to load customer details", err);
       }
     },
-    [allCustomers, contactId],
+    [selectedContactId],
   );
 
   const adjustTextareaHeight = (el: HTMLTextAreaElement | null) => {
@@ -483,7 +262,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       adjustTextareaHeight(textareaRefs.current[idx]);
     });
     adjustTextareaHeight(notesTextareaRef.current);
-  }, [items, noteToCustomer]);
+  }, [items, noteToCustomer, isDesktop]);
 
   useEffect(() => {
     const fetchQuotationData = async () => {
@@ -491,7 +270,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         setLoadingDetails(true);
         setError(null);
 
-        const [loadedCustomers, loadedProducts, detailRes] = await Promise.all([
+        const [, loadedProducts, detailRes] = await Promise.all([
           fetchAllCustomers(),
           fetchProducts(),
           api.get<QuotationFullDetail>(`/quotations/${quotation.quotationId}`),
@@ -500,11 +279,10 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         const detail = detailRes.data;
         if (detail) {
           const resolvedCustId = detail.customerId || quotation.companyId || 0;
-          setCustomerId(resolvedCustId);
-          setContactId(detail.contactId ?? 0);
+          setSelectedCustomerId(resolvedCustId);
+          setSelectedContactId(detail.contactId ?? 0);
           setContactNameSnapshot(detail.contactNameSnapshot || "");
           setContactEmailSnapshot(detail.contactEmailSnapshot || "");
-          setContactSearchQuery(detail.contactNameSnapshot || "");
 
           if (detail.validUntil) {
             const parsedDate = new Date(detail.validUntil);
@@ -526,90 +304,43 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
           const rawItems =
             detail.items?.length > 0 ? detail.items : quotation.items;
 
-          const initialSelectedProducts: { [key: number]: Product | null } = {};
-          const initialProductQueries: { [key: number]: string } = {};
-          const initialVariantQueries: { [key: number]: string } = {};
+          const mappedItems: EditableLineItem[] = (rawItems || []).map((i) => {
+            let matchedProductId: number | null = null;
+            const matchedVariantId: number | null = i.productVariantId
+              ? Number(i.productVariantId)
+              : null;
 
-          const mappedItems: EditableLineItem[] = await Promise.all(
-            (rawItems || []).map(async (i, index) => {
-              let matchedProductId: number | null = null;
-              const matchedVariantId: number | null = i.productVariantId
-                ? Number(i.productVariantId)
-                : null;
-              let foundProduct: Product | null = null;
-
-              if (matchedVariantId) {
-                const parentProd = loadedProducts.find((p) =>
-                  p.variants?.some(
-                    (v) => Number(v.productVariantId) === matchedVariantId,
-                  ),
-                );
-                if (parentProd) {
-                  matchedProductId = parentProd.productId;
-                  foundProduct = parentProd;
-                }
-              }
-
-              if (!foundProduct && i.productName) {
-                const foundProd = loadedProducts.find(
-                  (p) =>
-                    p.name.trim().toLowerCase() ===
-                    i.productName?.trim().toLowerCase(),
-                );
-                if (foundProd) {
-                  matchedProductId = foundProd.productId;
-                  foundProduct = foundProd;
-                }
-              }
-
-              if (matchedProductId) {
-                try {
-                  const prodRes = await api.get<Product>(
-                    `/products/${matchedProductId}`,
-                  );
-                  foundProduct = prodRes.data;
-                } catch {
-                  // Fallback
-                }
-              }
-
-              if (foundProduct) {
-                initialSelectedProducts[index] = foundProduct;
-                initialProductQueries[index] = foundProduct.name;
-              }
-
-              if (matchedVariantId && foundProduct) {
-                const matchedVar = foundProduct.variants?.find(
+            if (matchedVariantId) {
+              const parentProd = loadedProducts.find((p) =>
+                p.variants?.some(
                   (v) => Number(v.productVariantId) === matchedVariantId,
-                );
-                if (matchedVar) {
-                  const vLabel = formatVariantLabel(
-                    matchedVar.color,
-                    matchedVar.size,
-                  );
-                  const skuLabel =
-                    matchedVar.sku && matchedVar.sku.trim() !== ""
-                      ? ` - SKU: ${matchedVar.sku}`
-                      : "";
-                  initialVariantQueries[index] = `${
-                    vLabel || "Standard Variant"
-                  }${skuLabel}`;
-                }
+                ),
+              );
+              if (parentProd) {
+                matchedProductId = parentProd.productId ?? null;
               }
+            }
 
-              return {
-                productId: matchedProductId,
-                productVariantId: matchedVariantId ?? null,
-                description: i.description,
-                quantity: i.quantity,
-                unitPrice: i.unitPrice,
-              };
-            }),
-          );
+            if (!matchedProductId && i.productName) {
+              const foundProd = loadedProducts.find(
+                (p) =>
+                  p.name.trim().toLowerCase() ===
+                  i.productName?.trim().toLowerCase(),
+              );
+              if (foundProd) {
+                matchedProductId = foundProd.productId ?? null;
+              }
+            }
 
-          setSelectedProducts(initialSelectedProducts);
-          setProductSearchQueries(initialProductQueries);
-          setVariantSearchQueries(initialVariantQueries);
+            return {
+              productId: matchedProductId,
+              productVariantId: matchedVariantId ?? null,
+              description: i.description,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+            };
+          });
+
           setItems(
             mappedItems.length > 0
               ? mappedItems
@@ -624,7 +355,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 ],
           );
 
-          await loadCustomerDetails(resolvedCustId, loadedCustomers);
+          await loadCustomerDetails(resolvedCustId);
         }
       } catch (err) {
         console.error("Failed to load quotation record", err);
@@ -643,11 +374,44 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
     if (refreshTrigger > 0) {
       const reloadData = async () => {
-        const freshCusts = await fetchAllCustomers();
-        if (customerId > 0) {
-          await loadCustomerDetails(customerId, freshCusts);
-        }
+        const freshCustomers = await fetchAllCustomers();
         if (!isMounted) return;
+
+        if (
+          isCreatingCustomerRef.current &&
+          freshCustomers &&
+          freshCustomers.length > 0
+        ) {
+          let matched: Customer | undefined;
+
+          if (lastTypedCustomerQueryRef.current.trim()) {
+            const queryLower = lastTypedCustomerQueryRef.current
+              .trim()
+              .toLowerCase();
+            matched = freshCustomers.find(
+              (c) => c.companyName.trim().toLowerCase() === queryLower,
+            );
+          }
+
+          if (!matched) {
+            matched = [...freshCustomers].sort(
+              (a, b) => b.customerId - a.customerId,
+            )[0];
+          }
+
+          if (matched) {
+            setSelectedCustomerId(matched.customerId);
+            userClearedContactRef.current = false;
+            await loadCustomerDetails(matched.customerId);
+            toast.success(
+              `Successfully selected customer: ${matched.companyName}`,
+            );
+          }
+          isCreatingCustomerRef.current = false;
+        } else if (selectedCustomerId > 0) {
+          isCreatingContactRef.current = true;
+          await loadCustomerDetails(selectedCustomerId);
+        }
       };
 
       void reloadData();
@@ -656,80 +420,77 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [refreshTrigger, customerId, loadCustomerDetails, fetchAllCustomers]);
+  }, [
+    refreshTrigger,
+    selectedCustomerId,
+    loadCustomerDetails,
+    fetchAllCustomers,
+  ]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setIsCustomerSearchOpen(false);
-        setIsContactSearchOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const selectedCustomer =
+    allCustomers.find((c) => c.customerId === selectedCustomerId) ?? null;
 
-  useEffect(() => {
-    const fetchSearchedCustomers = async () => {
-      if (!customerSearchQuery.trim()) {
-        setSearchedCustomers(allCustomers);
-        return;
-      }
-
-      try {
-        setIsSearchingCustomers(true);
-        const response = await api.get<Customer[]>("/customers", {
-          params: { search: customerSearchQuery },
-        });
-        setSearchedCustomers(response.data);
-      } catch (err: unknown) {
-        toast.error(getErrorMessage(err, "Failed to search customers."));
-      } finally {
-        setIsSearchingCustomers(false);
-      }
-    };
-
-    const timer = setTimeout(fetchSearchedCustomers, 300);
-    return () => clearTimeout(timer);
-  }, [customerSearchQuery, allCustomers]);
-
-  const handleSelectCustomer = async (customer: Customer) => {
-    setCustomerId(customer.customerId);
-    setCustomerSearchQuery(customer.companyName);
-    setIsCustomerSearchOpen(false);
+  const handleSelectCustomer = async (customer: Customer | null) => {
+    setOpenHeaderField(null);
+    if (!customer) {
+      setSelectedCustomerId(0);
+      setSelectedContactId(0);
+      setContactNameSnapshot("");
+      setContactEmailSnapshot("");
+      return;
+    }
+    setSelectedCustomerId(customer.customerId);
+    userClearedContactRef.current = false;
     await loadCustomerDetails(customer.customerId);
   };
 
-  const handleSelectContactByPerson = (
-    contact: CustomerContact,
-    parentCustomer: Customer,
-  ) => {
-    setCustomerId(parentCustomer.customerId);
-    setCustomerSearchQuery(parentCustomer.companyName);
-    setContactId(contact.contactId ?? 0);
+  type ContactEntry = { contact: CustomerContact; customer: Customer };
+
+  const contactKey = (contact: CustomerContact, customer: Customer) =>
+    contact.contactId ?? `${customer.customerId}-${contact.name}`;
+
+  const handleSelectContact = (entry: ContactEntry | null) => {
+    setOpenHeaderField(null);
+    if (!entry) {
+      setSelectedContactId(0);
+      setContactNameSnapshot("");
+      setContactEmailSnapshot("");
+      userClearedContactRef.current = true;
+      isCreatingContactRef.current = false;
+      return;
+    }
+    const { contact, customer } = entry;
+    setSelectedCustomerId(customer.customerId);
+    setSelectedContactId(contact.contactId ?? 0);
     setContactNameSnapshot(contact.name || "");
     setContactEmailSnapshot(contact.email || "");
-    setContactSearchQuery(contact.name || "");
-    setIsContactSearchOpen(false);
+    userClearedContactRef.current = false;
   };
 
-  const allAvailableContacts = allCustomers.flatMap((cust) =>
-    (cust.contacts || []).map((contact) => ({
-      contact,
-      customer: cust,
-    })),
-  );
+  const availableContacts: ContactEntry[] = allCustomers
+    .filter(
+      (c) => selectedCustomerId <= 0 || c.customerId === selectedCustomerId,
+    )
+    .flatMap((customer) =>
+      (customer.contacts || []).map((contact) => ({ contact, customer })),
+    );
 
-  const filteredContacts = allAvailableContacts.filter(
-    ({ contact, customer }) => {
-      const matchesSearch = contact.name
-        .toLowerCase()
-        .includes(contactSearchQuery.toLowerCase());
-      if (customerId > 0) {
-        return matchesSearch && customer.customerId === customerId;
-      }
-      return matchesSearch;
-    },
+  const customerOptions: SelectOption[] = allCustomers.map((c) => ({
+    id: c.customerId,
+    label: c.companyName,
+    searchText: [
+      c.companyName,
+      ...(c.contacts ?? []).map((ct) => ct.name),
+    ].join(" "),
+  }));
+
+  const contactOptions: SelectOption[] = availableContacts.map(
+    ({ contact, customer }) => ({
+      id: contactKey(contact, customer),
+      label: contact.name,
+      description: `Company: ${customer.companyName}`,
+      searchText: `${contact.name} ${customer.companyName} ${contact.email ?? ""}`,
+    }),
   );
 
   const handleItemChange = (
@@ -746,92 +507,69 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     }
   };
 
-  const handleSelectProduct = (index: number, product: Product | null) => {
-    if (!product) {
-      const updatedProducts = { ...selectedProducts, [index]: null };
-      setSelectedProducts(updatedProducts);
-      setProductSearchQueries({ ...productSearchQueries, [index]: "" });
+  const findProduct = (productId?: number | null): Product | null =>
+    productId
+      ? (products.find((p) => p.productId === productId) ?? null)
+      : null;
 
-      const updated = [...items];
-      updated[index] = {
-        ...updated[index],
-        productId: null,
-        productVariantId: null,
-      };
-      setItems(updated);
-      setPickerModalIndex(null);
-      setVariantSearchQueries({ ...variantSearchQueries, [index]: "" });
-      return;
-    }
+  const updateItem = (index: number, patch: Partial<EditableLineItem>) => {
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+    );
+  };
 
-    const updatedProducts = { ...selectedProducts, [index]: product };
-    setSelectedProducts(updatedProducts);
-    setProductSearchQueries({ ...productSearchQueries, [index]: product.name });
-
-    const updated = [...items];
-    updated[index] = {
-      ...updated[index],
-      productId: product.productId ?? null,
-      productVariantId: null,
-      description: product.description || product.name,
-    };
-    setItems(updated);
-
-    setVariantSearchQueries({
-      ...variantSearchQueries,
-      [index]: "",
-    });
-
-    setPickerModalIndex(null);
+  const resizeDescription = (index: number) => {
     setTimeout(() => adjustTextareaHeight(textareaRefs.current[index]), 0);
   };
 
-  const handleSelectVariant = (
+  const applyVariant = (
     index: number,
-    variant: ProductVariant | null,
+    product: Product | null,
+    variant: ProductVariant,
   ) => {
-    if (!variant) {
-      const updated = [...items];
-      updated[index] = {
-        ...updated[index],
-        productVariantId: null,
-      };
-      setItems(updated);
-      setVariantSearchQueries({
-        ...variantSearchQueries,
-        [index]: "",
-      });
-      return;
-    }
-
     const variantLabel = formatVariantLabel(variant.color, variant.size);
-    const skuLabel =
-      variant.sku && variant.sku.trim() !== "" ? ` - SKU: ${variant.sku}` : "";
-
-    const currentProd = selectedProducts[index];
-    const baseName = currentProd ? currentProd.name : "";
-
-    const combinedDescription = [
-      baseName,
+    const description = [
+      product?.name ?? "",
       variantLabel ? `(${variantLabel})` : "",
     ]
       .filter(Boolean)
       .join(" ");
 
-    const updated = [...items];
-    updated[index] = {
-      ...updated[index],
-      productId: currentProd ? currentProd.productId : updated[index].productId,
+    updateItem(index, {
+      productId: product?.productId ?? items[index]?.productId ?? null,
       productVariantId: variant.productVariantId ?? null,
-      description: combinedDescription || "Standard Item",
+      description: description || "Standard Item",
       unitPrice: variant.unitPrice,
-    };
-    setItems(updated);
-    setVariantSearchQueries({
-      ...variantSearchQueries,
-      [index]: `${variantLabel || "Standard Variant"}${skuLabel}`,
     });
-    setTimeout(() => adjustTextareaHeight(textareaRefs.current[index]), 0);
+    resizeDescription(index);
+  };
+
+  const handleProductSelect = (index: number, product: Product | null) => {
+    if (!product) {
+      updateItem(index, { productId: null, productVariantId: null });
+      setOpenDropdown(null);
+      return;
+    }
+
+    updateItem(index, {
+      productId: product.productId ?? null,
+      productVariantId: null,
+      description: product.description || product.name,
+    });
+    resizeDescription(index);
+    setOpenDropdown(null);
+  };
+
+  const handleVariantSelect = (
+    index: number,
+    variant: ProductVariant | null,
+  ) => {
+    if (!variant) {
+      updateItem(index, { productVariantId: null });
+    } else {
+      applyVariant(index, findProduct(items[index]?.productId), variant);
+    }
+    setOpenDropdown(null);
   };
 
   const handleQuickSaveProduct = async (dto: CreateProductDto) => {
@@ -846,11 +584,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         newProduct;
 
       if (quickProductTargetIndex !== null) {
-        handleSelectProduct(quickProductTargetIndex, createdProd);
-        setProductSearchQueries((prev) => ({
-          ...prev,
-          [quickProductTargetIndex]: createdProd.name,
-        }));
+        handleProductSelect(quickProductTargetIndex, createdProd);
       }
 
       setIsQuickProductModalOpen(false);
@@ -873,32 +607,19 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         (p) => p.productId === productId,
       );
 
-      if (refreshedProd) {
-        setSelectedProducts((prev) => ({
-          ...prev,
-          [variantModalTargetIndex!]: refreshedProd,
-        }));
-
-        if (variantModalTargetIndex !== null) {
-          const latestVariant =
-            refreshedProd.variants[refreshedProd.variants.length - 1];
-          if (latestVariant) {
-            handleSelectVariant(variantModalTargetIndex, latestVariant);
-            const vLabel = formatVariantLabel(
-              latestVariant.color,
-              latestVariant.size,
-            );
-            const skuLabel =
-              latestVariant.sku && latestVariant.sku.trim() !== ""
-                ? ` - SKU: ${latestVariant.sku}`
-                : "";
-            setVariantSearchQueries((prev) => ({
-              ...prev,
-              [variantModalTargetIndex]: `${
-                vLabel || "Standard Variant"
-              }${skuLabel}`,
-            }));
-          }
+      if (refreshedProd && variantModalTargetIndex !== null) {
+        const latestVariant = (refreshedProd.variants ?? []).reduce<
+          ProductVariant | undefined
+        >(
+          (latest, v) =>
+            !latest ||
+            (v.productVariantId ?? 0) >= (latest.productVariantId ?? 0)
+              ? v
+              : latest,
+          undefined,
+        );
+        if (latestVariant) {
+          applyVariant(variantModalTargetIndex, refreshedProd, latestVariant);
         }
       }
 
@@ -911,8 +632,8 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   };
 
   const addItemRow = () => {
-    setItems([
-      ...items,
+    setItems((prev) => [
+      ...prev,
       {
         productId: null,
         productVariantId: null,
@@ -924,30 +645,12 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
   };
 
   const duplicateItemRow = (index: number) => {
-    const targetItem = items[index];
-    const duplicatedItem = { ...targetItem };
-    const updatedItems = [...items];
-    updatedItems.splice(index + 1, 0, duplicatedItem);
-    setItems(updatedItems);
-
-    if (selectedProducts[index]) {
-      setSelectedProducts({
-        ...selectedProducts,
-        [index + 1]: selectedProducts[index],
-      });
-    }
-    if (productSearchQueries[index]) {
-      setProductSearchQueries({
-        ...productSearchQueries,
-        [index + 1]: productSearchQueries[index],
-      });
-    }
-    if (variantSearchQueries[index]) {
-      setVariantSearchQueries({
-        ...variantSearchQueries,
-        [index + 1]: variantSearchQueries[index],
-      });
-    }
+    setOpenDropdown(null);
+    setItems((prev) => [
+      ...prev.slice(0, index + 1),
+      { ...prev[index] },
+      ...prev.slice(index + 1),
+    ]);
   };
 
   const removeItemRow = (index: number) => {
@@ -955,7 +658,139 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
       setError("Quotation must have at least one item.");
       return;
     }
-    setItems(items.filter((_, i) => i !== index));
+    setOpenDropdown(null);
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const activeProducts = products.filter((p) => p.isActive === true);
+
+  const productOptions: SelectOption[] = activeProducts.map((p) => {
+    const variantCount = p.variants?.length ?? 0;
+    const showDescription =
+      !!p.description && p.description.trim() !== p.name.trim();
+    const detail = [
+      showDescription ? p.description : "",
+      variantCount > 0
+        ? `${variantCount} ${variantCount === 1 ? "variant" : "variants"}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("  |  ");
+
+    return {
+      id: p.productId ?? p.name,
+      label: p.name,
+      description: detail || undefined,
+      searchText: p.name,
+    };
+  });
+
+  const getVariantOptions = (product: Product | null): SelectOption[] =>
+    (product?.variants ?? []).map((v, i) => {
+      const label = formatVariantLabel(v.color, v.size);
+      return {
+        id: variantKey(v, i),
+        label: label || "Standard Variant",
+        description: v.sku ? `SKU: ${v.sku}` : undefined,
+        meta: currency(v.unitPrice),
+        searchText: `${label} ${v.sku ?? ""}`,
+      };
+    });
+
+  const renderProductSelect = (idx: number) => {
+    const selectedProd = findProduct(items[idx]?.productId);
+
+    return (
+      <SearchableSelect
+        open={openDropdown?.index === idx && openDropdown.kind === "product"}
+        onOpen={() => {
+          void fetchProducts();
+          setOpenDropdown({ index: idx, kind: "product" });
+        }}
+        onClose={() => setOpenDropdown(null)}
+        options={productOptions}
+        selectedId={
+          selectedProd ? (selectedProd.productId ?? selectedProd.name) : null
+        }
+        valueLabel={selectedProd?.name ?? ""}
+        placeholder="Select product..."
+        noneLabel="— None (Custom Item) —"
+        searchPlaceholder="Search products by name..."
+        emptyText="No products found"
+        ariaLabel={`Product for line item ${idx + 1}`}
+        onSelect={(id) =>
+          handleProductSelect(
+            idx,
+            id === null
+              ? null
+              : (activeProducts.find((p) => (p.productId ?? p.name) === id) ??
+                  null),
+          )
+        }
+        footerAction={{
+          label: "Add new product",
+          icon: <PackagePlus className="h-3.5 w-3.5" />,
+          onClick: () => {
+            setQuickProductTargetIndex(idx);
+            setOpenDropdown(null);
+            setIsQuickProductModalOpen(true);
+          },
+        }}
+      />
+    );
+  };
+
+  const renderVariantSelect = (idx: number) => {
+    const product = findProduct(items[idx]?.productId);
+    const variants = product?.variants ?? [];
+    const selectedVariantId = items[idx]?.productVariantId ?? null;
+    const selectedVariant =
+      selectedVariantId == null
+        ? undefined
+        : variants.find((v) => v.productVariantId === selectedVariantId);
+
+    return (
+      <SearchableSelect
+        open={openDropdown?.index === idx && openDropdown.kind === "variant"}
+        onOpen={() => setOpenDropdown({ index: idx, kind: "variant" })}
+        onClose={() => setOpenDropdown(null)}
+        disabled={!product}
+        options={getVariantOptions(product)}
+        selectedId={
+          selectedVariant ? (selectedVariant.productVariantId ?? null) : null
+        }
+        valueLabel={
+          selectedVariant
+            ? formatVariantLabel(selectedVariant.color, selectedVariant.size) ||
+              "Standard Variant"
+            : ""
+        }
+        placeholder={product ? "Select variant..." : "Product first"}
+        noneLabel="— None / Standard Item —"
+        searchPlaceholder="Search variants by name or SKU..."
+        emptyText="No variants found"
+        ariaLabel={`Variant for line item ${idx + 1}`}
+        onSelect={(id) =>
+          handleVariantSelect(
+            idx,
+            id === null
+              ? null
+              : (variants.find((v, i) => variantKey(v, i) === id) ?? null),
+          )
+        }
+        footerAction={{
+          label: "Add new variant",
+          icon: <Plus className="h-3.5 w-3.5" />,
+          onClick: () => {
+            if (!product) return;
+            setVariantModalTargetIndex(idx);
+            setTargetProductForVariants(product);
+            setIsVariantModalOpen(true);
+            setOpenDropdown(null);
+          },
+        }}
+      />
+    );
   };
 
   const rawSubtotal = items.reduce(
@@ -985,14 +820,45 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     computedValidUntilDate.getDate() + validityDays,
   );
 
+  const buildDto = (statusOverride?: string): CreateQuotationDto => {
+    const finalValidUntil =
+      validityDays > 0
+        ? computedValidUntilDate.toISOString()
+        : new Date(validUntil).toISOString();
+
+    const formattedItems: QuotationItemDto[] = items.map((item) => ({
+      productId:
+        !item.productId || item.productId === 0 ? null : Number(item.productId),
+      productVariantId:
+        !item.productVariantId || item.productVariantId === 0
+          ? null
+          : Number(item.productVariantId),
+      description: item.description,
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+    }));
+
+    return {
+      customerId: selectedCustomerId,
+      contactId: selectedContactId > 0 ? selectedContactId : null,
+      contactNameSnapshot,
+      contactEmailSnapshot: contactEmailSnapshot.trim(),
+      validUntil: finalValidUntil,
+      vatType,
+      noteToCustomer: noteToCustomer.trim() || undefined,
+      status: statusOverride,
+      items: formattedItems,
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerId) {
+    if (!selectedCustomerId) {
       setError("Please select a customer.");
       return;
     }
 
-    if (!contactId) {
+    if (!selectedContactId) {
       setError("Please select a valid contact person.");
       return;
     }
@@ -1019,38 +885,17 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
     setError(null);
 
     try {
-      const finalValidUntil =
-        validityDays > 0
-          ? computedValidUntilDate.toISOString()
-          : new Date(validUntil).toISOString();
+      const isDraft = submittingAction === "draft";
+      const statusToSend = isDraft ? "Draft" : undefined;
+      const dto = buildDto(statusToSend);
 
-      const statusOverride = submittingAction === "draft" ? "Draft" : undefined;
-
-      const payload = {
-        customerId,
-        contactId: contactId > 0 ? contactId : null,
-        contactNameSnapshot,
-        contactEmailSnapshot: contactEmailSnapshot.trim(),
-        validUntil: finalValidUntil,
-        vatType,
-        status: statusOverride,
-        noteToCustomer: noteToCustomer.trim() || undefined,
-        items: items.map((i) => ({
-          productId:
-            !i.productId || i.productId === 0 ? null : Number(i.productId),
-          productVariantId:
-            !i.productVariantId || i.productVariantId === 0
-              ? null
-              : Number(i.productVariantId),
-          description: i.description,
-          quantity: Number(i.quantity),
-          unitPrice: Number(i.unitPrice),
-        })),
-      };
-
-      await api.put(`/quotations/${quotation.quotationId}`, payload);
-      toast.success("Quotation updated successfully!");
-      onSuccess();
+      if (submittingAction === "send" && onSubmitAndSend) {
+        onSubmitAndSend(dto);
+      } else {
+        await api.put(`/quotations/${quotation.quotationId}`, dto);
+        toast.success("Quotation updated successfully!");
+        onSuccess();
+      }
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(
@@ -1107,8 +952,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
             <form
               id="edit-quotation-form"
               onSubmit={handleSubmit}
-              className="p-3 sm:p-4 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4"
-              ref={searchRef}
+              className="p-3 sm:p-4 overflow-y-auto overflow-x-visible flex-1 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4"
             >
               {error && (
                 <div className="lg:col-span-12 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 p-3 rounded-xl flex items-center gap-3 text-xs shadow-2xs">
@@ -1127,84 +971,47 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Customer Selection */}
-                    <div className="space-y-1 relative">
+                    <div className="space-y-1">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Customer <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                        <input
-                          type="text"
-                          required
-                          placeholder="Search or select customer..."
-                          value={customerSearchQuery}
-                          onFocus={() => setIsCustomerSearchOpen(true)}
-                          onChange={(e) => {
-                            setCustomerSearchQuery(e.target.value);
-                            setIsCustomerSearchOpen(true);
-                            if (!e.target.value) {
-                              setCustomerId(0);
-                              setContactId(0);
-                              setContactEmailSnapshot("");
-                              setContactNameSnapshot("");
-                              setContactSearchQuery("");
-                            }
-                          }}
-                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-8 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setIsCustomerSearchOpen(!isCustomerSearchOpen)
-                          }
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {isCustomerSearchOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
-                          {onTriggerAddCustomer && (
-                            <div
-                              onClick={() => {
-                                setIsCustomerSearchOpen(false);
-                                onTriggerAddCustomer();
-                              }}
-                              className="px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors"
-                            >
-                              <Building2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                              <span>+ Add New Customer</span>
-                            </div>
-                          )}
-
-                          <div className="max-h-48 overflow-y-auto">
-                            {isSearchingCustomers ? (
-                              <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium flex items-center justify-center gap-2">
-                                <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-500" />
-                                Searching...
-                              </div>
-                            ) : searchedCustomers.length > 0 ? (
-                              searchedCustomers.map((c) => (
-                                <div
-                                  key={c.customerId}
-                                  onClick={() => handleSelectCustomer(c)}
-                                  className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
-                                >
-                                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                                    {c.companyName}
-                                  </span>
-                                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                </div>
-                              ))
-                            ) : (
-                              <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
-                                No customers found
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      <SearchableSelect
+                        open={openHeaderField === "customer"}
+                        onOpen={() => {
+                          lastTypedCustomerQueryRef.current = "";
+                          setOpenHeaderField("customer");
+                        }}
+                        onClose={() => setOpenHeaderField(null)}
+                        onSearchChange={(q) => {
+                          lastTypedCustomerQueryRef.current = q;
+                        }}
+                        options={customerOptions}
+                        selectedId={selectedCustomer?.customerId ?? null}
+                        valueLabel={selectedCustomer?.companyName ?? ""}
+                        placeholder="Search or select customer..."
+                        noneLabel="— No customer —"
+                        searchPlaceholder="Search customers..."
+                        emptyText="No customers found"
+                        ariaLabel="Customer"
+                        onSelect={(id) =>
+                          void handleSelectCustomer(
+                            id === null
+                              ? null
+                              : (allCustomers.find(
+                                  (c) => c.customerId === id,
+                                ) ?? null),
+                          )
+                        }
+                        footerAction={{
+                          label: "Add new customer",
+                          icon: <Building2 className="h-3.5 w-3.5" />,
+                          onClick: () => {
+                            isCreatingCustomerRef.current = true;
+                            setOpenHeaderField(null);
+                            if (onTriggerAddCustomer) onTriggerAddCustomer();
+                          },
+                        }}
+                      />
                     </div>
 
                     {/* VAT Computation */}
@@ -1226,94 +1033,51 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     </div>
 
                     {/* Contact Person */}
-                    <div className="space-y-1 relative">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Contact Person{" "}
-                          <span className="text-rose-500">*</span>
-                        </label>
-                        {customerId > 0 && onTriggerAddContact && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const currentCust = allCustomers.find(
-                                (c) => c.customerId === customerId,
-                              );
-                              if (currentCust) onTriggerAddContact(currentCust);
-                            }}
-                            className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
-                          >
-                            <UserPlus className="w-3 h-3" /> + Add
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                        <input
-                          type="text"
-                          required
-                          placeholder="Search contact person..."
-                          value={contactSearchQuery}
-                          onFocus={() => setIsContactSearchOpen(true)}
-                          onChange={(e) => {
-                            setContactSearchQuery(e.target.value);
-                            setIsContactSearchOpen(true);
-                            if (!e.target.value) {
-                              setContactId(0);
-                              setContactNameSnapshot("");
-                              setContactEmailSnapshot("");
-                            }
-                          }}
-                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-8 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setIsContactSearchOpen(!isContactSearchOpen)
-                          }
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-
-                        {isContactSearchOpen && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-48">
-                            <div className="overflow-y-auto">
-                              {filteredContacts.length > 0 ? (
-                                filteredContacts.map(
-                                  ({ contact, customer }) => (
-                                    <div
-                                      key={contact.contactId}
-                                      onClick={() =>
-                                        handleSelectContactByPerson(
-                                          contact,
-                                          customer,
-                                        )
-                                      }
-                                      className="px-3.5 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-none"
-                                    >
-                                      <div>
-                                        <span className="font-medium text-slate-800 dark:text-slate-200">
-                                          {contact.name}
-                                        </span>
-                                        <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                                          Company: {customer.companyName}
-                                        </div>
-                                      </div>
-                                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                    </div>
-                                  ),
-                                )
-                              ) : (
-                                <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
-                                  No contact persons found
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Contact Person <span className="text-rose-500">*</span>
+                      </label>
+                      <SearchableSelect
+                        open={openHeaderField === "contact"}
+                        onOpen={() => setOpenHeaderField("contact")}
+                        onClose={() => setOpenHeaderField(null)}
+                        options={contactOptions}
+                        selectedId={
+                          selectedContactId > 0 ? selectedContactId : null
+                        }
+                        valueLabel={
+                          selectedContactId > 0 ? contactNameSnapshot : ""
+                        }
+                        placeholder="Search or select contact person..."
+                        noneLabel="— No contact —"
+                        searchPlaceholder="Search contact person..."
+                        emptyText="No contact persons found"
+                        ariaLabel="Contact person"
+                        onSelect={(id) =>
+                          handleSelectContact(
+                            id === null
+                              ? null
+                              : (availableContacts.find(
+                                  ({ contact, customer }) =>
+                                    contactKey(contact, customer) === id,
+                                ) ?? null),
+                          )
+                        }
+                        footerAction={
+                          selectedCustomer && onTriggerAddContact
+                            ? {
+                                label: "Add new contact",
+                                icon: <UserPlus className="h-3.5 w-3.5" />,
+                                onClick: () => {
+                                  isCreatingContactRef.current = true;
+                                  userClearedContactRef.current = false;
+                                  setOpenHeaderField(null);
+                                  onTriggerAddContact(selectedCustomer);
+                                },
+                              }
+                            : undefined
+                        }
+                      />
                     </div>
 
                     {/* Contact Email */}
@@ -1336,7 +1100,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                 </div>
 
                 {/* Single Unified Card for Line Items & Products Table */}
-                <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+                <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3 overflow-visible">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                     <div className="flex items-center gap-2">
                       <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
@@ -1355,293 +1119,231 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Mobile View: Stacked Cards */}
-                  <div className="block sm:hidden space-y-3">
-                    {items.map((item, idx) => {
-                      const prodQuery = productSearchQueries[idx] || "";
-                      const variantQuery = variantSearchQueries[idx] || "";
-                      const selectedProd = selectedProducts[idx];
-
-                      const rowTotal =
-                        (Number(item.quantity) || 0) *
-                        (Number(item.unitPrice) || 0);
-
-                      return (
-                        <div
-                          key={`mobile-item-${idx}`}
-                          className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2.5 relative"
-                        >
-                          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-                            <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 inline-flex items-center justify-center text-[10px] font-bold">
-                              {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => duplicateItemRow(idx)}
-                                className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
-                                title="Duplicate Item"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeItemRow(idx)}
-                                className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-md transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
-                                title="Remove Item"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Product Field */}
-                          <div className="space-y-1 relative">
-                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                              Product
-                            </label>
-                            <div className="relative">
-                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
-                              <input
-                                type="text"
-                                readOnly
-                                placeholder="Select product..."
-                                value={prodQuery}
-                                onClick={() => {
-                                  fetchProducts();
-                                  setPickerModalIndex(idx);
-                                }}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs cursor-pointer"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Variant Field */}
-                          <div className="space-y-1 relative">
-                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                              Variant
-                            </label>
-                            <div className="relative">
-                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
-                              <input
-                                type="text"
-                                readOnly
-                                placeholder={
-                                  selectedProd
-                                    ? "Select variant..."
-                                    : "Product first"
-                                }
-                                disabled={!selectedProd}
-                                value={variantQuery}
-                                onClick={() => {
-                                  if (selectedProd) {
-                                    setPickerVariantModalIndex(idx);
-                                  }
-                                }}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs cursor-pointer"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Description Field */}
-                          <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  {isDesktop ? (
+                    /* Desktop View: Table Layout */
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-2xs">
+                      <table className="w-full text-left text-xs border-collapse min-w-215">
+                        <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-400 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[10px]">
+                          <tr>
+                            <th className="py-2 px-2.5 w-10 text-center">#</th>
+                            <th className="py-2 px-2.5 w-[20%]">Product</th>
+                            <th className="py-2 px-2.5 w-[15%]">Variant</th>
+                            <th className="py-2 px-2.5 w-[23%]">
                               Description / Inclusions
-                            </label>
-                            <textarea
-                              rows={1}
-                              ref={(el) => {
-                                textareaRefs.current[idx] = el;
-                              }}
-                              placeholder="Description..."
-                              value={item.description}
-                              onInput={(e) =>
-                                adjustTextareaHeight(
-                                  e.currentTarget as HTMLTextAreaElement,
-                                )
-                              }
-                              onChange={(e) =>
-                                handleItemChange(
-                                  idx,
-                                  "description",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-24 leading-relaxed"
-                            />
-                          </div>
+                            </th>
+                            <th className="py-2 px-2.5 w-[12%] text-center">
+                              Qty
+                            </th>
+                            <th className="py-2 px-2.5 w-[14%] text-right">
+                              Price (₱)
+                            </th>
+                            <th className="py-2 px-2.5 w-[12%] text-right">
+                              Line Total
+                            </th>
+                            <th className="py-2 px-2.5 w-20 text-right">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                          {items.map((item, idx) => {
+                            const rowTotal =
+                              (Number(item.quantity) || 0) *
+                              (Number(item.unitPrice) || 0);
 
-                          <div className="grid grid-cols-2 gap-2 pt-1">
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                                Qty
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    idx,
-                                    "quantity",
-                                    e.target.value === ""
-                                      ? 0
-                                      : Number(e.target.value),
-                                  )
-                                }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                              />
-                            </div>
+                            return (
+                              <tr
+                                key={idx}
+                                className="even:bg-slate-50/40 dark:even:bg-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
+                              >
+                                <td className="py-2.5 px-2.5 text-center">
+                                  <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 inline-flex items-center justify-center text-[10px] font-bold mt-1">
+                                    {idx + 1}
+                                  </span>
+                                </td>
 
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                                Price (₱)
-                              </label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.unitPrice}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    idx,
-                                    "unitPrice",
-                                    e.target.value === ""
-                                      ? 0
-                                      : parseFloat(e.target.value) || 0,
-                                  )
-                                }
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
-                              />
-                            </div>
-                          </div>
+                                <td className="py-2 px-2.5">
+                                  {renderProductSelect(idx)}
+                                </td>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-xs">
-                            <span className="font-semibold text-slate-600 dark:text-slate-400">
-                              Line Total:
-                            </span>
-                            <span className="font-mono font-bold text-slate-900 dark:text-white">
-                              {currency(rowTotal)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                                <td className="py-2 px-2.5">
+                                  {renderVariantSelect(idx)}
+                                </td>
 
-                  {/* Desktop View: Table Layout */}
-                  <div className="hidden sm:block border border-slate-200 dark:border-slate-800 rounded-xl overflow-visible shadow-2xs">
-                    <table className="w-full text-left text-xs border-collapse min-w-215">
-                      <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-400 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[10px]">
-                        <tr>
-                          <th className="py-2 px-2.5 w-10 text-center">#</th>
-                          <th className="py-2 px-2.5 w-[20%]">Product</th>
-                          <th className="py-2 px-2.5 w-[15%]">Variant</th>
-                          <th className="py-2 px-2.5 w-[23%]">
-                            Description / Inclusions
-                          </th>
-                          <th className="py-2 px-2.5 w-[12%] text-center">
-                            Qty
-                          </th>
-                          <th className="py-2 px-2.5 w-[14%] text-right">
-                            Price (₱)
-                          </th>
-                          <th className="py-2 px-2.5 w-[12%] text-right">
-                            Line Total
-                          </th>
-                          <th className="py-2 px-2.5 w-20 text-right">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                        {items.map((item, idx) => {
-                          const prodQuery = productSearchQueries[idx] || "";
-                          const variantQuery = variantSearchQueries[idx] || "";
-                          const selectedProd = selectedProducts[idx];
-
-                          const rowTotal =
-                            (Number(item.quantity) || 0) *
-                            (Number(item.unitPrice) || 0);
-
-                          return (
-                            <tr
-                              key={idx}
-                              className="even:bg-slate-50/40 dark:even:bg-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
-                            >
-                              <td className="py-2.5 px-2.5 text-center">
-                                <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 inline-flex items-center justify-center text-[10px] font-bold mt-1">
-                                  {idx + 1}
-                                </span>
-                              </td>
-
-                              {/* Product Cell */}
-                              <td className="py-2 px-2.5 relative overflow-visible">
-                                <div className="relative">
-                                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
-                                  <input
-                                    type="text"
-                                    readOnly
-                                    placeholder="Select product..."
-                                    value={prodQuery}
-                                    onClick={() => {
-                                      fetchProducts();
-                                      setPickerModalIndex(idx);
+                                <td className="py-2 px-2.5">
+                                  <textarea
+                                    rows={1}
+                                    ref={(el) => {
+                                      textareaRefs.current[idx] = el;
                                     }}
-                                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs cursor-pointer"
-                                  />
-                                </div>
-                              </td>
-
-                              {/* Variant Cell */}
-                              <td className="py-2 px-2.5 relative overflow-visible">
-                                <div className="relative">
-                                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
-                                  <input
-                                    type="text"
-                                    readOnly
-                                    placeholder={
-                                      selectedProd
-                                        ? "Select variant..."
-                                        : "Product first"
+                                    placeholder="Description..."
+                                    value={item.description}
+                                    onInput={(e) =>
+                                      adjustTextareaHeight(
+                                        e.currentTarget as HTMLTextAreaElement,
+                                      )
                                     }
-                                    disabled={!selectedProd}
-                                    value={variantQuery}
-                                    onClick={() => {
-                                      if (selectedProd) {
-                                        setPickerVariantModalIndex(idx);
-                                      }
-                                    }}
-                                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all disabled:opacity-50 shadow-2xs cursor-pointer"
+                                    onChange={(e) =>
+                                      handleItemChange(
+                                        idx,
+                                        "description",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-24 leading-relaxed"
                                   />
-                                </div>
-                              </td>
+                                </td>
 
-                              <td className="py-2 px-2.5">
-                                <textarea
-                                  rows={1}
-                                  ref={(el) => {
-                                    textareaRefs.current[idx] = el;
-                                  }}
-                                  placeholder="Description..."
-                                  value={item.description}
-                                  onInput={(e) =>
-                                    adjustTextareaHeight(
-                                      e.currentTarget as HTMLTextAreaElement,
-                                    )
-                                  }
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      idx,
-                                      "description",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-24 leading-relaxed"
-                                />
-                              </td>
+                                <td className="py-2 px-2.5 text-center">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantity}
+                                    onChange={(e) =>
+                                      handleItemChange(
+                                        idx,
+                                        "quantity",
+                                        e.target.value === ""
+                                          ? 0
+                                          : Number(e.target.value),
+                                      )
+                                    }
+                                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  />
+                                </td>
 
-                              <td className="py-2 px-2.5 text-center">
+                                <td className="py-2 px-2.5 text-right">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.unitPrice}
+                                    onChange={(e) =>
+                                      handleItemChange(
+                                        idx,
+                                        "unitPrice",
+                                        e.target.value === ""
+                                          ? 0
+                                          : parseFloat(e.target.value) || 0,
+                                      )
+                                    }
+                                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  />
+                                </td>
+
+                                <td className="py-2.5 px-2.5 text-right font-mono font-bold text-xs text-slate-900 dark:text-white whitespace-nowrap">
+                                  {currency(rowTotal)}
+                                </td>
+
+                                <td className="py-2 px-2.5 text-right">
+                                  <div className="flex items-center justify-end gap-1 pt-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => duplicateItemRow(idx)}
+                                      className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                                      title="Duplicate Item"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeItemRow(idx)}
+                                      className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-md transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+                                      title="Remove Item"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    /* Mobile View: Stacked Cards */
+                    <div className="space-y-3">
+                      {items.map((item, idx) => {
+                        const rowTotal =
+                          (Number(item.quantity) || 0) *
+                          (Number(item.unitPrice) || 0);
+
+                        return (
+                          <div
+                            key={`mobile-item-${idx}`}
+                            className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2.5"
+                          >
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                              <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 inline-flex items-center justify-center text-[10px] font-bold">
+                                {idx + 1}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => duplicateItemRow(idx)}
+                                  className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                                  title="Duplicate Item"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeItemRow(idx)}
+                                  className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-md transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+                                  title="Remove Item"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                Product
+                              </label>
+                              {renderProductSelect(idx)}
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                Variant
+                              </label>
+                              {renderVariantSelect(idx)}
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                Description / Inclusions
+                              </label>
+                              <textarea
+                                rows={1}
+                                ref={(el) => {
+                                  textareaRefs.current[idx] = el;
+                                }}
+                                placeholder="Description..."
+                                value={item.description}
+                                onInput={(e) =>
+                                  adjustTextareaHeight(
+                                    e.currentTarget as HTMLTextAreaElement,
+                                  )
+                                }
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    idx,
+                                    "description",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-none overflow-y-auto max-h-24 leading-relaxed"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                  Qty
+                                </label>
                                 <input
                                   type="number"
                                   min="1"
@@ -1655,11 +1357,14 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                         : Number(e.target.value),
                                     )
                                   }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 text-center focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
-                              </td>
+                              </div>
 
-                              <td className="py-2 px-2.5 text-right">
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                  Price (₱)
+                                </label>
                                 <input
                                   type="number"
                                   step="0.01"
@@ -1674,40 +1379,24 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                         : parseFloat(e.target.value) || 0,
                                     )
                                   }
-                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
+                                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 text-right font-mono focus:outline-none focus:border-slate-400 transition-all shadow-2xs"
                                 />
-                              </td>
+                              </div>
+                            </div>
 
-                              <td className="py-2.5 px-2.5 text-right font-mono font-bold text-xs text-slate-900 dark:text-white whitespace-nowrap">
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-xs">
+                              <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                Line Total:
+                              </span>
+                              <span className="font-mono font-bold text-slate-900 dark:text-white">
                                 {currency(rowTotal)}
-                              </td>
-
-                              <td className="py-2 px-2.5 text-right">
-                                <div className="flex items-center justify-end gap-1 pt-0.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => duplicateItemRow(idx)}
-                                    className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
-                                    title="Duplicate Item"
-                                  >
-                                    <Copy className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeItemRow(idx)}
-                                    className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-500 rounded-md transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
-                                    title="Remove Item"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
@@ -1805,6 +1494,21 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                       : "Save Changes"}
                   </button>
 
+                  {onSubmitAndSend && (
+                    <button
+                      form="edit-quotation-form"
+                      type="submit"
+                      onClick={() => setSubmittingAction("send")}
+                      disabled={saving}
+                      className="w-full group inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-900/60 text-blue-700 dark:text-blue-300 hover:bg-blue-50 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-blue-500" />
+                      {saving && submittingAction === "send"
+                        ? "Sending..."
+                        : "Save & Send"}
+                    </button>
+                  )}
+
                   <button
                     form="edit-quotation-form"
                     type="submit"
@@ -1831,44 +1535,6 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
           )}
         </div>
       </div>
-
-      {pickerModalIndex !== null && (
-        <ProductPickerModal
-          products={products}
-          selectedProductId={items[pickerModalIndex]?.productId}
-          lineNumber={pickerModalIndex + 1}
-          onSelect={(product) => handleSelectProduct(pickerModalIndex, product)}
-          onAddNew={() => {
-            setQuickProductTargetIndex(pickerModalIndex);
-            setPickerModalIndex(null);
-            setIsQuickProductModalOpen(true);
-          }}
-          onClose={() => setPickerModalIndex(null)}
-        />
-      )}
-
-      {pickerVariantModalIndex !== null &&
-        selectedProducts[pickerVariantModalIndex] && (
-          <VariantPickerModal
-            variants={selectedProducts[pickerVariantModalIndex]?.variants || []}
-            selectedVariantId={items[pickerVariantModalIndex]?.productVariantId}
-            productName={selectedProducts[pickerVariantModalIndex]?.name || ""}
-            lineNumber={pickerVariantModalIndex + 1}
-            onSelect={(variant) => {
-              handleSelectVariant(pickerVariantModalIndex, variant);
-              setPickerVariantModalIndex(null);
-            }}
-            onAddNewVariant={() => {
-              setVariantModalTargetIndex(pickerVariantModalIndex);
-              setTargetProductForVariants(
-                selectedProducts[pickerVariantModalIndex],
-              );
-              setIsVariantModalOpen(true);
-              setPickerVariantModalIndex(null);
-            }}
-            onClose={() => setPickerVariantModalIndex(null)}
-          />
-        )}
 
       {isQuickProductModalOpen && (
         <CreateProductModal
