@@ -718,7 +718,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         searchPlaceholder="Search products by name..."
         emptyText="No products found"
         ariaLabel={`Product for line item ${idx + 1}`}
-        onSelect={(id) =>
+        onSelect={(id: string | number | null) =>
           handleProductSelect(
             idx,
             id === null
@@ -770,7 +770,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
         searchPlaceholder="Search variants by name or SKU..."
         emptyText="No variants found"
         ariaLabel={`Variant for line item ${idx + 1}`}
-        onSelect={(id) =>
+        onSelect={(id: string | number | null) =>
           handleVariantSelect(
             idx,
             id === null
@@ -982,7 +982,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                           setOpenHeaderField("customer");
                         }}
                         onClose={() => setOpenHeaderField(null)}
-                        onSearchChange={(q) => {
+                        onSearchChange={(q: string) => {
                           lastTypedCustomerQueryRef.current = q;
                         }}
                         options={customerOptions}
@@ -993,7 +993,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                         searchPlaceholder="Search customers..."
                         emptyText="No customers found"
                         ariaLabel="Customer"
-                        onSelect={(id) =>
+                        onSelect={(id: string | number | null) =>
                           void handleSelectCustomer(
                             id === null
                               ? null
@@ -1053,7 +1053,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                         searchPlaceholder="Search contact person..."
                         emptyText="No contact persons found"
                         ariaLabel="Contact person"
-                        onSelect={(id) =>
+                        onSelect={(id: string | number | null) =>
                           handleSelectContact(
                             id === null
                               ? null
@@ -1064,7 +1064,7 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                           )
                         }
                         footerAction={
-                          selectedCustomer && onTriggerAddContact
+                          selectedCustomer
                             ? {
                                 label: "Add new contact",
                                 icon: <UserPlus className="h-3.5 w-3.5" />,
@@ -1072,7 +1072,13 @@ export const EditQuotationModal: React.FC<EditQuotationModalProps> = ({
                                   isCreatingContactRef.current = true;
                                   userClearedContactRef.current = false;
                                   setOpenHeaderField(null);
-                                  onTriggerAddContact(selectedCustomer);
+                                  if (onTriggerAddContact) {
+                                    onTriggerAddContact(selectedCustomer);
+                                  } else {
+                                    toast.error(
+                                      "Add contact action is not available.",
+                                    );
+                                  }
                                 },
                               }
                             : undefined
