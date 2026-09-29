@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { CreateProductModal } from "../products/CreateProductModal";
 import { ProductVariantsModal } from "../products/ProductVariantsModal";
-import { SearchableSelect, type SelectOption } from "./Searchableselect";
+import { SearchableSelect, type SelectOption } from "./SearchableSelect";
 
 interface CreateQuotationModalProps {
   saving: boolean;

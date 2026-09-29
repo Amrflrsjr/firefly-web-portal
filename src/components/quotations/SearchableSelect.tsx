@@ -26,6 +26,8 @@ export interface SelectFooterAction {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
+  /** Keep the button visible but unclickable (e.g. a prerequisite is missing). */
+  disabled?: boolean;
 }
 
 interface SearchableSelectProps {
@@ -370,8 +372,9 @@ const DropdownPanel: React.FC<DropdownPanelProps> = ({
       {footerAction && (
         <button
           type="button"
+          disabled={footerAction.disabled}
           onClick={footerAction.onClick}
-          className="flex min-h-10 w-full shrink-0 cursor-pointer items-center gap-2 border-t border-slate-200 bg-amber-50/60 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-50 dark:border-slate-800 dark:bg-amber-950/20 dark:text-amber-400 dark:hover:bg-amber-950/40"
+          className="flex min-h-10 w-full shrink-0 cursor-pointer items-center gap-2 border-t border-slate-200 bg-amber-50/60 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 disabled:hover:bg-slate-50 dark:border-slate-800 dark:bg-amber-950/20 dark:text-amber-400 dark:hover:bg-amber-950/40 dark:disabled:bg-slate-900 dark:disabled:text-slate-500 dark:disabled:hover:bg-slate-900"
         >
           {footerAction.icon}
           {footerAction.label}
