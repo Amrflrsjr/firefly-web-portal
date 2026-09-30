@@ -103,16 +103,19 @@ const OPEN_STATUSES = new Set(["unpaid", "overdue", "partiallypaid"]);
 
 const STATUS_META: Record<string, { label: string; bar: string }> = {
   paid: { label: "Paid", bar: "bg-emerald-500" },
+  closed: { label: "Closed", bar: "bg-indigo-500" },
   unpaid: { label: "Unpaid", bar: "bg-amber-500" },
   partiallypaid: { label: "Partially paid", bar: "bg-sky-500" },
   overdue: { label: "Overdue", bar: "bg-rose-500" },
 };
 
-// The Invoices page filters on Paid / Unpaid / PartiallyPaid / Cancelled.
+// The Invoices page filters on Paid / Unpaid / PartiallyPaid / Cancelled / Closed.
 const invoiceFilterFor = (status: string) => {
   switch (norm(status)) {
     case "paid":
       return "Paid";
+    case "closed":
+      return "Closed";
     case "partiallypaid":
       return "PartiallyPaid";
     default:

@@ -12,6 +12,8 @@ import {
 import type { InvoiceResponseDto } from "../../types/invoice";
 import api from "../../api/axios";
 import toast from "react-hot-toast";
+import { ConfirmModal } from "../common/ConfirmModal";
+import axios from "axios";
 
 interface Props {
   invoice: InvoiceResponseDto | null;
@@ -77,6 +79,10 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
   });
   const [savingNotes, setSavingNotes] = useState(false);
 
+  // Payment deletion state
+  const [paymentToDelete, setPaymentToDelete] = useState<number | null>(null);
+  const [deletingPayment, setDeletingPayment] = useState(false);
+
   if (!invoice) return null;
 
   const isPdfLoading = loadingPdfId === invoice.invoiceId;
@@ -101,10 +107,36 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
     }
   };
 
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    setDeletingPayment(true);
+    try {
+      await api.delete(
+        `/invoices/${invoice.invoiceId}/payments/${paymentToDelete}`,
+      );
+      toast.success("Payment deleted successfully!");
+      setPaymentToDelete(null);
+
+      if (onInvoiceUpdated) {
+        onInvoiceUpdated(); // Triggers parent reload or state refresh
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Failed to delete payment.");
+      } else {
+        toast.error("Failed to delete payment.");
+      }
+    } finally {
+      setDeletingPayment(false);
+    }
+  };
+
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case "paid":
         return "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60";
+      case "closed":
+        return "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60";
       case "partiallypaid":
       case "partially paid":
         return "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60";
@@ -146,415 +178,442 @@ export const InvoiceDetailsModal: React.FC<Props> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-                Invoice Overview
-              </h2>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-300">
-                {invoice.invoiceNumber}
-              </span>
-              {invoice.quotationNumber && (
-                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-                  (Quote #{invoice.quotationNumber})
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                  Invoice Overview
+                </h2>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {invoice.invoiceNumber}
                 </span>
-              )}
+                {invoice.quotationNumber && (
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                    (Quote #{invoice.quotationNumber})
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {invoice.companyName}
+              </p>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {invoice.companyName}
-            </p>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <span
-              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border capitalize shadow-2xs ${getStatusBadgeStyle(
-                invoice.status,
-              )}`}
-            >
-              {invoice.status === "PartiallyPaid"
-                ? "Partially Paid"
-                : invoice.status}
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Scrollable Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5 bg-slate-50/50 dark:bg-slate-950/50">
-          {/* Action Toolbar */}
-          <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-3">
+              <span
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border capitalize shadow-2xs ${getStatusBadgeStyle(
+                  invoice.status,
+                )}`}
+              >
+                {invoice.status === "PartiallyPaid"
+                  ? "Partially Paid"
+                  : invoice.status}
+              </span>
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenEmail(invoice);
-                }}
-                className="inline-flex items-center justify-center gap-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg shadow-xs transition-all cursor-pointer active:scale-95"
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95"
               >
-                <Mail className="w-4 h-4" /> Email Invoice
+                <X className="w-4 h-4" />
               </button>
+            </div>
+          </div>
 
-              {(invoice.balanceDue ?? 0) > 0 && (
+          {/* Scrollable Body */}
+          <div className="p-6 overflow-y-auto flex-1 space-y-5 bg-slate-50/50 dark:bg-slate-950/50">
+            {/* Action Toolbar */}
+            <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
-                    onOpenPayment(invoice);
+                    onOpenEmail(invoice);
                   }}
-                  className="inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg shadow-xs transition-all cursor-pointer active:scale-95"
                 >
-                  <DollarSign className="w-4 h-4 text-emerald-600" /> Record
-                  Payment
+                  <Mail className="w-4 h-4" /> Email Invoice
                 </button>
+
+                {(invoice.balanceDue ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenPayment(invoice);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  >
+                    <DollarSign className="w-4 h-4 text-emerald-600" /> Record
+                    Payment
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  disabled={isPdfLoading}
+                  onClick={() =>
+                    onPreviewPdf(invoice.invoiceId, invoice.invoiceNumber)
+                  }
+                  className="inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isPdfLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-slate-500" />
+                  )}{" "}
+                  Preview PDF
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isDownloading}
+                  onClick={() =>
+                    onDownloadPdf(invoice.invoiceId, invoice.invoiceNumber)
+                  }
+                  className="inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                  ) : (
+                    <Download className="w-4 h-4 text-slate-500" />
+                  )}{" "}
+                  Download
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onDeleteInvoice(invoice.invoiceId)}
+                  className="inline-flex items-center justify-center p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-lg border border-rose-200 dark:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  title="Cancel Invoice"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Info Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Customer
+                </span>
+                <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs truncate pt-0.5">
+                  {invoice.companyName || "N/A"}
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Contact Person
+                </span>
+                <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs truncate pt-0.5">
+                  {invoice.contactNameSnapshot || "N/A"}
+                </p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate font-normal">
+                  {invoice.contactEmailSnapshot || "No email provided"}
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Date Generated
+                </span>
+                <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs font-mono pt-0.5">
+                  {invoice.createdAt
+                    ? new Date(invoice.createdAt).toLocaleDateString(
+                        undefined,
+                        {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        },
+                      )
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Item Breakdown
+                </h3>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
+                  {invoice.items?.length || 0} item(s)
+                </span>
+              </div>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-50/75 dark:bg-slate-800/80 text-slate-400 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-3 px-4">Item</th>
+                      <th className="py-3 px-4">Variant</th>
+                      <th className="py-3 px-4 text-center">Quantity</th>
+                      <th className="py-3 px-4 text-right">Unit Price</th>
+                      <th className="py-3 px-4 text-right">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {invoice.items?.map((rawItem, idx) => {
+                      const item = rawItem as ExtendedInvoiceItem;
+                      const qty = item.quantity ?? 1;
+                      const price = item.unitPrice ?? 0;
+                      const total = item.totalAmount ?? qty * price;
+
+                      let variantText = "—";
+                      if (item.color && item.size) {
+                        variantText = `${item.color} / ${item.size}`;
+                      } else if (item.color) {
+                        variantText = item.color;
+                      } else if (item.size) {
+                        variantText = item.size;
+                      }
+
+                      return (
+                        <tr
+                          key={item.invoiceItemId || idx}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
+                        >
+                          <td className="py-3.5 px-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {item.sku && (
+                                  <span className="font-mono text-[10px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg">
+                                    {item.sku}
+                                  </span>
+                                )}
+                                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                  {item.productName || "Custom Item"}
+                                </span>
+                              </div>
+                              {item.description &&
+                                item.description !== item.productName &&
+                                !item.description.startsWith("Variant:") && (
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal whitespace-pre-line leading-relaxed pt-0.5">
+                                    {item.description}
+                                  </p>
+                                )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
+                            {variantText}
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-semibold text-slate-700 dark:text-slate-300">
+                            {qty}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono text-slate-600 dark:text-slate-400 font-medium">
+                            {currency(price)}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-semibold text-slate-900 dark:text-white">
+                            {currency(total)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Financial Totals & Editable Notes Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+              {/* Notes / Terms Card */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Note / Payment Terms
+                    </span>
+                    {!isEditingNotes ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentNotes(
+                            invoice.notes ||
+                              detail?.NoteToCustomer ||
+                              detail?.noteToCustomer ||
+                              "",
+                          );
+                          setIsEditingNotes(true);
+                        }}
+                        className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={savingNotes}
+                          onClick={handleSaveNotes}
+                          className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          {savingNotes ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingNotes}
+                          onClick={() => {
+                            setCurrentNotes(
+                              invoice.notes || detail?.NoteToCustomer || "",
+                            );
+                            setIsEditingNotes(false);
+                          }}
+                          className="text-[11px] font-semibold text-slate-400 hover:underline cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {isEditingNotes ? (
+                    <textarea
+                      rows={3}
+                      value={currentNotes}
+                      onChange={(e) => setCurrentNotes(e.target.value)}
+                      className="w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-y"
+                    />
+                  ) : (
+                    <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-1.5 leading-relaxed whitespace-pre-line">
+                      {currentNotes ||
+                        invoice.notes ||
+                        detail?.NoteToCustomer ||
+                        "No specific terms provided for this invoice."}
+                    </p>
+                  )}
+                </div>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                  Standard payment terms apply.
+                </div>
+              </div>
+
+              {/* Financial Totals Card */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 text-xs font-medium shadow-2xs">
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>Subtotal:</span>
+                  <span className="font-mono text-slate-900 dark:text-slate-100">
+                    {currency(subtotal)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>VAT Calculation ({vatType}):</span>
+                  <span className="font-mono text-slate-900 dark:text-slate-100">
+                    {currency(taxAmount)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm sm:text-base font-bold text-slate-900 dark:text-white pt-2.5 border-t border-slate-200 dark:border-slate-800">
+                  <span>Grand Total:</span>
+                  <span className="font-mono text-slate-900 dark:text-white text-base font-bold">
+                    {currency(grandTotal)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment History Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Payment Transactions
+                </h3>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
+                  {invoice.payments?.length || 0} transaction(s)
+                </span>
+              </div>
+
+              {invoice.payments?.length === 0 ? (
+                <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs italic shadow-2xs">
+                  No payment transactions recorded yet.
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                  {invoice.payments?.map((p) => (
+                    <div
+                      key={p.paymentId}
+                      className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 text-xs">
+                          <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          {p.paymentMethod}
+                        </div>
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                          Reference No:{" "}
+                          <span className="font-mono text-slate-600 dark:text-slate-300 font-semibold">
+                            {p.referenceNumber || "N/A"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 self-start sm:self-auto">
+                        <div className="font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/60 text-xs shadow-2xs">
+                          + {currency(p.amountPaid ?? 0)}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentToDelete(p.paymentId)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-colors cursor-pointer"
+                          title="Delete Payment"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                disabled={isPdfLoading}
-                onClick={() =>
-                  onPreviewPdf(invoice.invoiceId, invoice.invoiceNumber)
-                }
-                className="inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isPdfLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
-                ) : (
-                  <Eye className="w-4 h-4 text-slate-500" />
-                )}{" "}
-                Preview PDF
-              </button>
-
-              <button
-                type="button"
-                disabled={isDownloading}
-                onClick={() =>
-                  onDownloadPdf(invoice.invoiceId, invoice.invoiceNumber)
-                }
-                className="inline-flex items-center justify-center gap-2 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isDownloading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
-                ) : (
-                  <Download className="w-4 h-4 text-slate-500" />
-                )}{" "}
-                Download
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onDeleteInvoice(invoice.invoiceId)}
-                className="inline-flex items-center justify-center p-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-lg border border-rose-200 dark:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-95"
-                title="Cancel Invoice"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Info Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Customer
-              </span>
-              <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs truncate pt-0.5">
-                {invoice.companyName || "N/A"}
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Contact Person
-              </span>
-              <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs truncate pt-0.5">
-                {invoice.contactNameSnapshot || "N/A"}
-              </p>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate font-normal">
-                {invoice.contactEmailSnapshot || "No email provided"}
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Date Generated
-              </span>
-              <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs font-mono pt-0.5">
-                {invoice.createdAt
-                  ? new Date(invoice.createdAt).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-
-          {/* Line Items Table */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Item Breakdown
-              </h3>
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
-                {invoice.items?.length || 0} item(s)
-              </span>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50/75 dark:bg-slate-800/80 text-slate-400 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[11px]">
-                  <tr>
-                    <th className="py-3 px-4">Item</th>
-                    <th className="py-3 px-4">Variant</th>
-                    <th className="py-3 px-4 text-center">Quantity</th>
-                    <th className="py-3 px-4 text-right">Unit Price</th>
-                    <th className="py-3 px-4 text-right">Line Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {invoice.items?.map((rawItem, idx) => {
-                    const item = rawItem as ExtendedInvoiceItem;
-                    const qty = item.quantity ?? 1;
-                    const price = item.unitPrice ?? 0;
-                    const total = item.totalAmount ?? qty * price;
-
-                    let variantText = "—";
-                    if (item.color && item.size) {
-                      variantText = `${item.color} / ${item.size}`;
-                    } else if (item.color) {
-                      variantText = item.color;
-                    } else if (item.size) {
-                      variantText = item.size;
-                    }
-
-                    return (
-                      <tr
-                        key={item.invoiceItemId || idx}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors align-top"
-                      >
-                        <td className="py-3.5 px-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {item.sku && (
-                                <span className="font-mono text-[10px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg">
-                                  {item.sku}
-                                </span>
-                              )}
-                              <span className="font-semibold text-slate-900 dark:text-slate-100">
-                                {item.productName || "Custom Item"}
-                              </span>
-                            </div>
-                            {item.description &&
-                              item.description !== item.productName &&
-                              !item.description.startsWith("Variant:") && (
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal whitespace-pre-line leading-relaxed pt-0.5">
-                                  {item.description}
-                                </p>
-                              )}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
-                          {variantText}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-semibold text-slate-700 dark:text-slate-300">
-                          {qty}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-slate-600 dark:text-slate-400 font-medium">
-                          {currency(price)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-semibold text-slate-900 dark:text-white">
-                          {currency(total)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Financial Totals & Editable Notes Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-            {/* Notes / Terms Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 shadow-2xs flex flex-col justify-between">
+            {/* Remaining Balance Box */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-2xs">
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Note / Payment Terms
-                  </span>
-                  {!isEditingNotes ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCurrentNotes(
-                          invoice.notes ||
-                            detail?.NoteToCustomer ||
-                            detail?.noteToCustomer ||
-                            "",
-                        );
-                        setIsEditingNotes(true);
-                      }}
-                      className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={savingNotes}
-                        onClick={handleSaveNotes}
-                        className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                      >
-                        {savingNotes ? "Saving..." : "Save"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={savingNotes}
-                        onClick={() => {
-                          setCurrentNotes(
-                            invoice.notes || detail?.NoteToCustomer || "",
-                          );
-                          setIsEditingNotes(false);
-                        }}
-                        className="text-[11px] font-semibold text-slate-400 hover:underline cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {isEditingNotes ? (
-                  <textarea
-                    rows={3}
-                    value={currentNotes}
-                    onChange={(e) => setCurrentNotes(e.target.value)}
-                    className="w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-slate-400 transition-all shadow-2xs resize-y"
-                  />
-                ) : (
-                  <p className="text-xs text-slate-600 dark:text-slate-400 italic mt-1.5 leading-relaxed whitespace-pre-line">
-                    {currentNotes ||
-                      invoice.notes ||
-                      detail?.NoteToCustomer ||
-                      "No specific terms provided for this invoice."}
-                  </p>
-                )}
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Remaining Balance Due
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Outstanding balance pending settlement
+                </p>
               </div>
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                Standard payment terms apply.
-              </div>
-            </div>
-
-            {/* Financial Totals Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 text-xs font-medium shadow-2xs">
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>Subtotal:</span>
-                <span className="font-mono text-slate-900 dark:text-slate-100">
-                  {currency(subtotal)}
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>VAT Calculation ({vatType}):</span>
-                <span className="font-mono text-slate-900 dark:text-slate-100">
-                  {currency(taxAmount)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm sm:text-base font-bold text-slate-900 dark:text-white pt-2.5 border-t border-slate-200 dark:border-slate-800">
-                <span>Grand Total:</span>
-                <span className="font-mono text-slate-900 dark:text-white text-base font-bold">
-                  {currency(grandTotal)}
+              <div className="font-mono">
+                <span className="text-lg font-bold text-rose-600 dark:text-rose-400">
+                  {currency(invoice.balanceDue ?? 0)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Payment History Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Payment Transactions
-              </h3>
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
-                {invoice.payments?.length || 0} transaction(s)
-              </span>
-            </div>
-
-            {invoice.payments?.length === 0 ? (
-              <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs italic shadow-2xs">
-                No payment transactions recorded yet.
-              </div>
-            ) : (
-              <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                {invoice.payments?.map((p) => (
-                  <div
-                    key={p.paymentId}
-                    className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 text-xs">
-                        <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        {p.paymentMethod}
-                      </div>
-                      <div className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                        Reference No:{" "}
-                        <span className="font-mono text-slate-600 dark:text-slate-300 font-semibold">
-                          {p.referenceNumber || "N/A"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/60 text-xs self-start sm:self-auto shadow-2xs">
-                      + {currency(p.amountPaid ?? 0)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Footer */}
+          <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-2xs">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
+            >
+              Close Overview
+            </button>
           </div>
-
-          {/* Remaining Balance Box */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-2xs">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Remaining Balance Due
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                Outstanding balance pending settlement
-              </p>
-            </div>
-            <div className="font-mono">
-              <span className="text-lg font-bold text-rose-600 dark:text-rose-400">
-                {currency(invoice.balanceDue ?? 0)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-2xs">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
-          >
-            Close Overview
-          </button>
         </div>
       </div>
-    </div>
+
+      <ConfirmModal
+        isOpen={paymentToDelete !== null}
+        title="Delete Payment Record"
+        message="Are you sure you want to delete this payment record? This will adjust the invoice's balance and status accordingly."
+        confirmText="Yes, Delete"
+        isDanger={true}
+        loading={deletingPayment}
+        onConfirm={handleDeletePayment}
+        onClose={() => setPaymentToDelete(null)}
+      />
+    </>
   );
 };

@@ -165,6 +165,8 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     switch (status?.toLowerCase()) {
       case "paid":
         return "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60";
+      case "closed":
+        return "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60";
       case "partiallypaid":
       case "partially paid":
         return "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60";
@@ -317,6 +319,12 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                           className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-semibold"
                         >
                           Paid
+                        </option>
+                        <option
+                          value="Closed"
+                          className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-semibold"
+                        >
+                          Closed
                         </option>
                         <option
                           value="Cancelled"

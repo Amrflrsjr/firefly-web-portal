@@ -358,6 +358,7 @@ export const Invoices: React.FC = () => {
                 <option value="Unpaid">Unpaid</option>
                 <option value="PartiallyPaid">Partially Paid</option>
                 <option value="Paid">Paid</option>
+                <option value="Closed">Closed</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
             </div>
@@ -470,6 +471,26 @@ export const Invoices: React.FC = () => {
         onOpenEmail={setEmailInvoice}
         onOpenPayment={setPaymentInvoice}
         onDeleteInvoice={handleDeleteInvoice}
+        onInvoiceUpdated={async () => {
+          await loadData(
+            searchQuery,
+            statusFilter,
+            startDateFilter,
+            endDateFilter,
+            sortBy,
+            ascending,
+          );
+          if (activeInvoice) {
+            try {
+              const res = await api.get<InvoiceResponseDto>(
+                `/invoices/${activeInvoice.invoiceId}`,
+              );
+              setSelectedInvoice(res.data);
+            } catch (err) {
+              console.error("Failed to refresh invoice details", err);
+            }
+          }
+        }}
         loadingPdfId={loadingPdfId}
         downloadingPdfId={downloadingPdfId}
       />
